@@ -1,0 +1,7 @@
+modules = ["nodejs-18", "web", "python-base-3.13"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+packages = ["rsync"]

@@ -1,0 +1,161 @@
+You are a Senior React Native (TypeScript) UI/UX Engineer and Mobile Product Designer.
+
+Analyze the entire React Native project before making any changes.
+
+Your goal is to transform this application into a premium, production-quality app with a modern UI similar to Instagram, Airbnb, LinkedIn, or Google apps while preserving all existing functionality.
+
+IMPORTANT RULES
+
+- Do NOT change business logic.
+- Do NOT change API calls.
+- Do NOT change backend integration.
+- Do NOT change Redux/Context state management.
+- Do NOT change navigation behavior.
+- Do NOT remove any feature.
+- Do NOT modify authentication logic.
+- Do NOT modify payment logic.
+- Keep every screen fully functional.
+
+Your task is ONLY to improve the frontend.
+
+UI IMPROVEMENTS
+
+Make every screen:
+
+- Modern
+- Clean
+- Minimal
+- Premium
+- Professional
+- Responsive on all Android devices
+- Consistent
+
+Remove:
+
+- Hardcoded width/height
+- Poor spacing
+- Inconsistent padding
+- Inconsistent margins
+- Duplicate styles
+- Unnecessary nested Views
+- Poor typography
+- Misaligned components
+
+Improve:
+
+- Layout
+- Typography
+- Colors
+- Icons
+- Cards
+- Buttons
+- Inputs
+- Bottom Sheets
+- Modals
+- Lists
+- Loading states
+- Empty states
+- Error states
+- Skeleton loaders
+- Profile screens
+- Feed screens
+- Reels UI
+- Contest screens
+- Audition screens
+- Chat UI
+- Notification screens
+- Settings screens
+
+Responsive Design
+
+Support:
+
+- Small phones
+- Large phones
+- Foldable devices
+- Tablets
+
+Avoid fixed pixel values.
+
+Use Flexbox, percentage layouts, and responsive utilities where appropriate.
+
+Create a reusable design system.
+
+Create reusable:
+
+- Button
+- Card
+- Input
+- Avatar
+- Header
+- EmptyState
+- LoadingView
+- SectionTitle
+- Chip
+- Badge
+
+Use consistent:
+
+- Border radius
+- Shadows
+- Colors
+- Font sizes
+- Spacing
+- Icon sizes
+
+Animations
+
+Add subtle professional animations where appropriate.
+
+Examples:
+
+- Screen transitions
+- Button press animations
+- Card animations
+- Image fade
+- Bottom sheet animations
+
+Performance
+
+Optimize:
+
+- FlatList
+- Memoization
+- Image rendering
+- Re-renders
+
+Accessibility
+
+Improve:
+
+- Touch targets
+- Font scaling
+- Accessibility labels
+- Contrast
+
+Code Quality
+
+Refactor styles.
+
+Split very large components into reusable components.
+
+Remove duplicate code.
+
+Improve naming.
+
+Use TypeScript best practices.
+
+Before changing anything:
+
+1. Analyze the whole project.
+2. Create a plan.
+3. Identify reusable components.
+4. Identify style inconsistencies.
+
+Then refactor the project incrementally.
+
+At every step ensure the application still builds successfully.
+
+Never sacrifice functionality for design.
+
+The final result should feel like a polished production app ready for Play Store release.
