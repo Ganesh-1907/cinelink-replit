@@ -10,8 +10,8 @@ import {
   SafeAreaView,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import api from '../src/api/client';
 import Video from 'react-native-video';
 import {uploadVideo} from '../src/services/uploadService';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
@@ -63,40 +63,30 @@ export default function UploadReelsScreen({navigation}: any) {
     setUploading(true);
 
     try {
-      /* Upload video to Cloudinary */
+      /* Upload video to R2 */
       const result = await uploadVideo(videoUri);
-      const videoData = {secure_url: result.secureUrl};
       setUploading(false);
 
-      /* Fetch user profile */
-      const userDoc = await firestore()
-        .collection('users')
-        .doc(currentUser?.uid)
-        .get();
-      const userData = userDoc.data();
+      /* Get user profile from backend */
+      const profileRes = await api.get<any>('/users/profile');
+      const userData = profileRes?.user || {};
 
       const creatorName =
-        userData?.displayName ||
-        userData?.fullName ||
-        userData?.name ||
+        userData.fullName ||
+        userData.displayName ||
+        userData.name ||
         currentUser?.displayName ||
         currentUser?.email?.split('@')[0] ||
         'Creator';
 
       const creatorAvatar =
-        userData?.photoUrl || userData?.photoURL || currentUser?.photoURL || '';
+        userData.photoUrl || userData.photoURL || currentUser?.photoURL || '';
 
-      await firestore().collection('cinereels').add({
-        videoUrl: videoData.secure_url,
-        creatorId: currentUser?.uid,
+      await api.post('/reels', {
+        videoUrl: result.secureUrl,
         creatorName,
         creatorAvatar,
         caption: caption.trim(),
-        duration: videoDuration,
-        likes: 0,
-        comments: 0,
-        views: 0,
-        createdAt: firestore.FieldValue.serverTimestamp(),
       });
 
       Alert.alert('Success! 🎬', 'Your reel has been uploaded.', [
@@ -114,13 +104,13 @@ export default function UploadReelsScreen({navigation}: any) {
   const isDisabled = !videoSelected || videoDuration > MAX_DURATION || loading;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, {backgroundColor: Colors.background}]}>
       <Header
         title="Upload Reel"
         navigation={navigation}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView style={[styles.container, {backgroundColor: Colors.background}]} keyboardShouldPersistTaps="handled">
         {/* VIDEO PICKER / PREVIEW */}
         {videoSelected ? (
           <View style={styles.videoContainer}>

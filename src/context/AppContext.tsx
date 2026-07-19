@@ -1,7 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
-import { User, PremiumTier } from '../types';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
+import {authService} from '../services/AuthService';
+import {User, PremiumTier} from '../types';
 
 interface AppState {
   user: any | null;
@@ -31,7 +37,7 @@ const AppContext = createContext<AppState>({
   signOut: async () => {},
 });
 
-export function AppProvider({ children }: { children: ReactNode }) {
+export function AppProvider({children}: {children: ReactNode}) {
   const [user, setUser] = useState<any | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
   const [premiumTier, setPremiumTier] = useState<PremiumTier>('none');
@@ -40,54 +46,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (uid: string) => {
+  const populateFromUserData = useCallback((data: User) => {
+    setUserData(data);
+    (globalThis as any).userData = data;
+    (globalThis as any).user = {
+      uid: data.id,
+      email: data.email,
+      displayName: data.fullName || data.name,
+    };
+    setPremiumTier(data.premiumTier || 'none');
+    setPremiumExpiry(data.premiumExpiry ? new Date(data.premiumExpiry) : null);
+    setRole(data.role || 'Actor');
+    const adminEmail = 'anilkumardevarakonda03@gmail.com';
+    setIsAdmin(data.isAdmin === true || data.email === adminEmail);
+  }, []);
+
+  const refreshUserData = useCallback(async () => {
     try {
-      const doc = await firestore().collection('users').doc(uid).get();
-      if (doc.exists) {
-        const data = doc.data() as User;
-        setUserData(data);
-        setPremiumTier(data.premiumTier || 'none');
-        setPremiumExpiry(data.premiumExpiry?.toDate?.() || null);
-        setRole(data.role || 'Actor');
-
-        const adminEmail = 'anilkumardevarakonda03@gmail.com';
-        setIsAdmin(data.isAdmin === true || auth().currentUser?.email === adminEmail);
-      }
+      const data = await authService.fetchProfile();
+      populateFromUserData(data);
     } catch (e) {
-      console.warn('[AppContext] fetchUserData error:', e);
+      console.warn('[AppContext] refreshUserData error:', e);
     }
-  };
+  }, [populateFromUserData]);
 
-  const refreshUserData = async () => {
-    if (user?.uid) await fetchUserData(user.uid);
-  };
-
-  const signOut = async () => {
-    await auth().signOut();
+  const signOut = useCallback(async () => {
+    await authService.logout();
     setUser(null);
     setUserData(null);
     setPremiumTier('none');
     setPremiumExpiry(null);
     setRole('Actor');
     setIsAdmin(false);
-  };
-
-  useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(async (authUser) => {
-      setUser(authUser);
-      if (authUser) {
-        await fetchUserData(authUser.uid);
-      } else {
-        setUserData(null);
-        setPremiumTier('none');
-        setPremiumExpiry(null);
-        setRole('Actor');
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    });
-    return subscriber;
   }, []);
+
+  // Restore session on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const session = await authService.restoreSession();
+        if (session) {
+          setUser({email: session.user.email, _id: session.user._id});
+          populateFromUserData(session.user);
+        }
+      } catch (e) {
+        console.warn('[AppContext] session restore error:', e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [populateFromUserData]);
 
   const isPremium = premiumTier !== 'none';
   const isVerified = userData?.verifiedReal === true;

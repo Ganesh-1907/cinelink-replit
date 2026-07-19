@@ -9,8 +9,8 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import api from '../src/api/client';
 import {
   Colors,
   Typography,
@@ -66,33 +66,17 @@ export default function ReportModal({
     setSubmitting(true);
 
     try {
-      const existing = await firestore()
-        .collection('reports')
-        .where('contentId', '==', contentId)
-        .where('reportedBy', '==', currentUser.uid)
-        .get();
-
-      if (!existing.empty) {
-        Alert.alert(
-          'Already Reported',
-          'You have already reported this content. Our team will review it.',
-        );
-        onClose();
-        resetForm();
-        return;
-      }
-
-      await firestore().collection('reports').add({
-        contentId,
-        contentType,
-        contentTitle,
+      const reportData: any = {
         reason: selectedReason,
-        details: details.trim(),
-        reportedBy: currentUser.uid,
-        reportedByEmail: currentUser.email,
-        status: 'pending',
-        createdAt: firestore.FieldValue.serverTimestamp(),
-      });
+        message: details.trim(),
+      };
+      // Map content type to backend field
+      if (contentType === 'audition') reportData.auditionId = contentId;
+      else if (contentType === 'film') reportData.filmId = contentId;
+      else if (contentType === 'contest') reportData.contestId = contentId;
+      else reportData.reportedUserId = contentId;
+
+      await api.post('/reports', reportData);
 
       Alert.alert(
         '✅ Report Submitted',
@@ -116,10 +100,10 @@ export default function ReportModal({
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
-        <View style={styles.container}>
+        <View style={[styles.container, {backgroundColor: Colors.cardElevated}]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>🚩 Report Content</Text>
+            <Text style={[styles.headerTitle, {color: Colors.textPrimary}]}>🚩 Report Content</Text>
             <TouchableOpacity
               onPress={onClose}
               hitSlop={HitSlop.md}
@@ -132,7 +116,7 @@ export default function ReportModal({
             Reporting: <Text style={styles.reportingTitle}>{contentTitle}</Text>
           </Text>
 
-          <Text style={styles.sectionTitle}>Why are you reporting this?</Text>
+          <Text style={[styles.sectionTitle, {color: Colors.textPrimary}]}>Why are you reporting this?</Text>
 
           <View style={styles.reasons}>
             {REPORT_REASONS.map(reason => (
@@ -156,7 +140,14 @@ export default function ReportModal({
           </View>
 
           <TextInput
-            style={styles.detailsInput}
+            style={[
+              styles.detailsInput,
+              {
+                color: Colors.textPrimary,
+                backgroundColor: Colors.inputBg,
+                borderColor: Colors.border,
+              },
+            ]}
             placeholder="Add more details (optional)..."
             placeholderTextColor={Colors.textTertiary}
             value={details}

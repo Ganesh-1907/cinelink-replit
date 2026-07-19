@@ -1,20 +1,22 @@
 ﻿import BootSplash from 'react-native-bootsplash';
 import React, {useState, useEffect} from 'react';
-import crashlytics from '@react-native-firebase/crashlytics';
 import ImageViewerScreen from './screens/ImageViewerScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Text, View, ActivityIndicator, StatusBar, Alert} from 'react-native';
 import ErrorBoundary from './components/ErrorBoundary';
-import { AppProvider } from './src/context/AppContext';
+import {AppProvider, useApp} from './src/context/AppContext';
+import {ThemeProvider, useTheme} from './src/context/ThemeContext';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNavigationContainerRef} from '@react-navigation/native';
 import {setNavigator, registerBackgroundHandler} from './src/services/NotificationService';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from './src/api/client';
+import {authService} from './src/services/AuthService';
 import {initNotifications} from './src/services/NotificationService';
+import {enableOfflinePersistence} from './src/services/offlineService';
+import {trackScreenView} from './src/services/analyticsService';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SuggestedFollowsScreen from './screens/SuggestedFollowsScreen';
 import AuthScreen from './screens/AuthScreen';
@@ -63,17 +65,10 @@ import PremiumCineLinkScreen from './src/screens/Premium/PremiumCineLinkScreen';
 import {LiquidNav} from './components/LiquidNav';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 
+import {Colors, Typography, Spacing, Radius, Shadows} from './src/theme';
+
 export const navigationRef = createNavigationContainerRef();
 registerBackgroundHandler();
-
-const COLORS = {
-  primary:       '#C9956C',
-  background:    '#0A0A0A',
-  surface:       '#1C1C1C',
-  textPrimary:   '#FFFFFF',
-  textSecondary: '#A09080',
-  border:        '#2A2A2A',
-};
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -86,8 +81,8 @@ function TabNavigator() {
         <LiquidNav navigation={props.navigation} activeTab={props.state.index} />
       )}
       screenOptions={{
-        headerStyle:       {backgroundColor: COLORS.background},
-        headerTintColor:   COLORS.textPrimary,
+        headerStyle:       {backgroundColor: Colors.background},
+        headerTintColor:   Colors.textPrimary,
         headerShadowVisible: false,
       }}>
 
@@ -144,10 +139,10 @@ function MainStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle:    {backgroundColor: COLORS.background},
-        headerTintColor: COLORS.textPrimary,
+        headerStyle:    {backgroundColor: Colors.background},
+        headerTintColor: Colors.textPrimary,
         headerShadowVisible: false,
-        contentStyle:   {backgroundColor: COLORS.background},
+        contentStyle:   {backgroundColor: Colors.background},
         animation:      'slide_from_right',
         animationDuration: 280,
         gestureEnabled: true,
@@ -205,9 +200,8 @@ function AuthStack() {
   );
 }
 
-function App(): JSX.Element {
-  const [user, setUser]                         = useState<any>(null);
-  const [loading, setLoading]                   = useState(true);
+function AppContent(): JSX.Element {
+  const {isDark} = useTheme();
   const [showOnboarding, setShowOnboarding]     = useState<boolean | null>(null);
   const [showSuggestedFollows, setShowSuggestedFollows] = useState(false);
   const [showFeedback, setShowFeedback]         = useState(false);
@@ -224,79 +218,67 @@ function App(): JSX.Element {
     if (!__DEV__) crashlytics().log('CineLink App started');
   }, []);
 
-  // ── Auth state ────────────────────────────────────────────
+  // ── Offline persistence ──────────────────────────────────
   useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(async userState => {
-      setUser(userState);
-      if (userState) {
-        try {
-          const done = await AsyncStorage.getItem('suggested_follows_done');
-          setShowSuggestedFollows(done !== 'true');
-        } catch (e) {
-          setShowSuggestedFollows(false);
-        }
-      } else {
-        setShowSuggestedFollows(false);
-      }
-      setLoading(false);
-    });
-    return subscriber;
+    enableOfflinePersistence();
   }, []);
+
+  // ── Auth state via AppContext ─────────────────────────────
+  const {user: contextUser, loading: authLoading} = useApp();
+  useEffect(() => {
+    if (contextUser) {
+      AsyncStorage.getItem('suggested_follows_done').then(val => {
+        setShowSuggestedFollows(val !== 'true');
+      });
+    } else {
+      setShowSuggestedFollows(false);
+    }
+  }, [contextUser]);
 
   // ── Notifications ─────────────────────────────────────────
   useEffect(() => {
-    if (user) initNotifications();
-  }, [user]);
+    if (contextUser) initNotifications();
+  }, [contextUser]);
 
   // ── Ban check ─────────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (!contextUser?.email) return;
     const checkBan = async () => {
       try {
-        const banDoc = await firestore().collection('bannedUsers').doc(user.uid).get();
-        if (banDoc.exists) {
-          await auth().signOut();
+        const res = await api.get<{banned: boolean}>('/users/check-ban');
+        if (res.banned) {
+          await authService.logout();
           Alert.alert('🚫 Account Banned', 'Your account has been banned from CineLink.');
         }
-      } catch (e) {console.log(e);}
+      } catch (e) { /* ignore */ }
     };
     checkBan();
-  }, [user]);
+  }, [contextUser?.email]);
 
   // ── Presence ──────────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (!contextUser?.email) return;
     const setPresence = async (isOnline: boolean) => {
       try {
-        await firestore().collection('users').doc(user.uid)
-          .set({isOnline, lastSeen: firestore.FieldValue.serverTimestamp()}, {merge: true});
-      } catch (e) {console.log(e);}
+        await api.put('/users/profile', {isOnline, lastSeen: new Date().toISOString()});
+      } catch (e) { /* ignore */ }
     };
     setPresence(true);
-    const interval = setInterval(() => setPresence(true), 10 * 60 * 1000);
-    return () => {
-      clearInterval(interval);
-      setPresence(false);
-    };
-  }, [user]);
+    return () => { setPresence(false); };
+  }, [contextUser?.email]);
 
   // ── Feedback popup — shows once after 1 hour ──────────────
   useEffect(() => {
-    if (!user) return;
+    if (!contextUser) return;
     const checkFeedback = async () => {
       try {
-        // Already shown — never show again
         const done = await AsyncStorage.getItem('feedback_done');
         if (done === 'true') return;
-
-        // Record first open time
         let firstOpen = await AsyncStorage.getItem('first_open_time');
         if (!firstOpen) {
           await AsyncStorage.setItem('first_open_time', Date.now().toString());
           return;
         }
-
-        // Show after 1 hour (3600000 ms)
         const elapsed = Date.now() - parseInt(firstOpen, 10);
         if (elapsed >= 3600000) {
           setShowFeedback(true);
@@ -304,10 +286,9 @@ function App(): JSX.Element {
         }
       } catch (e) {console.log(e);}
     };
-    // Check 5 seconds after login
     const timer = setTimeout(checkFeedback, 5000);
     return () => clearTimeout(timer);
-  }, [user]);
+  }, [contextUser]);
 
   // ── BootSplash ────────────────────────────────────────────
   useEffect(() => {
@@ -315,14 +296,14 @@ function App(): JSX.Element {
   }, []);
 
   // ── Loading ───────────────────────────────────────────────
-  if (loading || showOnboarding === null) {
+  if (authLoading || showOnboarding === null) {
     return (
       <GestureHandlerRootView style={{flex: 1}}>
         <SafeAreaProvider>
           <ErrorBoundary>
-            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background}}>
-              <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-              <ActivityIndicator size="large" color={COLORS.primary} />
+            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background}}>
+              <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={Colors.background} />
+              <ActivityIndicator size="large" color={Colors.primary} />
             </View>
           </ErrorBoundary>
         </SafeAreaProvider>
@@ -336,7 +317,7 @@ function App(): JSX.Element {
       <GestureHandlerRootView style={{flex: 1}}>
         <SafeAreaProvider>
           <ErrorBoundary>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={Colors.background} />
             <OnboardingScreen onDone={() => setShowOnboarding(false)} />
           </ErrorBoundary>
         </SafeAreaProvider>
@@ -345,12 +326,12 @@ function App(): JSX.Element {
   }
 
   // ── Suggested Follows ─────────────────────────────────────
-  if (user && showSuggestedFollows) {
+  if (contextUser && showSuggestedFollows) {
     return (
       <GestureHandlerRootView style={{flex: 1}}>
         <SafeAreaProvider>
           <ErrorBoundary>
-            <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={Colors.background} />
             <SuggestedFollowsScreen
               navigation={{
                 replace: async () => {
@@ -371,13 +352,19 @@ function App(): JSX.Element {
   return (
     <GestureHandlerRootView style={{flex: 1}}>
       <SafeAreaProvider>
+        <ThemeProvider>
         <AppProvider>
           <ErrorBoundary>
-            <NavigationContainer ref={navigationRef} onReady={() => setNavigator(navigationRef)}>
-              <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-              {user ? <MainStack /> : <AuthStack />}
+            <NavigationContainer
+              ref={navigationRef}
+              onReady={() => setNavigator(navigationRef)}
+              onStateChange={() => {
+                const route = navigationRef.current?.getCurrentRoute();
+                if (route?.name) trackScreenView(route.name);
+              }}>
+              <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={Colors.background} />
+              {contextUser ? <MainStack /> : <AuthStack />}
 
-              {/* ── Feedback Modal — shown once after 1 hour ── */}
               <FeedbackModal
                 visible={showFeedback}
                 onClose={() => setShowFeedback(false)}
@@ -385,6 +372,23 @@ function App(): JSX.Element {
             </NavigationContainer>
           </ErrorBoundary>
         </AppProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+function App(): JSX.Element {
+  return (
+    <GestureHandlerRootView style={{flex: 1}}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AppProvider>
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+          </AppProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

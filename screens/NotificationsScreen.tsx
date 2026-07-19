@@ -11,7 +11,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {
   Header,
@@ -116,6 +116,8 @@ const isContestNotif = (type: string) =>
     'contest_winner',
   ].includes(type);
 
+const getId = (item: any) => item._id || item.id || '';
+
 export default function NotificationsScreen({navigation}: any) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [senderNames, setSenderNames] = useState<any>({});
@@ -123,29 +125,29 @@ export default function NotificationsScreen({navigation}: any) {
   const user = auth().currentUser;
 
   useEffect(() => {
-    if (!user?.uid) {
-      return;
-    }
-    const unsub = firestore()
-      .collection('notifications')
-      .where('userId', '==', user?.uid)
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .onSnapshot(
-        {includeMetadataChanges: false},
-        snapshot => {
-          const data = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-          setNotifications(data);
-          setLoading(false);
-          loadSenderNames(data);
-        },
-        err => {
-          console.log('NOTIFICATIONS ERROR:', err);
-          setLoading(false);
-        },
-      );
-    return () => unsub();
+    loadNotifications();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadNotifications();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const loadNotifications = async () => {
+    if (!user?.uid) return;
+    try {
+      const res = await api.get<{notifications: any[]; unreadCount?: number}>('/notifications');
+      const data = res.notifications || [];
+      setNotifications(data);
+      loadSenderNames(data);
+    } catch (e) {
+      console.log('NOTIFICATIONS ERROR:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadSenderNames = (notifList: any[]) => {
     const names: any = {};
@@ -173,26 +175,21 @@ export default function NotificationsScreen({navigation}: any) {
   };
 
   const markAsRead = async (id: string) => {
-    await firestore()
-      .collection('notifications')
-      .doc(id)
-      .update({read: true})
-      .catch(() => {});
+    try { await api.put(`/notifications/${id}/read`); } catch {}
+  };
+
+  const markAllRead = async () => {
+    try { await api.put('/notifications/read'); } catch {}
   };
 
   const deleteNotification = async (id: string) => {
-    // Update UI instantly before Firestore confirms
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    await firestore()
-      .collection('notifications')
-      .doc(id)
-      .delete()
-      .catch(() => {});
+    setNotifications(prev => prev.filter((n: any) => (n._id || n.id) !== id));
+    try { await api.delete(`/notifications/${id}`); } catch {}
   };
 
   // ── TAP NOTIFICATION → Navigate to relevant screen ─────────
   const handleNotifTap = async (item: any) => {
-    await markAsRead(item.id);
+    await markAsRead(getId(item));
 
     const senderId =
       item.senderId || item.viewerId || item.fromUserId || item.followerId;
@@ -250,37 +247,11 @@ export default function NotificationsScreen({navigation}: any) {
         user?.displayName || user?.email?.split('@')[0] || 'User';
       const senderId = notif.senderId;
 
-      // Create connection
-      await firestore()
-        .collection('connections')
-        .add({
-          users: [user?.uid, senderId],
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      // Notify sender
-      await firestore()
-        .collection('notifications')
-        .add({
-          userId: senderId,
-          type: 'connect_accepted',
-          title: '✅ Connection Accepted!',
-          message: `${currentUserName} accepted your connection request`,
-          senderId: user?.uid,
-          senderName: currentUserName,
-          read: false,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      // Update request status
-      const reqSnap = await firestore()
-        .collection('connectionRequests')
-        .where('fromUserId', '==', senderId)
-        .where('toUserId', '==', user?.uid)
-        .get();
-      for (const doc of reqSnap.docs) {
-        await doc.ref.update({status: 'accepted'});
-      }
+      // Accept connection via API
+      await api.put('/connections/respond', {
+        requesterId: notif.senderId,
+        status: 'accepted',
+      });
 
       // Delete this notification
       await deleteNotification(notif.id);
@@ -308,33 +279,23 @@ export default function NotificationsScreen({navigation}: any) {
   // ── DECLINE CONNECT REQUEST ──────────────────────────────────
   const handleDecline = async (notif: any) => {
     try {
-      const reqSnap = await firestore()
-        .collection('connectionRequests')
-        .where('fromUserId', '==', notif.senderId)
-        .where('toUserId', '==', user?.uid)
-        .get();
-      for (const doc of reqSnap.docs) {
-        await doc.ref.update({status: 'declined'});
-      }
-      await deleteNotification(notif.id);
+      await api.put('/connections/respond', {
+        requesterId: notif.senderId,
+        status: 'rejected',
+      });
+      await deleteNotification(notif._id || notif.id);
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Something went wrong.');
     }
   };
 
   const clearAll = () => {
-    Alert.alert('Clear All', 'Delete all notifications?', [
+    Alert.alert('Clear All', 'Mark all as read?', [
       {
-        text: 'Clear All',
-        style: 'destructive',
+        text: 'Mark Read',
         onPress: async () => {
-          // Clear UI instantly
+          await markAllRead();
           setNotifications([]);
-          const batch = firestore().batch();
-          notifications.forEach(n =>
-            batch.delete(firestore().collection('notifications').doc(n.id)),
-          );
-          await batch.commit().catch(() => {});
         },
       },
       {text: 'Cancel', style: 'cancel'},
@@ -345,7 +306,10 @@ export default function NotificationsScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+      />
       <Header
         title="Notifications"
         navigation={navigation}
@@ -403,7 +367,7 @@ export default function NotificationsScreen({navigation}: any) {
 
               return (
                 <TouchableOpacity
-                  key={item.id}
+                  key={getId(item)}
                   activeOpacity={isTappable ? 0.7 : 1}
                   style={[
                     styles.card,
@@ -441,8 +405,8 @@ export default function NotificationsScreen({navigation}: any) {
                         {resolveMessage(item)}
                       </Text>
                       <Text style={styles.cardTime}>
-                        {item.createdAt?.toDate
-                          ? item.createdAt.toDate().toLocaleDateString([], {
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleDateString([], {
                               day: 'numeric',
                               month: 'short',
                               hour: '2-digit',
@@ -490,7 +454,7 @@ export default function NotificationsScreen({navigation}: any) {
                       style={styles.deleteBtn}
                       onPress={e => {
                         e.stopPropagation?.();
-                        deleteNotification(item.id);
+                        deleteNotification(getId(item));
                       }}>
                       <Text style={styles.deleteBtnText}>✕</Text>
                     </TouchableOpacity>
@@ -550,7 +514,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.borderFocus,
   },
   connectRequestCard: {
-    backgroundColor: '#1A1410',
+    backgroundColor: Colors.primaryFaint,
     borderLeftColor: Colors.primary,
   },
   cardRow: {flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start'},

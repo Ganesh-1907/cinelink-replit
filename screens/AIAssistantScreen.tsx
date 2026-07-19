@@ -157,7 +157,10 @@ export default function AIAssistantScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+      />
 
       {/* HEADER */}
       <View style={styles.header}>
@@ -210,10 +213,16 @@ export default function AIAssistantScreen() {
           </View>
         )}
 
-        {/* INPUT ROW */}
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, {backgroundColor: Colors.cardElevated, borderTopColor: Colors.borderLight}]}>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                color: Colors.textPrimary,
+                backgroundColor: Colors.inputBg,
+                borderColor: Colors.border,
+              },
+            ]}
             value={input}
             onChangeText={setInput}
             placeholder="Ask about auditions, films, scripts..."
@@ -293,7 +302,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   messageText: {...Typography.body, color: Colors.textSecondary},
-  userText: {color: Colors.textPrimary},
+  userText: {color: Colors.textInverse},
 
   timestamp: {
     ...Typography.micro,

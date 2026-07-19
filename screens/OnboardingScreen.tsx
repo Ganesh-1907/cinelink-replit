@@ -143,7 +143,10 @@ export default function OnboardingScreen({onDone}: OnboardingProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+      />
 
       {/* Skip button */}
       {!isLastSlide && (

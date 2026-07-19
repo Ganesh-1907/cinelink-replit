@@ -1,18 +1,7 @@
-import React, {useState, useEffect} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import React, {useState, useEffect, useCallback} from 'react';
+import {View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Image, ActivityIndicator, Alert} from 'react-native';
+import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, EmptyState, Chip} from '../components/ui';
 
@@ -20,173 +9,73 @@ export default function MyFilmsScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
   const [films, setFilms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const user = auth().currentUser;
 
-  useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('films')
-      .where('directorId', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        const data = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-        setFilms(data);
-        setLoading(false);
-      });
-    return () => unsubscribe();
+  const fetchFilms = useCallback(async () => {
+    try {
+      const res = await api.get<{films: any[]}>('/films');
+      setFilms(res.films || []);
+    } catch (e) { console.log(e); }
+    finally { setLoading(false); }
   }, []);
 
-  const deleteFilm = async (filmId: string) => {
-    Alert.alert('Delete Film', 'Are you sure you want to delete this film?', [
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await firestore().collection('films').doc(filmId).delete();
-        },
-      },
+  useEffect(() => { fetchFilms(); }, [fetchFilms]);
+  useEffect(() => { const unsub = navigation.addListener('focus', fetchFilms); return unsub; }, [navigation, fetchFilms]);
+
+  const deleteFilm = (film: any) => {
+    Alert.alert('Delete Film', `Delete "${film.title}"?`, [
       {text: 'Cancel', style: 'cancel'},
+      {text: 'Delete', style: 'destructive', onPress: async () => {
+        try { await api.delete(`/films/${film._id || film.id}`); fetchFilms(); }
+        catch { Alert.alert('Error', 'Could not delete.'); }
+      }},
     ]);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header
-        title="My Films"
-        navigation={navigation}
-        right={
-          <Button
-            label="🎬 Upload"
-            onPress={() => navigation.navigate('UploadFilm')}
-            size="sm"
-          />
-        }
-      />
-
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View
-          style={[
-            styles.section,
-            {paddingBottom: insets.bottom + Spacing['3xl']},
-          ]}>
-          {loading ? (
-            <ActivityIndicator
-              size="large"
-              color={Colors.primary}
-              style={{marginTop: Spacing['3xl']}}
-            />
-          ) : films.length === 0 ? (
-            <EmptyState
-              icon="🎬"
-              title="No films yet!"
-              subtitle="Upload your first short film and showcase your work to the community"
-              actionLabel="+ Upload Now"
-              onAction={() => navigation.navigate('UploadFilm')}
-            />
-          ) : (
-            films.map((item: any) => (
-              <Card
-                key={item.id}
-                variant="default"
-                padding={false}
-                style={styles.card}>
-                {item.posterUrl ? (
-                  <Image source={{uri: item.posterUrl}} style={styles.poster} />
-                ) : (
-                  <View style={styles.posterPlaceholder}>
-                    <Text style={styles.posterPlaceholderText}>🎬</Text>
+    <SafeAreaView style={styles.safe}>
+      <Header title="My Films" navigation={navigation} />
+      <ScrollView contentContainerStyle={[styles.scroll, {paddingBottom: insets.bottom + 40}]}>
+        {loading ? <ActivityIndicator size="large" color={Colors.primary} style={{marginTop: 60}} /> : films.length === 0 ? (
+          <EmptyState icon="🎬" title="No films yet" subtitle="Upload your first short film" actionLabel="Upload Film" onAction={() => navigation.navigate('UploadFilm')} />
+        ) : films.map((film: any) => (
+          <TouchableOpacity key={film._id || film.id} onPress={() => navigation.navigate('FilmDetail', {filmId: film._id || film.id, film})}>
+            <Card variant="elevated" padding={Spacing.md} style={styles.card}>
+              <View style={styles.cardRow}>
+                {film.posterUrl ? <Image source={{uri: film.posterUrl}} style={styles.thumb} /> : <View style={[styles.thumb, styles.thumbPlaceholder]}><Text style={{fontSize: 24}}>🎬</Text></View>}
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>{film.title}</Text>
+                  <Text style={styles.genre}>{film.genre || 'No genre'}</Text>
+                  <Text style={styles.meta}>🎥 {film.duration || '?'} min</Text>
+                  <View style={styles.statsRow}>
+                    <Text style={styles.stat}>❤️ {film.likes || 0}</Text>
+                    <Text style={styles.stat}>💬 {film.commentsCount || 0}</Text>
                   </View>
-                )}
-
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-
-                  <View style={styles.badgeRow}>
-                    {item.genre ? (
-                      <Chip
-                        label={item.genre}
-                        static
-                        variant="neutral"
-                        style={styles.badge}
-                      />
-                    ) : null}
-                    {item.duration ? (
-                      <Chip
-                        label={`⏱ ${item.duration} min`}
-                        static
-                        variant="neutral"
-                        style={styles.badge}
-                      />
-                    ) : null}
-                    <Chip
-                      label={
-                        item.status === 'published'
-                          ? '✅ Published'
-                          : '📝 Draft'
-                      }
-                      static
-                      variant={
-                        item.status === 'published'
-                          ? 'success'
-                          : ('neutral' as any)
-                      }
-                      style={styles.badge}
-                    />
-                  </View>
-
-                  {item.description ? (
-                    <Text style={styles.description} numberOfLines={2}>
-                      {item.description}
-                    </Text>
-                  ) : null}
-
-                  {item.videoUrl ? (
-                    <Text style={styles.videoLink} numberOfLines={1}>
-                      🎥 Video uploaded
-                    </Text>
-                  ) : item.videoLink ? (
-                    <Text style={styles.videoLink} numberOfLines={1}>
-                      🔗 {item.videoLink}
-                    </Text>
-                  ) : null}
-
-                  <Button
-                    label="🗑 Delete Film"
-                    onPress={() => deleteFilm(item.id)}
-                    variant="danger"
-                    size="sm"
-                    fullWidth
-                  />
                 </View>
-              </Card>
-            ))
-          )}
-        </View>
+              </View>
+              <View style={styles.btnRow}>
+                <Button label="View" variant="outline" size="sm" style={{flex: 1}} onPress={() => navigation.navigate('FilmDetail', {filmId: film._id || film.id, film})} />
+                <Button label="Delete" variant="danger" size="sm" style={{flex: 0.4}} onPress={() => deleteFilm(film)} />
+              </View>
+            </Card>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: Colors.background},
-  scroll: {flex: 1},
-  section: {padding: Spacing.screenH},
-  card: {overflow: 'hidden', marginBottom: Spacing.lg},
-  poster: {width: '100%', height: 180},
-  posterPlaceholder: {
-    width: '100%',
-    height: 120,
-    backgroundColor: Colors.cardElevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  posterPlaceholderText: {fontSize: 40},
-  cardContent: {padding: Spacing.lg, gap: Spacing.sm},
-  cardTitle: {...Typography.h3},
-  badgeRow: {flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs},
-  badge: {marginRight: 0},
-  description: {
-    ...Typography.bodySm,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
-  videoLink: {...Typography.caption, color: Colors.primary},
+  safe: {flex: 1, backgroundColor: Colors.background},
+  scroll: {padding: Spacing.lg},
+  card: {marginBottom: Spacing.md},
+  cardRow: {flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.md},
+  thumb: {width: 80, height: 80, borderRadius: Radius.md},
+  thumbPlaceholder: {backgroundColor: Colors.card, justifyContent: 'center', alignItems: 'center'},
+  cardInfo: {flex: 1},
+  cardTitle: {color: Colors.textPrimary, fontWeight: 'bold', fontSize: 16, marginBottom: 2},
+  genre: {color: Colors.primary, ...Typography.caption, marginBottom: 2},
+  meta: {color: Colors.textSecondary, ...Typography.caption, marginBottom: Spacing.xs},
+  statsRow: {flexDirection: 'row', gap: Spacing.md},
+  stat: {color: Colors.textSecondary, ...Typography.micro},
+  btnRow: {flexDirection: 'row', gap: Spacing.sm},
 });

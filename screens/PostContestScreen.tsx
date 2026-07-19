@@ -8,7 +8,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {parseDeadline} from '../utils/contestUtils';
 import {ADMIN_EMAIL} from '../src/api/config';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -61,56 +61,13 @@ export default function PostContestScreen({navigation}: any) {
 
     setLoading(true);
     try {
-      const contestRef = await firestore()
-        .collection('contests')
-        .add({
-          title: title.trim(),
-          description: description.trim(),
-          prize: prize.trim(),
-          deadline: deadline.trim(),
-          rules: rules.trim(),
-          type,
-          entryFee: parseInt(entryFee) || 0,
-          creatorId: user?.uid,
-          creatorEmail: user?.email,
-          creatorName,
-          entriesCount: 0,
-          status: 'Active',
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      await firestore()
-        .collection('notifications')
-        .add({
-          userId: user?.uid,
-          type: 'contest_created',
-          title: '🏆 Contest Created!',
-          message: `Your contest "${title.trim()}" is now live!`,
-          contestId: contestRef.id,
-          read: false,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      const usersSnapshot = await firestore().collection('users').get();
-      const otherUsers = usersSnapshot.docs.filter(doc => doc.id !== user?.uid);
-
-      for (let i = 0; i < otherUsers.length; i += 450) {
-        const batch = firestore().batch();
-        otherUsers.slice(i, i + 450).forEach(doc => {
-          const notifRef = firestore().collection('notifications').doc();
-          batch.set(notifRef, {
-            userId: doc.id,
-            type: 'new_contest',
-            title: '🏆 New Contest Alert!',
-            message: `"${title.trim()}" is live — Prize: ${prize.trim()}. Enter now on CineLink!`,
-            senderId: user?.uid,
-            contestId: contestRef.id,
-            read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
-          });
-        });
-        await batch.commit();
-      }
+      await api.post('/contests', {
+        title: title.trim(),
+        description: description.trim(),
+        prize: prize.trim(),
+        deadline: deadline.trim(),
+        entryFee: parseInt(entryFee) || 0,
+      });
 
       Alert.alert('Success! 🏆', 'Your contest is now live!', [
         {text: 'OK', onPress: () => navigation.goBack()},
@@ -123,9 +80,9 @@ export default function PostContestScreen({navigation}: any) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, {backgroundColor: Colors.background}]}>
       <Header title="Create Contest" navigation={navigation} />
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView style={[styles.container, {backgroundColor: Colors.background}]} keyboardShouldPersistTaps="handled">
         <View style={[styles.section, {paddingBottom: insets.bottom + 40}]}>
           {/* TITLE */}
           <Input

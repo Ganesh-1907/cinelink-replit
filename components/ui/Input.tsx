@@ -68,17 +68,22 @@ export function Input({
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? (
-        <Text style={styles.label}>
+        <Text style={[styles.label, {color: Colors.textSecondary}]}>
           {label}
           {required && <Text style={styles.required}> *</Text>}
         </Text>
       ) : null}
 
-      <Animated.View style={[styles.inputWrapper, {borderColor}]}>
-        {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
+      <Animated.View style={[styles.inputWrapper, {borderColor, backgroundColor: Colors.inputBg}]}>
+        {leftIcon ? (
+          <View style={styles.leftIcon}>
+            {typeof leftIcon === 'string' ? <Text style={{fontSize: 18}}>{leftIcon}</Text> : leftIcon}
+          </View>
+        ) : null}
         <TextInput
           style={[
             styles.input,
+            {color: Colors.textPrimary},
             leftIcon ? styles.inputWithLeft : undefined,
             rightIcon ? styles.inputWithRight : undefined,
             style,
@@ -89,13 +94,17 @@ export function Input({
           accessibilityLabel={label}
           {...rest}
         />
-        {rightIcon ? <View style={styles.rightIcon}>{rightIcon}</View> : null}
+        {rightIcon ? (
+          <View style={styles.rightIcon}>
+            {typeof rightIcon === 'string' ? <Text style={{fontSize: 18}}>{rightIcon}</Text> : rightIcon}
+          </View>
+        ) : null}
       </Animated.View>
 
       {error ? (
-        <Text style={styles.error}>{error}</Text>
+        <Text style={[styles.error, {color: Colors.error}]}>{error}</Text>
       ) : hint ? (
-        <Text style={styles.hint}>{hint}</Text>
+        <Text style={[styles.hint, {color: Colors.textTertiary}]}>{hint}</Text>
       ) : null}
     </View>
   );

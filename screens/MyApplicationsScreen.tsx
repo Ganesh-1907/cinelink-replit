@@ -12,11 +12,11 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, Badge, Chip} from '../components/ui';
 
-export default function MyApplicationsScreen({navigation}: any) {
+export default function MyApplicationsScreen({route, navigation}: any) {
   const insets = useSafeAreaInsets();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,23 +24,27 @@ export default function MyApplicationsScreen({navigation}: any) {
   const user = auth().currentUser;
 
   useEffect(() => {
-    const unsubscribe = firestore()
-      .collection('applications')
-      .where('applicantId', '==', user?.uid)
-      .onSnapshot(snapshot => {
-        const data = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-        data.sort((a: any, b: any) => {
-          if (!a.appliedAt || !b.appliedAt) {
-            return 0;
-          }
-          return b.appliedAt.seconds - a.appliedAt.seconds;
-        });
-        setApplications(data);
-        setLoading(false);
-        setRefreshing(false);
-      });
-    return () => unsubscribe();
+    loadApplications();
   }, []);
+
+  const loadApplications = async () => {
+    try {
+      const res = await api.get<{applications: any[]}>('/applications/my');
+      setApplications(res.applications || []);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadApplications();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -77,7 +81,10 @@ export default function MyApplicationsScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+      />
       <Header title="My Applications" navigation={navigation} />
 
       <ScrollView
@@ -168,7 +175,7 @@ export default function MyApplicationsScreen({navigation}: any) {
                   ]}>
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle} numberOfLines={2}>
-                      {item.auditionTitle}
+                      {item.auditionTitle || 'Audition Application'}
                     </Text>
                     <Badge
                       label={item.status}
@@ -200,8 +207,8 @@ export default function MyApplicationsScreen({navigation}: any) {
 
                   <Text style={styles.cardSub}>
                     📅 Applied:{' '}
-                    {item.appliedAt?.toDate
-                      ? item.appliedAt.toDate().toLocaleDateString()
+                    {item.createdAt
+                      ? new Date(item.createdAt).toLocaleDateString()
                       : 'Recently'}
                   </Text>
 

@@ -618,7 +618,7 @@ export default function ChatScreen({route, navigation}: any) {
   const headerTitle = (
     <TouchableOpacity onPress={navigateToProfile} style={styles.headerTitleBtn}>
       <View style={styles.headerNameRow}>
-        <Text style={styles.headerName} numberOfLines={1}>
+        <Text style={[styles.headerName, {color: Colors.textPrimary}]} numberOfLines={1}>
           {otherUserName}
         </Text>
         <PremiumBadge
@@ -650,12 +650,12 @@ export default function ChatScreen({route, navigation}: any) {
   return (
     <View style={styles.container}>
       {/* Custom header — handles safe area + StatusBar internally */}
-      <View style={[styles.header, {paddingTop: insets.top + Spacing.sm}]}>
+      <View style={[styles.header, {paddingTop: insets.top + Spacing.sm, backgroundColor: Colors.card, borderBottomColor: Colors.primaryMid}]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backWrapper}
           hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
-          <Text style={styles.backButton}>‹</Text>
+          <Text style={[styles.backButton, {color: Colors.primary}]}>‹</Text>
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>{headerTitle}</View>
@@ -734,7 +734,7 @@ export default function ChatScreen({route, navigation}: any) {
           </View>
         )}
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, {backgroundColor: Colors.card, borderTopColor: Colors.primaryMid}]}>
           <TouchableOpacity
             style={styles.iconBtn}
             hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
@@ -751,7 +751,14 @@ export default function ChatScreen({route, navigation}: any) {
 
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                color: Colors.textPrimary,
+                backgroundColor: Colors.inputBg,
+                borderColor: Colors.border,
+              },
+            ]}
             placeholder="Message"
             placeholderTextColor={Colors.textTertiary}
             value={newMessage}

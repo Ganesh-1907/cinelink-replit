@@ -12,9 +12,9 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import crashlytics from '@react-native-firebase/crashlytics';
+import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Button, Chip} from '../components/ui';
 
@@ -68,20 +68,18 @@ export default function FeedbackModal({
     }
     setSubmitting(true);
     try {
-      const doc: any = {
-        type: feedbackType,
-        userId: user?.uid || 'anonymous',
-        userEmail: user?.email || '',
-        message: message.trim(),
-        screenName: screenName || 'unknown',
-        deviceInfo: getDeviceInfo(),
-        createdAt: firestore.FieldValue.serverTimestamp(),
+      const typeMap: Record<string, string> = {
+        feedback: 'general',
+        bug: 'bug',
+        feature: 'feature',
       };
-      if (feedbackType === 'feedback') {
-        doc.rating = rating;
-      }
 
-      await firestore().collection('feedback').add(doc);
+      await api.post('/feedback', {
+        type: typeMap[feedbackType] || 'general',
+        email: user?.email || '',
+        message: message.trim(),
+        rating: feedbackType === 'feedback' ? rating : undefined,
+      });
 
       if (feedbackType === 'bug') {
         crashlytics().log(`Bug report from ${user?.email}: ${message}`);
@@ -131,10 +129,10 @@ export default function FeedbackModal({
     return (
       <Modal visible={visible} animationType="fade" transparent>
         <View style={styles.overlay}>
-          <View style={styles.card}>
+          <View style={[styles.card, {backgroundColor: Colors.card}]}>
             <Text style={styles.thanksEmoji}>{thanksEmoji}</Text>
-            <Text style={styles.thanksTitle}>{thanksTitle}</Text>
-            <Text style={styles.thanksText}>{thanksText}</Text>
+            <Text style={[styles.thanksTitle, {color: Colors.textPrimary}]}>{thanksTitle}</Text>
+            <Text style={[styles.thanksText, {color: Colors.textSecondary}]}>{thanksText}</Text>
             <Button
               label="Close"
               onPress={handleClose}
@@ -151,8 +149,8 @@ export default function FeedbackModal({
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Help us improve CineLink</Text>
+        <View style={[styles.card, {backgroundColor: Colors.card}]}>
+          <Text style={[styles.title, {color: Colors.textPrimary}]}>Help us improve CineLink</Text>
 
           <View style={styles.typeRow}>
             {(Object.keys(typeLabels) as FeedbackType[]).map(key => {
@@ -186,7 +184,7 @@ export default function FeedbackModal({
             showsVerticalScrollIndicator={false}>
             {feedbackType === 'feedback' && (
               <View style={{gap: Spacing.sm}}>
-                <Text style={styles.sectionTitle}>Rate your experience</Text>
+                <Text style={[styles.sectionTitle, {color: Colors.textPrimary}]}>Rate your experience</Text>
                 <View style={styles.starsRow}>
                   {STARS.map(s => (
                     <TouchableOpacity key={s} onPress={() => setRating(s)}>
@@ -211,7 +209,7 @@ export default function FeedbackModal({
 
             {feedbackType === 'bug' && (
               <View style={{gap: Spacing.xs}}>
-                <Text style={styles.sectionTitle}>What went wrong?</Text>
+                <Text style={[styles.sectionTitle, {color: Colors.textPrimary}]}>What went wrong?</Text>
                 <Text style={styles.hint}>
                   Describe the steps to reproduce this issue:
                 </Text>
@@ -220,7 +218,7 @@ export default function FeedbackModal({
 
             {feedbackType === 'feature' && (
               <View style={{gap: Spacing.xs}}>
-                <Text style={styles.sectionTitle}>
+                <Text style={[styles.sectionTitle, {color: Colors.textPrimary}]}>
                   What would you like to see?
                 </Text>
                 <Text style={styles.hint}>
@@ -241,7 +239,14 @@ export default function FeedbackModal({
               }
               placeholderTextColor={Colors.textTertiary}
               multiline
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  color: Colors.textPrimary,
+                  backgroundColor: Colors.inputBg,
+                  borderColor: Colors.border,
+                },
+              ]}
               textAlignVertical="top"
             />
 

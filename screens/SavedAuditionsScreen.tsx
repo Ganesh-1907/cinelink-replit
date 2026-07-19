@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, Badge} from '../components/ui';
 
@@ -29,35 +29,16 @@ export default function SavedAuditionsScreen({navigation}: any) {
 
   const loadSavedAuditions = async () => {
     try {
-      const userDoc = await firestore()
-        .collection('users')
-        .doc(user?.uid)
-        .get();
-
-      const savedIds: string[] = userDoc.data()?.savedAuditions || [];
-
-      if (savedIds.length === 0) {
-        setSavedAuditions([]);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-
+      const res = await api.get<{savedAuditions: any[]}>('/saved-auditions');
+      const items = res.savedAuditions || [];
+      // Fetch full audition details
       const auditions: any[] = [];
-      for (const auditionId of savedIds) {
+      for (const item of items) {
         try {
-          const doc = await firestore()
-            .collection('auditions')
-            .doc(auditionId)
-            .get();
-          if (doc.exists) {
-            auditions.push({id: doc.id, ...doc.data()});
-          }
-        } catch (e) {
-          console.log('Error fetching audition:', e);
-        }
+          const auditionRes = await api.get<any>(`/auditions/${item.auditionId}`);
+          if (auditionRes?.audition) auditions.push(auditionRes.audition);
+        } catch (e) { /* audition may be deleted */ }
       }
-
       setSavedAuditions(auditions);
     } catch (e) {
       console.log(e);
@@ -79,13 +60,8 @@ export default function SavedAuditionsScreen({navigation}: any) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await firestore()
-              .collection('users')
-              .doc(user?.uid)
-              .update({
-                savedAuditions: firestore.FieldValue.arrayRemove(auditionId),
-              });
-            setSavedAuditions(prev => prev.filter(a => a.id !== auditionId));
+            await api.delete(`/saved-auditions/${auditionId}`);
+            setSavedAuditions(prev => prev.filter((a: any) => (a._id || a.id) !== auditionId));
           } catch (e) {
             console.log(e);
           }

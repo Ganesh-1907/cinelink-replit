@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {LiquidPress} from '../components/LiquidPress';
 import {ADMIN_EMAIL, ADMIN_UID} from '../src/api/config';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
@@ -762,7 +763,14 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                 Add a note to the director (optional)
               </Text>
               <TextInput
-                style={styles.noteInput}
+                style={[
+                  styles.noteInput,
+                  {
+                    color: Colors.textPrimary,
+                    backgroundColor: Colors.background,
+                    borderColor: Colors.borderLight,
+                  },
+                ]}
                 placeholder="Tell the director why you're perfect for this role..."
                 placeholderTextColor={Colors.textTertiary}
                 value={note}
@@ -877,7 +885,14 @@ export default function AuditionDetailScreen({route, navigation}: any) {
 
             <View style={styles.commentInputRow}>
               <TextInput
-                style={styles.commentInput}
+                style={[
+                  styles.commentInput,
+                  {
+                    color: Colors.textPrimary,
+                    backgroundColor: Colors.inputBg,
+                    borderColor: Colors.border,
+                  },
+                ]}
                 placeholder="Ask something or leave a comment..."
                 placeholderTextColor={Colors.textTertiary}
                 value={commentText}

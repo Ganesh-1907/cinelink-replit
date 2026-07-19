@@ -246,7 +246,7 @@ export default function CastingRequestScreen({navigation}: any) {
 
   if (checkingStatus) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, {backgroundColor: Colors.background}]}>
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
@@ -254,7 +254,7 @@ export default function CastingRequestScreen({navigation}: any) {
 
   if (requestStatus === 'pending') {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, {backgroundColor: Colors.background}]}>
         <Header
           title="Application Status"
           navigation={navigation}
@@ -292,7 +292,7 @@ export default function CastingRequestScreen({navigation}: any) {
 
   if (requestStatus === 'approved') {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, {backgroundColor: Colors.background}]}>
         <Header
           title="Application Status"
           navigation={navigation}
@@ -319,7 +319,7 @@ export default function CastingRequestScreen({navigation}: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, {backgroundColor: Colors.background}]}>
       <Header
         title="🎭 Casting Director Application"
         navigation={navigation}
@@ -330,6 +330,7 @@ export default function CastingRequestScreen({navigation}: any) {
           styles.scroll,
           {paddingBottom: insets.bottom + 40},
         ]}
+        style={{backgroundColor: Colors.background}}
         keyboardShouldPersistTaps="handled">
         <Text style={styles.headerSubtitle}>
           Complete all steps to get verified and post auditions on CineLink

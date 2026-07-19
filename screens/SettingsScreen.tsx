@@ -14,9 +14,11 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 import {Card, Button, Header} from '../components/ui';
 
 export default function SettingsScreen({navigation}: any) {
+  const {isDark, toggleTheme} = useTheme();
   const insets = useSafeAreaInsets();
   const user = auth().currentUser;
 
@@ -186,6 +188,17 @@ export default function SettingsScreen({navigation}: any) {
       <Header title="Settings" navigation={navigation} />
       <ScrollView style={styles.container}>
         <View style={[styles.section, {paddingBottom: insets.bottom + 40}]}>
+          {/* APPEARANCE */}
+          <Text style={styles.sectionTitle}>Appearance</Text>
+
+          <TouchableOpacity style={styles.settingRow} onPress={toggleTheme}>
+            <Text style={styles.settingIcon}>{isDark ? '🌙' : '☀️'}</Text>
+            <Text style={styles.settingText}>
+              {isDark ? 'Dark Mode' : 'Light Mode'}
+            </Text>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
           {/* ACCOUNT */}
           <Text style={styles.sectionTitle}>Account</Text>
 

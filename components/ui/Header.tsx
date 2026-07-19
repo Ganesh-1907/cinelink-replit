@@ -44,16 +44,27 @@ export function Header({
   const handleBack = onBack ?? (() => navigation?.goBack?.());
   const showBack = !!(onBack || navigation);
 
+  const titleColor = transparent ? '#FFFFFF' : Colors.textPrimary;
+  const subtitleColor = transparent ? '#E0DCD8' : Colors.textSecondary;
+  const backIconColor = transparent ? '#FFFFFF' : Colors.textPrimary;
+
   return (
     <View
       style={[
         styles.container,
-        {paddingTop: insets.top + Spacing.sm},
+        {
+          paddingTop: insets.top + Spacing.sm,
+          backgroundColor: transparent ? 'transparent' : Colors.background,
+        },
         !noBorder && styles.border,
+        !noBorder && {borderBottomColor: Colors.border},
         transparent && styles.transparent,
         style,
       ]}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        backgroundColor={transparent ? 'transparent' : Colors.background}
+      />
 
       {/* Left */}
       <View style={styles.side}>
@@ -65,7 +76,7 @@ export function Header({
               accessibilityLabel="Go back"
               accessibilityRole="button"
               style={styles.backBtn}>
-              <Text style={styles.backIcon}>‹</Text>
+              <Text style={[styles.backIcon, {color: backIconColor}]}>‹</Text>
             </TouchableOpacity>
           ) : null)}
       </View>
@@ -73,11 +84,11 @@ export function Header({
       {/* Title */}
       {title ? (
         <View style={styles.titleCol}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, {color: titleColor}]} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text style={[styles.subtitle, {color: subtitleColor}]} numberOfLines={1}>
               {subtitle}
             </Text>
           ) : null}

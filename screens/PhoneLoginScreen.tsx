@@ -151,7 +151,7 @@ export default function PhoneLoginScreen({navigation}: any) {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar
-          barStyle="light-content"
+          barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
           backgroundColor={Colors.background}
         />
         <ScrollView
@@ -171,16 +171,23 @@ export default function PhoneLoginScreen({navigation}: any) {
             </Text>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, {backgroundColor: Colors.card}]}>
             {step === 'phone' ? (
               <>
-                <Text style={styles.label}>Mobile Number</Text>
+                <Text style={[styles.label, {color: Colors.textSecondary}]}>Mobile Number</Text>
                 <View style={styles.phoneRow}>
-                  <View style={styles.countryCode}>
-                    <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                  <View style={[styles.countryCode, {backgroundColor: Colors.cardHigher, borderColor: Colors.border}]}>
+                    <Text style={[styles.countryCodeText, {color: Colors.textPrimary}]}>🇮🇳 +91</Text>
                   </View>
                   <TextInput
-                    style={styles.phoneInput}
+                    style={[
+                      styles.phoneInput,
+                      {
+                        color: Colors.textPrimary,
+                        backgroundColor: Colors.cardHigher,
+                        borderColor: Colors.border,
+                      },
+                    ]}
                     placeholder="10-digit number"
                     placeholderTextColor={Colors.textTertiary}
                     value={phone}
@@ -217,9 +224,16 @@ export default function PhoneLoginScreen({navigation}: any) {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.label}>Enter OTP</Text>
+                <Text style={[styles.label, {color: Colors.textSecondary}]}>Enter OTP</Text>
                 <TextInput
-                  style={styles.otpInput}
+                  style={[
+                    styles.otpInput,
+                    {
+                      color: Colors.textPrimary,
+                      backgroundColor: Colors.cardHigher,
+                      borderColor: Colors.border,
+                    },
+                  ]}
                   placeholder="• • • • • •"
                   placeholderTextColor={Colors.textTertiary}
                   value={otp}

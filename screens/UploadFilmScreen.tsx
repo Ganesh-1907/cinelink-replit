@@ -14,7 +14,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {launchImageLibrary} from 'react-native-image-picker';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {uploadImage, uploadVideo} from '../src/services/uploadService';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Chip, Card, EmptyState} from '../components/ui';
@@ -106,27 +106,15 @@ export default function UploadFilmScreen({navigation}: any) {
     }
     setLoading(true);
     try {
-      await firestore()
-        .collection('films')
-        .add({
-          title: title.trim(),
-          description: description.trim(),
-          genre,
-          duration: duration.trim(),
-          posterUrl: posterUrl || '',
-          videoLink: uploadType === 'link' ? videoLink.trim() : '',
-          videoUrl: uploadType === 'file' ? videoUrl : '',
-          uploadType,
-          directorId: user?.uid,
-          directorName:
-            user?.displayName || user?.email?.split('@')[0] || 'Creator',
-          directorEmail: user?.email,
-          status: 'Screening',
-          likes: 0,
-          likedBy: [],
-          views: 0,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
+      await api.post('/films', {
+        title: title.trim(),
+        description: description.trim(),
+        genre,
+        duration: duration.trim(),
+        posterUrl: posterUrl || '',
+        videoLink: uploadType === 'link' ? videoLink.trim() : '',
+        videoUrl: uploadType === 'file' ? videoUrl : '',
+      });
       Alert.alert('Success! 🎬', 'Your short film has been uploaded.', [
         {text: 'OK', onPress: () => navigation.goBack()},
       ]);
@@ -138,11 +126,14 @@ export default function UploadFilmScreen({navigation}: any) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+    <SafeAreaView style={[styles.safe, {backgroundColor: Colors.background}]}>
+      <StatusBar
+        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+      />
       <Header title="Upload Short Film" navigation={navigation} />
       <ScrollView
-        style={styles.container}
+        style={[styles.container, {backgroundColor: Colors.background}]}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{paddingBottom: insets.bottom + Spacing['5xl']}}>
         <View style={styles.body}>

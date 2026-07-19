@@ -13,7 +13,6 @@ import {
   StatusBar,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
@@ -159,19 +158,11 @@ export default function QuickPostScreen({navigation}: any) {
     setPosting(true);
 
     try {
-      await firestore()
-        .collection('auditions')
-        .add({
-          ...form,
-          directorId: user?.uid,
-          directorEmail: user?.email,
-          directorName,
-          status: 'Open',
-          posterImage: imageUri || null,
-          isActive: true,
-          applicants: [],
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
+      await api.post('/auditions', {
+        ...form,
+        directorName,
+        posterUrl: imageUri || '',
+      });
 
       Alert.alert('✅ Posted!', 'Audition posted successfully!', [
         {text: 'OK', onPress: () => navigation.goBack()},
@@ -193,7 +184,10 @@ export default function QuickPostScreen({navigation}: any) {
   /* ── RENDER ── */
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar
+        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+      />
       <Header
         title="⚡ Quick Post"
         navigation={navigation}
@@ -272,6 +266,11 @@ export default function QuickPostScreen({navigation}: any) {
                   style={[
                     styles.fieldInput,
                     field.multiline && styles.multilineInput,
+                    {
+                      color: Colors.textPrimary,
+                      backgroundColor: Colors.inputBg,
+                      borderColor: Colors.border,
+                    },
                   ]}
                   value={form[field.key]}
                   onChangeText={v => updateField(field.key, v)}

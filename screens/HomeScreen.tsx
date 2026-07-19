@@ -14,8 +14,8 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import {launchImageLibrary} from 'react-native-image-picker';
 
 import ReportModal from './ReportModal';
@@ -23,6 +23,7 @@ import {LiquidPress} from '../components/LiquidPress';
 import EngagementBar from '../components/EngagementBar';
 import {RippleIcon} from '../components/RippleIcon';
 import {CrownIcon} from '../components/CrownIcon';
+import api from '../src/api/client';
 import {ADMIN_EMAIL, FILTER_TAGS, CATEGORY_COLORS} from '../src/api/config';
 import {uploadImage} from '../src/services/uploadService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -144,7 +145,7 @@ function ProfileCard({item, navigation}: any) {
             </View>
           ) : (
             <LiquidPress style={styles.connectBtn} onPress={handleConnect}>
-              <Text style={styles.connectBtnText}>Connect</Text>
+              <Text style={[styles.connectBtnText, {color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A'}]}>Connect</Text>
             </LiquidPress>
           )}
         </View>
@@ -526,7 +527,14 @@ function PostBubble({item, isAdmin, onDelete, navigation}: any) {
         <View style={styles.commentsBox}>
           <View style={styles.commentInputRow}>
             <TextInput
-              style={styles.commentInput}
+              style={[
+                styles.commentInput,
+                {
+                  color: Colors.textPrimary,
+                  backgroundColor: Colors.cardElevated,
+                  borderColor: Colors.borderLight,
+                },
+              ]}
               placeholder="Write a comment..."
               placeholderTextColor={Colors.textTertiary}
               value={commentText}
@@ -840,13 +848,10 @@ export default function HomeScreen({navigation}: any) {
         const result = await uploadImage(postImage);
         imageUrl = result.secureUrl;
       }
-      await firestore().collection('feedPosts').add({
-        tab,
+      await api.post('/feed-posts', {
         text: postText.trim(),
-        posterUrl: imageUrl,
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        postedBy: currentUser?.email,
-        postedById: currentUser?.uid,
+        imageUrl: imageUrl,
+        postType: tab,
       });
 
       setPostText('');
@@ -868,7 +873,7 @@ export default function HomeScreen({navigation}: any) {
 
   const deletePost = async (postId: string) => {
     try {
-      await firestore().collection('feedPosts').doc(postId).delete();
+      await api.delete(`/feed-posts/${postId}`);
     } catch (error: any) {
       Alert.alert('Delete Error', error?.message || 'Could not delete post.');
     }
@@ -953,7 +958,13 @@ export default function HomeScreen({navigation}: any) {
             <Text style={styles.attachIcon}>📎</Text>
           </TouchableOpacity>
           <TextInput
-            style={styles.composerInput}
+            style={[
+              styles.composerInput,
+              {
+                color: Colors.textPrimary,
+                backgroundColor: Colors.cardElevated,
+              },
+            ]}
             placeholder={
               tab === 'auditions'
                 ? 'Post an audition update...'
@@ -1172,7 +1183,7 @@ export default function HomeScreen({navigation}: any) {
             <LiquidPress
               style={styles.watchBtn}
               onPress={() => navigation.navigate('FilmDetail', {film: item})}>
-              <Text style={styles.watchBtnText}>🎬 Watch Film</Text>
+              <Text style={[styles.watchBtnText, {color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A'}]}>🎬 Watch Film</Text>
             </LiquidPress>
             {isOwner && (
               <TouchableOpacity
@@ -1252,7 +1263,7 @@ export default function HomeScreen({navigation}: any) {
         <LiquidPress
           style={styles.watchBtn}
           onPress={() => navigation.navigate('ContestDetail', {contest: item})}>
-          <Text style={styles.watchBtnText}>Enter Contest →</Text>
+          <Text style={[styles.watchBtnText, {color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A'}]}>Enter Contest →</Text>
         </LiquidPress>
       </View>
     ));
@@ -1260,7 +1271,7 @@ export default function HomeScreen({navigation}: any) {
 
   return (
     <>
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, {paddingTop: insets.top, backgroundColor: Colors.background}]}>
         <View style={styles.headerContainer}>
           <View style={{flex: 1}}>
             <Text style={styles.logo} numberOfLines={1}>
@@ -1361,7 +1372,7 @@ export default function HomeScreen({navigation}: any) {
               placeholderTextColor={Colors.textTertiary}
               value={searchText}
               onChangeText={handleSearchChange}
-              style={styles.searchInput}
+              style={[styles.searchInput, {color: Colors.textPrimary}]}
             />
             {searchText.length > 0 && (
               <TouchableOpacity
@@ -1419,6 +1430,9 @@ export default function HomeScreen({navigation}: any) {
                   style={[
                     styles.tabText,
                     selectedTab === tab && styles.activeText,
+                    selectedTab === tab && {
+                      color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A',
+                    },
                   ]}>
                   {tab === 'Auditions'
                     ? '🎭 '
@@ -1468,7 +1482,7 @@ export default function HomeScreen({navigation}: any) {
             {selectedTab === 'Contests' && renderContests()}
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
 
       <ReportModal
         visible={reportModalVisible}
@@ -1567,12 +1581,12 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#060606',
+    backgroundColor: Colors.inputBg,
     marginHorizontal: Spacing.lg + 2,
     marginBottom: Spacing.xs,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.cardElevated,
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
     paddingVertical: 0,
     height: 48,

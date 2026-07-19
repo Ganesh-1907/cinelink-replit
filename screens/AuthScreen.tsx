@@ -10,12 +10,13 @@ import {
   Alert,
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import {GOOGLE_WEB_CLIENT_ID} from '../src/api/config';
+import {authService} from '../src/services/AuthService';
+import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Button, Input, Divider} from '../components/ui';
@@ -37,39 +38,20 @@ export default function AuthScreen({navigation}: any) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const {refreshUserData} = useApp();
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
+      await GoogleSignin.signIn();
       const {idToken} = await GoogleSignin.getTokens();
       if (!idToken) {
         Alert.alert('Error', 'Could not get Google token. Try again.');
         return;
       }
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-      const result = await auth().signInWithCredential(googleCredential);
-      const user = result.user;
-      const userDoc = await firestore().collection('users').doc(user.uid).get();
-      if (!userDoc.exists) {
-        await firestore()
-          .collection('users')
-          .doc(user.uid)
-          .set({
-            uid: user.uid,
-            email: user.email,
-            fullName: user.displayName || '',
-            displayName: user.displayName || '',
-            name: user.displayName || '',
-            photoURL: user.photoURL || '',
-            photoUrl: user.photoURL || '',
-            role: 'Actor',
-            createdAt: firestore.FieldValue.serverTimestamp(),
-            isOnline: true,
-            lastSeen: firestore.FieldValue.serverTimestamp(),
-          });
-      }
+      await authService.googleSignIn(idToken);
+      await refreshUserData();
     } catch (e: any) {
       console.log('GOOGLE SIGN IN ERROR:', e);
       if (e.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -96,7 +78,8 @@ export default function AuthScreen({navigation}: any) {
     }
     setLoading(true);
     try {
-      await auth().signInWithEmailAndPassword(email.trim(), password.trim());
+      await authService.login(email.trim(), password.trim());
+      await refreshUserData();
     } catch (e: any) {
       Alert.alert('Login Failed', e?.message || 'Invalid email or password.');
     } finally {
@@ -115,22 +98,8 @@ export default function AuthScreen({navigation}: any) {
     }
     setLoading(true);
     try {
-      const result = await auth().createUserWithEmailAndPassword(
-        email.trim(),
-        password.trim(),
-      );
-      await result.user.updateProfile({displayName: name.trim()});
-      await firestore().collection('users').doc(result.user.uid).set({
-        uid: result.user.uid,
-        email: email.trim(),
-        fullName: name.trim(),
-        displayName: name.trim(),
-        name: name.trim(),
-        role: 'Actor',
-        createdAt: firestore.FieldValue.serverTimestamp(),
-        isOnline: true,
-        lastSeen: firestore.FieldValue.serverTimestamp(),
-      });
+      await authService.signup(email.trim(), password.trim(), name.trim());
+      await refreshUserData();
     } catch (e: any) {
       Alert.alert('Signup Failed', e?.message || 'Could not create account.');
     } finally {

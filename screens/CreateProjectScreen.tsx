@@ -7,8 +7,8 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Chip, Card} from '../components/ui';
@@ -86,26 +86,11 @@ export default function CreateProjectScreen({navigation}: any) {
 
     setLoading(true);
     try {
-      const rolesNeeded = selectedRoles.map(role => ({
-        role,
-        filled: false,
-        memberId: null,
-        memberName: null,
-      }));
-
-      await firestore().collection('projects').add({
+      await api.post('/projects', {
         title: title.trim(),
         type,
-        language,
-        location: location.trim(),
         description: description.trim(),
-        directorId: currentUser?.uid,
-        directorName,
-        directorEmail: currentUser?.email,
-        rolesNeeded,
-        status: 'Recruiting',
-        membersCount: 1,
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        rolesNeeded: selectedRoles,
       });
 
       Alert.alert(
@@ -122,7 +107,7 @@ export default function CreateProjectScreen({navigation}: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, {backgroundColor: Colors.background}]}>
       <Header title="Create Project" navigation={navigation} />
       <ScrollView
         showsVerticalScrollIndicator={false}

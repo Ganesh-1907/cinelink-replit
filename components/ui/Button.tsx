@@ -76,6 +76,9 @@ export function Button({
     styles.label,
     styles[`label_${size}` as keyof typeof styles],
     styles[`label_${variant}` as keyof typeof styles],
+    variant === 'primary' && {
+      color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A',
+    },
     textStyle,
   ];
 
@@ -94,8 +97,10 @@ export function Button({
         {loading ? (
           <ActivityIndicator
             color={
-              variant === 'primary' || variant === 'danger'
+              variant === 'primary'
                 ? Colors.textInverse
+                : variant === 'danger' || variant === 'success'
+                ? '#FFFFFF'
                 : Colors.primary
             }
             size="small"

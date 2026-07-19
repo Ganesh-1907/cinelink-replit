@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {ADMIN_EMAIL} from '../src/api/config';
 import {uploadImage} from '../src/services/uploadService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -77,12 +77,8 @@ export default function PostAuditionScreen({navigation}: any) {
         setAccessChecked(true);
         return;
       }
-      const userDoc = await firestore()
-        .collection('users')
-        .doc(user?.uid)
-        .get();
-      const userData = userDoc.data();
-      setHasAccess(userData?.isApprovedDirector === true);
+      const profile = await api.get<any>('/users/profile');
+      setHasAccess(profile?.user?.isApprovedDirector === true);
     } catch (e) {
       console.log(e);
       setHasAccess(false);
@@ -159,50 +155,23 @@ export default function PostAuditionScreen({navigation}: any) {
     }
     setLoading(true);
     try {
-      const auditionRef = await firestore()
-        .collection('auditions')
-        .add({
-          title: title.trim(),
-          description: description.trim(),
-          location: location.trim(),
-          role: role.trim(),
-          ageRange: ageMin && ageMax ? `${ageMin}-${ageMax}` : '',
-          gender,
-          lastDate: lastDate.trim(),
-          language: language.trim(),
-          contactLink: contactLink.trim(),
-          posterUrl: resolvedPosterUrl,
-          directorId: user?.uid,
-          directorEmail: user?.email,
-          directorName,
-          isAdminPost: isAdmin,
-          status: 'Open',
-          isActive: true,
-          applicants: [],
-          likes: 0,
-          likedBy: [],
-          views: 0,
-          category: category,
-          budget: budget.trim(),
-          positions: positions.trim(),
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      await firestore()
-        .collection('feedPosts')
-        .add({
-          tab: 'auditions',
-          text: title.trim(),
-          description: description.trim(),
-          posterUrl: resolvedPosterUrl || '',
-          location: location.trim(),
-          role: role.trim(),
-          auditionId: auditionRef.id,
-          directorId: user?.uid,
-          directorEmail: user?.email,
-          directorName,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
+      await api.post('/auditions', {
+        title: title.trim(),
+        description: description.trim(),
+        location: location.trim(),
+        role: role.trim(),
+        ageMin: ageMin ? parseInt(ageMin) : undefined,
+        ageMax: ageMax ? parseInt(ageMax) : undefined,
+        gender,
+        lastDate: lastDate.trim(),
+        language: language.trim(),
+        contactLink: contactLink.trim(),
+        posterUrl: resolvedPosterUrl,
+        category,
+        budget: budget.trim(),
+        positions: positions.trim(),
+        directorName,
+      });
 
       Alert.alert('Success! 🎬', 'Your audition is now live!', [
         {text: 'OK', onPress: () => navigation.goBack()},
@@ -225,7 +194,7 @@ export default function PostAuditionScreen({navigation}: any) {
 
   if (!hasAccess) {
     return (
-      <View style={styles.root}>
+      <View style={[styles.root, {backgroundColor: Colors.background}]}>
         <Header
           title="Post Audition"
           navigation={navigation}
@@ -269,7 +238,7 @@ export default function PostAuditionScreen({navigation}: any) {
   }
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, {backgroundColor: Colors.background}]}>
       <Header
         title="Post Audition"
         navigation={navigation}
@@ -291,13 +260,13 @@ export default function PostAuditionScreen({navigation}: any) {
               source={{uri: poster.uri}}
               style={styles.fullscreenImage}
               resizeMode="contain"
-            />
+              />
           ) : null}
           <Text style={styles.fullscreenHint}>Tap anywhere to close</Text>
         </TouchableOpacity>
       </Modal>
 
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView style={[styles.container, {backgroundColor: Colors.background}]} keyboardShouldPersistTaps="handled">
         {/* ACCESS BADGE */}
         <View style={styles.accessBadge}>
           <Text style={styles.accessBadgeText}>

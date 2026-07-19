@@ -1,73 +1,45 @@
-import { CLOUDINARY } from '../api/config';
 import api from '../api/client';
+import {storageService} from './storageService';
+
+const API_BASE_URL = __DEV__
+  ? 'http://192.168.29.187:3001/api'
+  : 'https://cinelink-api.onrender.com/api';
 
 type UploadType = 'image' | 'video';
 
 interface UploadResult {
   secureUrl: string;
-  publicId?: string;
 }
 
-async function getSignedUploadParams(): Promise<{
-  signature: string;
-  timestamp: number;
-  apiKey: string;
-} | null> {
-  try {
-    const result = await api.post<{
-      signature: string;
-      timestamp: number;
-      apiKey: string;
-    }>('/upload/sign-cloudinary', { type: 'image' });
-    return result;
-  } catch {
-    return null;
-  }
-}
-
-export async function uploadToCloudinary(
-  uri: string,
-  type: UploadType = 'image',
-  options?: { publicId?: string; folder?: string },
-): Promise<UploadResult> {
-  const signedParams = await getSignedUploadParams();
-
+async function uploadToR2(uri: string, type: UploadType): Promise<UploadResult> {
+  const endpoint = type === 'image' ? '/upload/r2-image' : '/upload/r2-video';
   const formData = new FormData();
+
   formData.append('file', {
     uri,
     type: type === 'image' ? 'image/jpeg' : 'video/mp4',
     name: `upload.${type === 'image' ? 'jpg' : 'mp4'}`,
   } as any);
 
-  if (signedParams) {
-    formData.append('signature', signedParams.signature);
-    formData.append('timestamp', String(signedParams.timestamp));
-    formData.append('api_key', signedParams.apiKey);
-    if (options?.publicId) formData.append('public_id', options.publicId);
-    if (options?.folder) formData.append('folder', options.folder);
-  } else {
-    formData.append('upload_preset', CLOUDINARY.UPLOAD_PRESET);
-  }
+  const token = await storageService.getToken();
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    },
+    body: formData,
+  });
 
-  const endpoint =
-    type === 'image'
-      ? `https://api.cloudinary.com/v1_1/${CLOUDINARY.CLOUD_NAME}/image/upload`
-      : `https://api.cloudinary.com/v1_1/${CLOUDINARY.CLOUD_NAME}/video/upload`;
-
-  const response = await fetch(endpoint, { method: 'POST', body: formData });
   const data = await response.json();
-
-  if (!data.secure_url) {
-    throw new Error(data?.error?.message || 'Cloudinary upload failed');
-  }
-
-  return { secureUrl: data.secure_url, publicId: data.public_id };
+  if (!response.ok) throw new Error(data?.error || 'Upload failed');
+  return {secureUrl: data.secureUrl};
 }
 
-export async function uploadImage(uri: string, folder?: string): Promise<UploadResult> {
-  return uploadToCloudinary(uri, 'image', { folder });
+export async function uploadImage(uri: string): Promise<UploadResult> {
+  return uploadToR2(uri, 'image');
 }
 
-export async function uploadVideo(uri: string, folder?: string): Promise<UploadResult> {
-  return uploadToCloudinary(uri, 'video', { folder });
+export async function uploadVideo(uri: string): Promise<UploadResult> {
+  return uploadToR2(uri, 'video');
 }

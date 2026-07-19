@@ -18,12 +18,12 @@ import {
   ImagePickerResponse,
 } from 'react-native-image-picker';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import {useFocusEffect} from '@react-navigation/native';
 import ProfileCompletionCard from './ProfileCompletionCard';
 import {usePremiumStatus} from '../hooks/usePremiumStatus';
 import PremiumBadge from '../src/components/Premium/PremiumBadge';
 import {ADMIN_EMAIL} from '../src/api/config';
+import api from '../src/api/client';
 import {uploadImage} from '../src/services/uploadService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Avatar, Header, Button, Input, Chip, Card} from '../components/ui';
@@ -120,26 +120,13 @@ export default function ProfileScreen({navigation}: any) {
     if (!user?.uid) {
       return;
     }
-    const unsubF = firestore()
-      .collection('users')
-      .doc(user.uid)
-      .collection('followers')
-      .onSnapshot(
-        snap => setFollowersCount(snap.size),
-        e => console.log(e),
-      );
-    const unsubFi = firestore()
-      .collection('users')
-      .doc(user.uid)
-      .collection('following')
-      .onSnapshot(
-        snap => setFollowingCount(snap.size),
-        e => console.log(e),
-      );
-    return () => {
-      unsubF();
-      unsubFi();
-    };
+    Promise.all([
+      api.get<any>(`/users/${user.uid}/followers?limit=1`),
+      api.get<any>(`/users/${user.uid}/following?limit=1`),
+    ]).then(([fRes, fgRes]) => {
+      setFollowersCount(fRes?.total || 0);
+      setFollowingCount(fgRes?.total || 0);
+    }).catch(() => {});
   }, [user?.uid]);
 
   const loadProfile = async () => {
@@ -147,9 +134,9 @@ export default function ProfileScreen({navigation}: any) {
       if (!user?.uid) {
         return;
       }
-      const doc = await firestore().collection('users').doc(user.uid).get();
-      if (doc.exists) {
-        const data = doc.data();
+      const res = await api.get<any>('/users/profile');
+      if (res?.user) {
+        const data = res.user;
         setName(data?.fullName || data?.displayName || data?.name || '');
         setPhone(data?.phone || '');
         setBio(data?.bio || '');
@@ -314,9 +301,7 @@ export default function ProfileScreen({navigation}: any) {
       });
 
       const profileData = {
-        name: trimmedName,
         fullName: trimmedName,
-        displayName: trimmedName,
         phone,
         bio,
         role,
@@ -328,7 +313,6 @@ export default function ProfileScreen({navigation}: any) {
         portfolio2,
         portfolio3,
         portfolioPhotos: allPortfolioPhotos,
-        email: user?.email,
         verificationStatus,
         availabilityStatus,
         lookingFor,
@@ -338,13 +322,9 @@ export default function ProfileScreen({navigation}: any) {
         ageRange,
         height,
         bodyType,
-        updatedAt: firestore.FieldValue.serverTimestamp(),
       };
 
-      await firestore()
-        .collection('users')
-        .doc(user?.uid)
-        .set(profileData, {merge: true});
+      await api.put('/users/profile', profileData);
 
       setName(trimmedName);
       setPhotoUrl(finalPhotoUrl);
@@ -381,18 +361,7 @@ export default function ProfileScreen({navigation}: any) {
       return;
     }
     try {
-      await firestore()
-        .collection('users')
-        .doc(user?.uid)
-        .update({verificationStatus: 'pending'});
-      await firestore().collection('verificationRequests').add({
-        userId: user?.uid,
-        userEmail: user?.email,
-        name,
-        role,
-        bio,
-        requestedAt: firestore.FieldValue.serverTimestamp(),
-      });
+      await api.post('/verification', {fullName: name});
       setVerificationStatus('pending');
       Alert.alert(
         'Applied! 🎉',
@@ -405,13 +374,8 @@ export default function ProfileScreen({navigation}: any) {
 
   // ── Gallery helpers ──────────────────────────────────────
   const saveMediaToFirestore = async (media: string[]) => {
-    if (!user?.uid) {
-      return;
-    }
-    await firestore()
-      .collection('users')
-      .doc(user.uid)
-      .set({portfolioMedia: media}, {merge: true});
+    try { await api.put('/users/profile', {portfolioMedia: media}); }
+    catch (e) { console.log(e); }
   };
 
   const pickPortfolioMedia = () => {
@@ -482,18 +446,18 @@ export default function ProfileScreen({navigation}: any) {
   const avatarUri = photo ? photo.uri : photoUrl || null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, {backgroundColor: Colors.background}]}>
       <Header
         title="My Profile"
         right={
           <TouchableOpacity onPress={handleShare} style={styles.shareHeaderBtn}>
-            <Text style={styles.shareHeaderIcon}>↗</Text>
+            <Text style={[styles.shareHeaderIcon, {color: Colors.background === '#0A0A0A' ? Colors.primary : Colors.primaryDark}]}>↗</Text>
           </TouchableOpacity>
         }
       />
       <ScrollView
         ref={scrollRef}
-        style={styles.scroll}
+        style={[styles.scroll, {backgroundColor: Colors.background}]}
         showsVerticalScrollIndicator={false}>
         {/* ── AVATAR ── */}
         <View style={styles.avatarSection}>

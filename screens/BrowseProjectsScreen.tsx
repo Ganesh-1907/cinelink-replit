@@ -1,340 +1,89 @@
-import React, {useState, useEffect} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  SafeAreaView,
-  StatusBar,
-} from 'react-native';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import React, {useState, useEffect, useCallback} from 'react';
+import {View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, SafeAreaView, StatusBar} from 'react-native';
+import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Card, Chip, EmptyState, Button} from '../components/ui';
 
-const PROJECT_TYPES = [
-  'All',
-  'Short Film',
-  'Feature Film',
-  'Web Series',
-  'Ad Film',
-  'Music Video',
-  'Documentary',
-];
+const PROJECT_TYPES = ['All', 'Short Film', 'Feature Film', 'Web Series', 'Ad Film', 'Music Video', 'Documentary'];
 
 export default function BrowseProjectsScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState('');
-  const [selectedType, setSelectedType] = useState('All');
-  const currentUser = auth().currentUser;
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('All');
 
-  useEffect(() => {
-    const unsub = firestore()
-      .collection('projects')
-      .where('status', '==', 'Recruiting')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(
-        snapshot => {
-          const data = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-          setProjects(data);
-          setLoading(false);
-        },
-        err => {
-          console.log('PROJECTS ERROR:', err);
-          setLoading(false);
-        },
-      );
-    return () => unsub();
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await api.get<{projects: any[]}>('/projects');
+      setProjects(res.projects || []);
+    } catch (e) { console.log(e); }
+    finally { setLoading(false); }
   }, []);
 
-  const filteredProjects = projects.filter((item: any) => {
-    const text = searchText.toLowerCase();
-    const typeMatch = selectedType === 'All' || item.type === selectedType;
-    const searchMatch =
-      !text ||
-      item.title?.toLowerCase().includes(text) ||
-      item.directorName?.toLowerCase().includes(text) ||
-      item.location?.toLowerCase().includes(text) ||
-      item.language?.toLowerCase().includes(text);
-    return typeMatch && searchMatch;
+  useEffect(() => { fetchProjects(); }, [fetchProjects]);
+  useEffect(() => { const unsub = navigation.addListener('focus', fetchProjects); return unsub; }, [navigation, fetchProjects]);
+
+  const filtered = projects.filter(p => {
+    const matchSearch = !search || p.title?.toLowerCase().includes(search.toLowerCase()) || p.description?.toLowerCase().includes(search.toLowerCase());
+    const matchType = filter === 'All' || p.type === filter;
+    return matchSearch && matchType;
   });
 
-  const getOpenRoles = (rolesNeeded: any[]) => {
-    if (!rolesNeeded) {
-      return 0;
-    }
-    return rolesNeeded.filter(r => !r.filled).length;
-  };
-
-  const renderProject = ({item}: any) => {
-    const openRoles = getOpenRoles(item.rolesNeeded);
-    const isOwner = item.directorId === currentUser?.uid;
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={styles.card}
-        onPress={() => navigation.navigate('ProjectDetail', {project: item})}>
-        <View style={styles.cardHeader}>
-          <View style={styles.typeBadge}>
-            <Text style={styles.typeBadgeText}>{item.type}</Text>
-          </View>
-          <View
-            style={[
-              styles.statusBadge,
-              openRoles === 0 && styles.statusBadgeFull,
-            ]}>
-            <Text style={styles.statusBadgeText}>
-              {openRoles === 0 ? '🔒 Full' : `🟢 ${openRoles} Open`}
-            </Text>
-          </View>
+  const renderItem = ({item}: any) => (
+    <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('ProjectDetail', {projectId: item._id || item.id, project: item})}>
+      <Card variant="elevated" padding={Spacing.lg} style={styles.card}>
+        <View style={styles.topRow}>
+          <Chip label={item.type || 'Project'} static />
+          <Text style={styles.status}>{item.status || 'Open'}</Text>
         </View>
-
-        <Text style={styles.cardTitle}>{item.title}</Text>
-
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>🎬 {item.directorName}</Text>
-          <Text style={styles.metaText}>📍 {item.location}</Text>
-        </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>🗣️ {item.language}</Text>
-          <Text style={styles.metaText}>
-            👥 {item.membersCount || 1} members
-          </Text>
-        </View>
-
-        {item.description ? (
-          <Text style={styles.description} numberOfLines={2}>
-            {item.description}
-          </Text>
-        ) : null}
-
-        <View style={styles.rolesSection}>
-          <Text style={styles.rolesTitle}>Roles Needed</Text>
-          <View style={styles.rolesWrap}>
-            {item.rolesNeeded?.slice(0, 5).map((role: any, index: number) => (
-              <View
-                key={index}
-                style={[styles.rolePill, role.filled && styles.rolePillFilled]}>
-                <Text
-                  style={[
-                    styles.rolePillText,
-                    role.filled && styles.rolePillTextFilled,
-                  ]}>
-                  {role.filled ? '✓ ' : ''}
-                  {role.role}
-                </Text>
-              </View>
-            ))}
-            {item.rolesNeeded?.length > 5 && (
-              <View style={styles.rolePill}>
-                <Text style={styles.rolePillText}>
-                  +{item.rolesNeeded.length - 5} more
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.cardFooter}>
-          {isOwner ? (
-            <View style={styles.ownerBadge}>
-              <Text style={styles.ownerBadgeText}>👑 Your Project</Text>
-            </View>
-          ) : (
-            <Button
-              label="View & Apply →"
-              onPress={() =>
-                navigation.navigate('ProjectDetail', {project: item})
-              }
-              size="md"
-              fullWidth
-            />
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  };
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.meta}>👥 {item.members?.length || 1} member{(item.members?.length || 1) > 1 ? 's' : ''}</Text>
+        {item.description ? <Text style={styles.desc} numberOfLines={2}>{item.description}</Text> : null}
+        <Button label="View Project →" variant="outline" size="sm" fullWidth onPress={() => navigation.navigate('ProjectDetail', {projectId: item._id || item.id, project: item})} />
+      </Card>
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
-
-      <Header
-        title="🎬 CineLink Rooms"
-        navigation={navigation}
-        right={
-          <Button
-            label="+ Create"
-            onPress={() => navigation.navigate('CreateProject')}
-            variant="primary"
-            size="sm"
-          />
-        }
-      />
-
-      <Text style={styles.headerSub}>Find your next film project</Text>
-
-      <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
+    <SafeAreaView style={[styles.safe, {backgroundColor: Colors.background}]}>
+      <Header title="📂 Projects" navigation={navigation} />
+      <View style={styles.searchWrap}>
         <TextInput
-          style={styles.searchInput}
+          style={[
+            styles.search,
+            {
+              color: Colors.textPrimary,
+              backgroundColor: Colors.card,
+              borderColor: Colors.border,
+            },
+          ]}
           placeholder="Search projects..."
-          placeholderTextColor={Colors.textTertiary}
-          value={searchText}
-          onChangeText={setSearchText}
+          placeholderTextColor={Colors.textSecondary}
+          value={search}
+          onChangeText={setSearch}
         />
       </View>
-
-      <FlatList
-        data={PROJECT_TYPES}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={item => item}
-        contentContainerStyle={styles.filterList}
-        renderItem={({item}) => (
-          <Chip
-            label={item}
-            selected={selectedType === item}
-            onPress={() => setSelectedType(item)}
-          />
-        )}
-      />
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={filteredProjects}
-          keyExtractor={item => item.id}
-          renderItem={renderProject}
-          contentContainerStyle={{
-            padding: Spacing.screenH,
-            paddingBottom: insets.bottom + 80,
-          }}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <EmptyState
-              icon="🎬"
-              title="No projects yet!"
-              subtitle="Be the first to create a project and build a crew"
-              actionLabel="+ Create Project"
-              onAction={() => navigation.navigate('CreateProject')}
-            />
-          }
-        />
+      <FlatList horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} data={PROJECT_TYPES} renderItem={({item}) => <Chip label={item} selected={filter === item} onPress={() => setFilter(item)} />} keyExtractor={i => i} />
+      {loading ? <ActivityIndicator size="large" color={Colors.primary} style={{marginTop: 60}} /> : (
+        <FlatList data={filtered} keyExtractor={item => item._id || item.id} renderItem={renderItem} contentContainerStyle={[styles.list, {paddingBottom: insets.bottom + 80}]} showsVerticalScrollIndicator={false}
+          ListEmptyComponent={<EmptyState icon="📂" title="No projects found" subtitle="Check back later" actionLabel="Create Project" onAction={() => navigation.navigate('CreateProject')} />} />
       )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: Colors.background},
-  headerSub: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    paddingHorizontal: Spacing.screenH,
-    marginBottom: Spacing.md,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card,
-    marginHorizontal: Spacing.screenH,
-    marginBottom: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.lg,
-    height: 48,
-    gap: Spacing.sm,
-  },
-  searchIcon: {fontSize: 16},
-  searchInput: {
-    flex: 1,
-    ...Typography.body,
-    color: Colors.textPrimary,
-  },
-  filterList: {
-    paddingHorizontal: Spacing.screenH,
-    gap: Spacing.sm,
-    paddingBottom: Spacing.sm,
-  },
-  loadingContainer: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: Spacing.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  typeBadge: {
-    backgroundColor: Colors.cardElevated,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  typeBadgeText: {...Typography.captionBold, color: Colors.textSecondary},
-  statusBadge: {
-    backgroundColor: Colors.successFaint,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.successBorder,
-  },
-  statusBadgeFull: {
-    backgroundColor: Colors.errorFaint,
-    borderColor: Colors.errorBorder,
-  },
-  statusBadgeText: {...Typography.captionBold, color: Colors.success},
-  cardTitle: {...Typography.h3},
-  metaRow: {flexDirection: 'row', gap: Spacing.lg, flexWrap: 'wrap'},
-  metaText: {...Typography.bodySm, color: Colors.textSecondary},
-  description: {
-    ...Typography.bodySm,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-  },
-  rolesSection: {marginTop: Spacing.md},
-  rolesTitle: {
-    ...Typography.labelSm,
-    color: Colors.primary,
-    marginBottom: Spacing.xs,
-  },
-  rolesWrap: {flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs},
-  rolePill: {
-    backgroundColor: Colors.cardElevated,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  rolePillFilled: {backgroundColor: Colors.successFaint},
-  rolePillText: {...Typography.caption, color: Colors.textSecondary},
-  rolePillTextFilled: {color: Colors.success, fontWeight: '600'},
-  cardFooter: {marginTop: Spacing.md},
-  ownerBadge: {
-    backgroundColor: Colors.warningFaint,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.warningBorder,
-  },
-  ownerBadgeText: {...Typography.btn, color: Colors.warning},
+  safe: {flex: 1, backgroundColor: Colors.background},
+  searchWrap: {paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm},
+  search: {backgroundColor: Colors.card, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, color: Colors.textPrimary, fontSize: 14, borderWidth: 1, borderColor: Colors.border},
+  filterRow: {paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md},
+  list: {padding: Spacing.lg},
+  card: {marginBottom: Spacing.md},
+  topRow: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm},
+  status: {color: Colors.success, ...Typography.captionBold},
+  title: {color: Colors.textPrimary, fontSize: 18, fontWeight: 'bold', marginBottom: Spacing.xs},
+  meta: {color: Colors.textSecondary, ...Typography.bodySm, marginBottom: Spacing.sm},
+  desc: {color: Colors.textSecondary, ...Typography.bodySm, lineHeight: 20, marginBottom: Spacing.md},
 });
