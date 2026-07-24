@@ -48,7 +48,7 @@ export default function PublicProfileScreen({route, navigation}: any) {
       <Header title="Profile" navigation={navigation} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.profileHeader}>
-          <Avatar name={profile.fullName || profile.displayName || 'User'} size="xl" source={profile.photoUrl ? {uri: profile.photoUrl} : undefined} />
+          <Avatar name={profile.fullName || profile.displayName || 'User'} size="xl" uri={profile.photoUrl} />
           <Text style={styles.name}>{profile.fullName || profile.displayName || 'User'}</Text>
           {profile.role ? <Chip label={profile.role} static /> : null}
           {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}

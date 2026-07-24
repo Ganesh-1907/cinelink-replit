@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   side: {
-    width: 44,
+    minWidth: 44,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },

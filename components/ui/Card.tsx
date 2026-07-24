@@ -28,7 +28,7 @@ export function Card({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     overflow: 'hidden',
   },
   default: {

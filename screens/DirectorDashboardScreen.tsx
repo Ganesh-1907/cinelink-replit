@@ -69,7 +69,7 @@ export default function DirectorDashboardScreen({navigation}: any) {
                 {applications.length === 0 ? <Text style={styles.emptyText}>No applications yet</Text> : applications.map((app: any) => (
                   <Card key={app._id || app.id} variant="default" padding={Spacing.md} style={styles.appCard}>
                     <View style={styles.appHeader}>
-                      <Avatar name={app.userName || 'User'} size="sm" source={app.userPhoto ? {uri: app.userPhoto} : undefined} />
+                      <Avatar name={app.userName || 'User'} size="sm" uri={app.userPhoto} />
                       <View style={styles.appInfo}><Text style={styles.appName}>{app.userName || 'Applicant'}</Text><Text style={styles.appEmail}>{app.userEmail || ''}</Text></View>
                       <Badge label={app.status} variant={app.status === 'selected' ? 'success' : app.status === 'rejected' ? 'error' : 'warning'} />
                     </View>

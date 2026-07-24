@@ -67,3 +67,8 @@ export interface Subscription {
   endDate: string;
   status: 'active' | 'expired' | 'cancelled';
 }
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+}

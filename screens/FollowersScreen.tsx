@@ -41,7 +41,7 @@ export default function FollowersScreen({route, navigation}: any) {
         <FlatList data={users} keyExtractor={(item, i) => item._id || item.id || String(i)} contentContainerStyle={{paddingBottom: insets.bottom + 40}}
           renderItem={({item}) => (
             <TouchableOpacity style={styles.userRow} onPress={() => navigation.navigate('PublicProfile', {userId: item._id || item.id})}>
-              <Avatar name={item.fullName || item.name || 'User'} size="md" source={item.photoUrl ? {uri: item.photoUrl} : undefined} />
+              <Avatar name={item.fullName || item.name || 'User'} size="md" uri={item.photoUrl} />
               <View style={styles.userInfo}><Text style={styles.userName}>{item.fullName || item.name || item.displayName || 'User'}</Text><Text style={styles.userRole}>{item.role || 'Artist'}</Text></View>
             </TouchableOpacity>
           )}
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   activeTab: {backgroundColor: Colors.primary},
   tabText: {color: Colors.textSecondary, ...Typography.label},
   activeTabText: {color: Colors.textPrimary, fontWeight: 'bold'},
-  userRow: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md, borderBottomWidth: 0.5, borderBottomColor: Colors.border},
+  userRow: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, gap: Spacing.md, borderBottomWidth: 0.5, borderBottomColor: Colors.border},
   userInfo: {flex: 1},
   userName: {color: Colors.textPrimary, fontWeight: '600', fontSize: 15},
   userRole: {color: Colors.textSecondary, fontSize: 13},

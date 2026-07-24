@@ -121,16 +121,16 @@ export default function SettingsScreen({navigation}: any) {
       <ScrollView style={styles.container}>
         <View style={[styles.section, {paddingBottom: insets.bottom + 40}]}>
           <Text style={styles.sectionTitle}>Appearance</Text>
-          <Card variant="elevated" padding={0}>
+          <View>
             <TouchableOpacity style={styles.accountActionRow} onPress={toggleTheme}>
               <Text style={styles.settingIcon}>{isDark ? '🌙' : '☀️'}</Text>
               <Text style={styles.settingText}>{isDark ? 'Dark Mode' : 'Light Mode'}</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
-          </Card>
+          </View>
 
           <Text style={styles.sectionTitle}>Account</Text>
-          <Card variant="elevated" padding={0}>
+          <View>
             <View style={styles.accountInfoRow}>
               <View style={styles.accountInfoLeft}>
                 <Text style={styles.settingIcon}>📧</Text>
@@ -156,10 +156,10 @@ export default function SettingsScreen({navigation}: any) {
               <Text style={styles.settingText}>Edit Profile</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
-          </Card>
+          </View>
 
           <Text style={styles.sectionTitle}>Notifications</Text>
-          <Card variant="elevated" padding={0}>
+          <View>
             <View style={styles.accountInfoRow}>
               <View style={styles.accountInfoLeft}>
                 <Text style={styles.settingIcon}>🔔</Text>
@@ -175,10 +175,10 @@ export default function SettingsScreen({navigation}: any) {
               </View>
               <Switch value={emailNotifications} onValueChange={toggleEmailNotifications} trackColor={{false: Colors.borderLight, true: Colors.primary}} thumbColor={Colors.textPrimary} />
             </View>
-          </Card>
+          </View>
 
           <Text style={styles.sectionTitle}>Privacy</Text>
-          <Card variant="elevated" padding={0}>
+          <View>
             <View style={styles.accountInfoRow}>
               <View style={styles.accountInfoLeft}>
                 <Text style={styles.settingIcon}>👁</Text>
@@ -186,10 +186,10 @@ export default function SettingsScreen({navigation}: any) {
               </View>
               <Switch value={profileVisible} onValueChange={toggleProfileVisible} trackColor={{false: Colors.borderLight, true: Colors.primary}} thumbColor={Colors.textPrimary} />
             </View>
-          </Card>
+          </View>
 
           <Text style={styles.sectionTitle}>Legal</Text>
-          <Card variant="elevated" padding={0}>
+          <View>
             <TouchableOpacity style={styles.accountActionRow} onPress={() => navigation.navigate('PrivacyPolicy')}>
               <Text style={styles.settingIcon}>🔒</Text>
               <Text style={styles.settingText}>Privacy Policy</Text>
@@ -201,10 +201,10 @@ export default function SettingsScreen({navigation}: any) {
               <Text style={styles.settingText}>Terms & Conditions</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
-          </Card>
+          </View>
 
           <Text style={styles.sectionTitle}>About</Text>
-          <Card variant="elevated" padding={0}>
+          <View>
             <View style={styles.accountInfoRow}>
               <View style={styles.accountInfoLeft}>
                 <Text style={styles.settingIcon}>📱</Text>
@@ -218,7 +218,7 @@ export default function SettingsScreen({navigation}: any) {
                 <View><Text style={styles.accountInfoLabel}>CineLink</Text><Text style={styles.accountInfoValue}>India's Cinema Network</Text></View>
               </View>
             </View>
-          </Card>
+          </View>
 
           <View style={styles.actionGap}>
             <Button label="🚪 Logout" onPress={handleLogout} variant="outline" fullWidth />
@@ -244,8 +244,8 @@ const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: Colors.background},
   container: {flex: 1, backgroundColor: Colors.background},
   section: {padding: Spacing.lg, paddingBottom: Spacing['3xl']},
-  sectionTitle: {...Typography.labelSm, color: Colors.primary, marginTop: Spacing.xl, marginBottom: Spacing.sm},
-  dangerTitle: {...Typography.labelSm, color: Colors.error, marginTop: Spacing.xl, marginBottom: Spacing.sm},
+  sectionTitle: {...Typography.labelSm, color: Colors.primary, marginTop: Spacing.lg, marginBottom: Spacing.xs},
+  dangerTitle: {...Typography.labelSm, color: Colors.error, marginTop: Spacing.lg, marginBottom: Spacing.xs},
   settingIcon: {fontSize: 20, marginRight: Spacing.md},
   settingText: {...Typography.body, color: Colors.textPrimary, flex: 1},
   settingArrow: {color: Colors.primary, fontSize: 20, fontWeight: 'bold'},
@@ -255,11 +255,11 @@ const styles = StyleSheet.create({
   copyrightBox: {alignItems: 'center', marginTop: Spacing['3xl'], paddingTop: Spacing.lg, borderTopWidth: 1, borderTopColor: Colors.border},
   copyrightText: {...Typography.captionBold, color: Colors.textSecondary},
   copyrightSubText: {...Typography.caption, color: Colors.textTertiary, marginTop: Spacing.xs},
-  cardSeparator: {height: 1, backgroundColor: Colors.borderLight, marginHorizontal: Spacing.lg},
-  accountInfoRow: {padding: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  cardSeparator: {height: 0},
+  accountInfoRow: {paddingVertical: 12, paddingHorizontal: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
   accountInfoLeft: {flexDirection: 'row', alignItems: 'center', flex: 1},
   accountInfoLabel: {...Typography.caption, color: Colors.textSecondary},
   accountInfoValue: {...Typography.body, color: Colors.textPrimary, fontWeight: '500', marginTop: 2},
-  accountActionRow: {padding: Spacing.lg, flexDirection: 'row', alignItems: 'center'},
+  accountActionRow: {paddingVertical: 12, paddingHorizontal: 0, flexDirection: 'row', alignItems: 'center'},
   flex1: {flex: 1},
 });

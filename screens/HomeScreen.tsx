@@ -577,6 +577,27 @@ export default function HomeScreen({navigation}: any) {
   const {isAdmin, isApprovedDirector, user: currentUser, signOut} = useApp();
   const {isDark, toggleTheme} = useTheme();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+
+  const getGreeting = () => {
+    const hours = new Date().getHours();
+    if (hours < 12) return 'Good Morning,';
+    if (hours < 18) return 'Good Afternoon,';
+    return 'Good Evening,';
+  };
+
+  const profileName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Creator';
+
+  const toggleSaveAudition = async (item: any) => {
+    if (!currentUser) return;
+    try {
+      await api.post('/saved-auditions', {auditionId: item._id || item.id});
+      const res = await api.get<{savedAuditions?: any[]}>('/saved-auditions');
+      setSavedIds((res.savedAuditions || []).map((s: any) => s.auditionId));
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   const getInitials = (name: string) => {
     if (!name) return 'CL';
@@ -689,7 +710,13 @@ export default function HomeScreen({navigation}: any) {
     api.get<{posts: any[]}>('/feed-posts').then(res => {
       setGeneralPosts((res.posts || []).filter((p: any) => p.postType === 'general').map((p: any) => ({...p, id: p._id || p.id})));
     }).catch(() => {});
-  }, [refreshKey]);
+
+    if (currentUser) {
+      api.get<{savedAuditions?: any[]}>('/saved-auditions').then(res => {
+        setSavedIds((res.savedAuditions || []).map((s: any) => s.auditionId));
+      }).catch(() => {});
+    }
+  }, [refreshKey, currentUser]);
 
   useEffect(() => {
     setFilmsLoading(true);
@@ -1153,60 +1180,39 @@ export default function HomeScreen({navigation}: any) {
     ));
   };
 
+  const renderSectionHeader = (title: string, onViewAll: () => void) => {
+    return (
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionHeaderTitle}>{title}</Text>
+        <TouchableOpacity onPress={onViewAll} style={styles.viewAllTouch}>
+          <Text style={styles.sectionHeaderViewAll}>View all</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <>
       <View style={[styles.container, {paddingTop: insets.top, backgroundColor: Colors.background}]}>
-        <View style={styles.headerContainer}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={openDrawer} style={styles.hamburgerBtn}>
-              <Text style={styles.hamburgerIcon}>☰</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerLogo}>CineLink</Text>
+        {/* ── GREETING HEADER ── */}
+        <View style={styles.greetingHeaderRow}>
+          <View>
+            <Text style={styles.greetingText}>{getGreeting()}</Text>
+            <Text style={styles.profileNameText}>{profileName} 👋</Text>
           </View>
-          <View style={styles.headerRight}>
-            {!isAdmin && (
-              <RippleIcon
-                size={42}
-                color="#D4AF37"
-                onPress={() => navigation.navigate('PremiumCineLink')}>
-                <View style={styles.premiumBtnSmall}>
-                  <CrownIcon />
-                </View>
-              </RippleIcon>
+          <TouchableOpacity
+            style={styles.headerNotificationBtn}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <Text style={styles.headerNotificationIcon}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.headerNotifBadge}>
+                <Text style={styles.headerNotifBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
             )}
-
-            <RippleIcon
-              size={42}
-              color={Colors.primary}
-              onPress={() => navigation.navigate('Chats')}>
-              <View style={styles.notificationBtn}>
-                <Text style={styles.notificationIcon}>💬</Text>
-                {chatUnreadCount > 0 && (
-                  <View style={styles.notifDot}>
-                    <Text style={styles.notifDotText}>
-                      {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </RippleIcon>
-
-            <RippleIcon
-              size={42}
-              color={Colors.primary}
-              onPress={() => navigation.navigate('Notifications')}>
-              <View style={styles.notificationBtn}>
-                <Text style={styles.notificationIcon}>🔔</Text>
-                {unreadCount > 0 && (
-                  <View style={styles.notifDot}>
-                    <Text style={styles.notifDotText}>
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </RippleIcon>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* ── PROFILE SIDE DRAWER MODAL ── */}
@@ -1383,51 +1389,31 @@ export default function HomeScreen({navigation}: any) {
               progressBackgroundColor={Colors.card}
             />
           }>
-          {/* ── WELCOME CARD ── */}
-          <View style={styles.welcomeCard}>
-            <View style={styles.welcomeCardAvatarContainer}>
-              {profilePhoto ? (
-                <Image source={{uri: profilePhoto}} style={styles.welcomeCardAvatar} />
-              ) : (
-                <View style={styles.welcomeCardAvatarFallback}>
-                  <Text style={styles.welcomeCardAvatarText}>
-                    {getInitials(currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Creator')}
-                  </Text>
-                </View>
+
+          {/* ── SEARCH BAR ROW ── */}
+          <View style={styles.searchBarRow}>
+            <View style={styles.searchBarInner}>
+              <Text style={styles.searchIconSymbol}>🔍</Text>
+              <TextInput
+                placeholder="Search auditions, contests, people..."
+                placeholderTextColor={Colors.textTertiary}
+                value={searchText}
+                onChangeText={handleSearchChange}
+                style={[styles.searchInputField, {color: Colors.textPrimary}]}
+              />
+              {searchText.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearchText('');
+                    setSuggestions([]);
+                  }}>
+                  <Text style={styles.clearSearchText}>✕</Text>
+                </TouchableOpacity>
               )}
             </View>
-            <Text style={styles.welcomeCardText} numberOfLines={1}>
-              {isFirstOpen ? 'Welcome' : 'Welcome back'}, {(currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Creator').split(' ')[0]} 👋
-            </Text>
-          </View>
-
-          {/* ── SEARCH BAR ── */}
-          <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              placeholder="Search auditions, films, contests..."
-              placeholderTextColor={Colors.textTertiary}
-              value={searchText}
-              onChangeText={handleSearchChange}
-              style={[styles.searchInput, {color: Colors.textPrimary}]}
-            />
-            {searchText.length > 0 && (
-              <TouchableOpacity
-                onPress={() => {
-                  setSearchText('');
-                  setSuggestions([]);
-                }}>
-                <Text
-                  style={{
-                    color: Colors.textTertiary,
-                    fontSize: 18,
-                    fontWeight: 'bold',
-                    paddingHorizontal: Spacing.sm,
-                  }}>
-                  ✕
-                </Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.filterTunerBtn} onPress={() => navigation.navigate('Discover')}>
+              <Text style={styles.filterTunerIcon}>🎛️</Text>
+            </TouchableOpacity>
           </View>
 
           {/* ── LIVE SUGGESTIONS ── */}
@@ -1452,71 +1438,215 @@ export default function HomeScreen({navigation}: any) {
             </View>
           )}
 
-          {/* ── TABS ── */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.tabsScroll}
-            contentContainerStyle={styles.tabsContent}>
-            {['Auditions', 'General', 'Short Films', 'Contests'].map(tab => (
+          {/* ── QUICK ACTIONS ROW ── */}
+          <View style={styles.quickActionsRow}>
+            {isAdmin && (
               <TouchableOpacity
-                key={tab}
-                style={[styles.tabBtn, selectedTab === tab && styles.activeTab]}
-                onPress={() => setSelectedTab(tab)}>
-                <Text
-                  style={[
-                    styles.tabText,
-                    selectedTab === tab && styles.activeText,
-                    selectedTab === tab && {
-                      color: Colors.background !== '#FFFFFF' ? Colors.background : '#1A1C1E',
-                    },
-                  ]}>
-                  {tab === 'Auditions'
-                    ? '🎭 '
-                    : tab === 'General'
-                    ? '📢 '
-                    : tab === 'Short Films'
-                    ? '🎬 '
-                    : '🏆 '}
-                  {tab}
-                </Text>
+                style={styles.quickActionChip}
+                onPress={() => navigation.navigate('AIAssistant')}>
+                <Text style={styles.quickActionChipText}>🤖 AI Assistant</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* ── ADMIN QUICK ACTIONS ── */}
-          {selectedTab === 'Short Films' && (
-            <View style={styles.aiButtonsContainer}>
-              {isAdmin && (
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() => navigation.navigate('AIAssistant')}>
-                  <Text style={styles.actionBtnIcon}>🤖</Text>
-                  <Text style={styles.actionBtnText}>AI Assistant</Text>
-                </TouchableOpacity>
-              )}
-              {isAdmin && (
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.quickPostBtn]}
-                  onPress={() => navigation.navigate('QuickPost')}>
-                  <Text style={styles.actionBtnIcon}>⚡</Text>
-                  <Text style={styles.actionBtnText}>Quick Post</Text>
-                </TouchableOpacity>
-              )}
+            )}
+            {isAdmin && (
               <TouchableOpacity
-                style={[styles.actionBtn, styles.quickPostBtn]}
-                onPress={() => navigation.navigate('UploadFilm')}>
-                <Text style={styles.actionBtnIcon}>🎬</Text>
-                <Text style={styles.actionBtnText}>Upload Film</Text>
+                style={styles.quickActionChip}
+                onPress={() => navigation.navigate('QuickPost')}>
+                <Text style={styles.quickActionChipText}>⚡ Quick Post</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+            <TouchableOpacity
+              style={styles.quickActionChip}
+              onPress={() => navigation.navigate('UploadFilm')}>
+              <Text style={styles.quickActionChipText}>🎬 Upload Film</Text>
+            </TouchableOpacity>
+          </View>
 
+          {/* ── SECTIONS ── */}
           <View style={{paddingBottom: insets.bottom + 80}}>
-            {selectedTab === 'Auditions' && renderFeed('auditions')}
-            {selectedTab === 'General' && renderFeed('general')}
-            {selectedTab === 'Short Films' && renderFilms()}
-            {selectedTab === 'Contests' && renderContests()}
+
+            {/* 1. Trending Auditions */}
+            {renderSectionHeader('Trending Auditions', () => navigation.navigate('BrowseAuditions'))}
+            {feedLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{marginVertical: Spacing.lg}} />
+            ) : auditionPosts.length === 0 ? (
+              <EmptyState icon="🎭" title="No auditions found" subtitle="Trending auditions will show up here" />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollPadding}>
+                {auditionPosts.slice(0, 5).map(item => {
+                  const isSaved = savedIds.includes(item.id);
+                  const auditionPosters = [
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300',
+                    'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=300',
+                    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=300',
+                    'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=300',
+                    'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=300'
+                  ];
+                  const placeholderImage = auditionPosters[item.id ? (item.id.charCodeAt(0) % auditionPosters.length) : 0];
+                  const imageSource = item.imageUrl || item.posterUrl || placeholderImage;
+
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.auditionHorizontalCard}
+                      onPress={() => navigation.navigate('AuditionDetail', {audition: item})}
+                      activeOpacity={0.9}
+                    >
+                      <Image source={{uri: imageSource}} style={styles.auditionCardImg} resizeMode="cover" />
+                      <View style={styles.auditionCardContent}>
+                        <Text style={styles.auditionCardTitle} numberOfLines={1}>{item.title || 'Audition Call'}</Text>
+                        <Text style={styles.auditionCardCategory} numberOfLines={1}>{item.category || 'Feature Film'}</Text>
+                        <View style={styles.auditionCardBottom}>
+                          <Text style={styles.auditionCardLoc} numberOfLines={1}>📍 {item.location || 'Hyderabad'}</Text>
+                          <TouchableOpacity onPress={() => toggleSaveAudition(item)} style={styles.favoriteHeartBtn}>
+                            <Text style={styles.favoriteHeartIcon}>{isSaved ? '❤️' : '🤍'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            {/* 2. Featured Contests */}
+            {renderSectionHeader('Featured Contests', () => navigation.navigate('Contests'))}
+            {contestsLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{marginVertical: Spacing.lg}} />
+            ) : contests.length === 0 ? (
+              <EmptyState icon="🏆" title="No contests found" subtitle="Featured contests will show up here" />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollPadding}>
+                {contests.slice(0, 5).map(item => {
+                  const contestPosters = [
+                    'https://images.unsplash.com/photo-1578269174936-2709b5a5c0e5?q=80&w=200',
+                    'https://images.unsplash.com/photo-1518173946687-a4c8a383392e?q=80&w=200',
+                    'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=200',
+                  ];
+                  const placeholderImage = contestPosters[item.id ? (item.id.charCodeAt(0) % contestPosters.length) : 0];
+                  const imageSource = item.imageUrl || placeholderImage;
+
+                  const getDaysLeftText = (deadline: string) => {
+                    if (!deadline) return 'Ending soon';
+                    const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+                    if (diff < 0) return 'Ended';
+                    if (diff === 0) return 'Last day!';
+                    return `${diff}d left`;
+                  };
+
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.contestHorizontalCard}
+                      onPress={() => navigation.navigate('ContestDetail', {contest: item})}
+                      activeOpacity={0.9}
+                    >
+                      <Image source={{uri: imageSource}} style={styles.contestCardImg} resizeMode="cover" />
+                      <View style={styles.contestCardContent}>
+                        <Text style={styles.contestCardTitle} numberOfLines={1}>{item.title}</Text>
+                        <Text style={styles.contestPrizeValue}>₹{item.prizePool || '50,000'}</Text>
+                        <Text style={styles.contestDaysLeftText}>{getDaysLeftText(item.deadline)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            {/* 3. Trending Short Films */}
+            {renderSectionHeader('Trending Short Films', () => navigation.navigate('BrowseFilms'))}
+            {filmsLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{marginVertical: Spacing.lg}} />
+            ) : films.length === 0 ? (
+              <EmptyState icon="🎬" title="No short films found" subtitle="Trending films will show up here" />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScrollPadding}>
+                {films.slice(0, 5).map(item => {
+                  const filmPosters = [
+                    'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300',
+                    'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=300',
+                    'https://images.unsplash.com/photo-1478720143023-ac0cdc9f6363?q=80&w=300',
+                  ];
+                  const placeholderImage = filmPosters[item.id ? (item.id.charCodeAt(0) % filmPosters.length) : 0];
+                  const imageSource = item.posterUrl || placeholderImage;
+
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.filmHorizontalCard}
+                      onPress={() => navigation.navigate('MovieDetails', {movie: item})}
+                      activeOpacity={0.9}
+                    >
+                      <Image source={{uri: imageSource}} style={styles.filmCardImg} resizeMode="cover" />
+                      <View style={styles.filmCardContent}>
+                        <Text style={styles.filmCardTitle} numberOfLines={1}>{item.title}</Text>
+                        <Text style={styles.filmCardMeta} numberOfLines={1}>{item.genre || 'Drama'} · {item.duration || '15'} min</Text>
+                        <Text style={styles.filmCardViews}>👁 {item.views || 0} views</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            {/* 4. Director Posts / Updates */}
+            {renderSectionHeader('Director Updates', () => navigation.navigate('BrowseUpdates'))}
+            {feedLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{marginVertical: Spacing.lg}} />
+            ) : generalPosts.length === 0 ? (
+              <EmptyState icon="📢" title="No posts found" subtitle="Director updates will show up here" />
+            ) : (
+              <View style={styles.updatesFeedContainer}>
+                {generalPosts.slice(0, 5).map(item => {
+                  const formatPostTime = (ts: any) => {
+                    if (!ts) return '';
+                    const d = ts?.toDate ? ts.toDate() : new Date(ts);
+                    const now = new Date();
+                    const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+                    if (diff < 60) return 'just now';
+                    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+                    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+                    return d.toLocaleDateString([], {day: 'numeric', month: 'short'});
+                  };
+
+                  const authorName = item.authorName || item.directorName || 'CineLink Director';
+                  const firstLetter = authorName.charAt(0).toUpperCase();
+
+                  return (
+                    <View key={item.id} style={styles.updateCard}>
+                      <View style={styles.updateCardHeader}>
+                        <View style={styles.updateAuthorAvatar}>
+                          {item.authorPhotoUrl ? (
+                            <Image source={{uri: item.authorPhotoUrl}} style={styles.updateAvatarImg} />
+                          ) : (
+                            <View style={styles.updateAvatarFallback}>
+                              <Text style={styles.updateAvatarFallbackText}>{firstLetter}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={styles.updateAuthorInfo}>
+                          <Text style={styles.updateAuthorName} numberOfLines={1}>{authorName}</Text>
+                          <Text style={styles.updateTimeText}>{formatPostTime(item.createdAt)}</Text>
+                        </View>
+                        <View style={styles.updateTypeBadge}>
+                          <Text style={styles.updateTypeBadgeText}>Update</Text>
+                        </View>
+                      </View>
+                      
+                      <Text style={styles.updateBodyText}>{item.text}</Text>
+                      
+                      {item.imageUrl ? (
+                        <Image source={{uri: item.imageUrl}} style={styles.updateImage} resizeMode="cover" />
+                      ) : null}
+
+                      {item.location ? (
+                        <Text style={styles.updateLocationText}>📍 {item.location}</Text>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
           </View>
         </ScrollView>
       </View>
@@ -1619,9 +1749,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.inputBg,
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.xs,
-    borderRadius: Radius.md,
+    borderRadius: Radius.search,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
@@ -1638,8 +1768,8 @@ const styles = StyleSheet.create({
 
   suggestionsBox: {
     backgroundColor: Colors.card,
-    marginHorizontal: Spacing.lg + 2,
-    borderRadius: Radius.md,
+    marginHorizontal: Spacing.screenH,
+    borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: Spacing.md,
@@ -1650,7 +1780,7 @@ const styles = StyleSheet.create({
   suggestionText: {color: Colors.textPrimary, fontSize: 13},
 
   tabsScroll: {marginBottom: Spacing.md},
-  tabsContent: {paddingHorizontal: Spacing.lg + 2, gap: Spacing.sm},
+  tabsContent: {paddingHorizontal: Spacing.screenH, gap: Spacing.sm},
   tabBtn: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: 9,
@@ -1673,13 +1803,13 @@ const styles = StyleSheet.create({
   activeText: {color: '#FFFFFF', fontWeight: '700'},
 
   pillsScroll: {marginBottom: Spacing.md},
-  pillsContent: {paddingHorizontal: Spacing.lg + 2, gap: Spacing.sm},
+  pillsContent: {paddingHorizontal: Spacing.screenH, gap: Spacing.sm},
 
   browseBtn: {
     backgroundColor: Colors.primaryFaint,
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.md,
-    borderRadius: Radius.md,
+    borderRadius: Radius.button,
     padding: 15,
     alignItems: 'center',
     borderWidth: 1,
@@ -1711,9 +1841,9 @@ const styles = StyleSheet.create({
 
   composer: {
     backgroundColor: Colors.card,
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.lg,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     overflow: 'hidden',
     padding: Spacing.md,
     borderTopWidth: 2,
@@ -1790,9 +1920,9 @@ const styles = StyleSheet.create({
   // ── Audition Card (for director-posted auditions) ──
   auditionCard: {
     backgroundColor: Colors.card,
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.md,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     overflow: 'hidden',
     borderTopWidth: 2,
     borderTopColor: Colors.primaryMid,
@@ -1946,9 +2076,9 @@ const styles = StyleSheet.create({
 
   bubble: {
     backgroundColor: Colors.card,
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.md,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     overflow: 'hidden',
     padding: Spacing.md,
     borderTopWidth: 2,
@@ -2094,8 +2224,8 @@ const styles = StyleSheet.create({
 
   profileCard: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg + 2,
-    marginHorizontal: Spacing.lg + 2,
+    borderRadius: Radius.card,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.md,
     overflow: 'hidden',
     borderTopWidth: 2,
@@ -2187,10 +2317,10 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     overflow: 'hidden',
     borderTopWidth: 2,
     borderTopColor: Colors.primaryMid,
@@ -2385,14 +2515,14 @@ const styles = StyleSheet.create({
 
   ctaBannerRow: {
     flexDirection: 'row',
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.lg,
     gap: Spacing.sm + 2,
   },
   ctaBannerPrimary: {
     flex: 1,
     backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
+    borderRadius: Radius.button,
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },
@@ -2400,7 +2530,7 @@ const styles = StyleSheet.create({
   ctaBannerSecondary: {
     flex: 1,
     backgroundColor: 'transparent',
-    borderRadius: Radius.md,
+    borderRadius: Radius.button,
     paddingVertical: Spacing.md,
     alignItems: 'center',
     borderWidth: 1.5,
@@ -2468,7 +2598,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xl,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
@@ -2539,7 +2669,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md + 2,
+    paddingVertical: 14,
   },
   drawerItemIcon: {
     fontSize: 18,
@@ -2561,7 +2691,7 @@ const styles = StyleSheet.create({
   drawerFooter: {
     padding: Spacing.lg,
     borderTopWidth: 1,
-    paddingBottom: Spacing.xl,
+    paddingBottom: Spacing.lg,
   },
   drawerThemeToggle: {
     flexDirection: 'row',
@@ -2597,9 +2727,9 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     padding: Spacing.md,
-    marginHorizontal: Spacing.lg + 2,
+    marginHorizontal: Spacing.screenH,
     marginBottom: Spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
@@ -2645,5 +2775,360 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontWeight: '700',
     flex: 1,
+  },
+  // Greeting Header
+  greetingHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  greetingText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  profileNameText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#D4AF37', // Premium gold color
+    marginTop: 2,
+  },
+  headerNotificationBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  headerNotificationIcon: {
+    fontSize: 20,
+  },
+  headerNotifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF3B30',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  headerNotifBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+
+  // Search Bar
+  searchBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  searchBarInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.md,
+    height: 48,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchIconSymbol: {
+    fontSize: 16,
+    marginRight: Spacing.sm,
+    color: Colors.textTertiary,
+  },
+  searchInputField: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    paddingHorizontal: Spacing.xs,
+    color: Colors.textTertiary,
+  },
+  filterTunerBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: Colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterTunerIcon: {
+    fontSize: 18,
+  },
+
+  // Quick Actions Row
+  quickActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  quickActionChip: {
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  quickActionChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D4AF37',
+  },
+
+  // Section Headers
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    letterSpacing: 0.2,
+  },
+  sectionHeaderViewAll: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D4AF37',
+  },
+  viewAllTouch: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  horizontalScrollPadding: {
+    paddingLeft: Spacing.lg,
+    paddingRight: Spacing.md,
+    gap: Spacing.md,
+  },
+
+  // Audition Horizontal Card (Landscape Image Style)
+  auditionHorizontalCard: {
+    width: 160,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  auditionCardImg: {
+    width: '100%',
+    height: 100,
+    backgroundColor: Colors.cardElevated,
+  },
+  auditionCardContent: {
+    padding: Spacing.sm,
+  },
+  auditionCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  auditionCardCategory: {
+    fontSize: 11,
+    color: '#D4AF37',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  auditionCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+  },
+  auditionCardLoc: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    flex: 1,
+    marginRight: 4,
+  },
+  favoriteHeartBtn: {
+    padding: 2,
+  },
+  favoriteHeartIcon: {
+    fontSize: 14,
+  },
+
+  // Contest Horizontal Card (Side image, right text)
+  contestHorizontalCard: {
+    width: 170,
+    height: 76,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  contestCardImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: Colors.cardElevated,
+  },
+  contestCardContent: {
+    flex: 1,
+    paddingLeft: 8,
+    justifyContent: 'center',
+  },
+  contestCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  contestPrizeValue: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#D4AF37',
+    marginTop: 2,
+  },
+  contestDaysLeftText: {
+    fontSize: 9,
+    color: '#FF3B30',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+
+  // Short Film Card (Standard Film Thumbnail Style)
+  filmHorizontalCard: {
+    width: 200,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filmCardImg: {
+    width: '100%',
+    height: 110,
+    backgroundColor: Colors.cardElevated,
+  },
+  filmCardContent: {
+    padding: Spacing.sm,
+  },
+  filmCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  filmCardMeta: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  filmCardViews: {
+    fontSize: 10,
+    color: '#D4AF37',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+
+  // Director Updates Feed Styles
+  updatesFeedContainer: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
+  },
+  updateCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  updateCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  updateAuthorAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    overflow: 'hidden',
+    backgroundColor: Colors.cardElevated,
+  },
+  updateAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  updateAvatarFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#D4AF37',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  updateAvatarFallbackText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  updateAuthorInfo: {
+    flex: 1,
+    marginLeft: Spacing.sm,
+  },
+  updateAuthorName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  updateTimeText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  updateTypeBadge: {
+    backgroundColor: 'rgba(212,175,55,0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+  },
+  updateTypeBadgeText: {
+    fontSize: 10,
+    color: '#D4AF37',
+    fontWeight: '700',
+  },
+  updateBodyText: {
+    fontSize: 13.5,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  updateImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginTop: Spacing.sm,
+    backgroundColor: Colors.cardElevated,
+  },
+  updateLocationText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
   },
 });

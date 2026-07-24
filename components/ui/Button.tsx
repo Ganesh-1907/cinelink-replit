@@ -17,7 +17,8 @@ type Variant =
   | 'outline'
   | 'ghost'
   | 'danger'
-  | 'success';
+  | 'success'
+  | 'info';
 type Size = 'lg' | 'md' | 'sm';
 
 interface ButtonProps {
@@ -77,7 +78,7 @@ export function Button({
     styles[`label_${size}` as keyof typeof styles],
     styles[`label_${variant}` as keyof typeof styles],
     variant === 'primary' && {
-      color: Colors.background !== '#FFFFFF' ? Colors.background : '#1A1C1E',
+      color: '#09090B',
     },
     textStyle,
   ];
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.button,
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -134,8 +135,8 @@ const styles = StyleSheet.create({
     ...Shadows.primary,
   },
   secondary: {
-    backgroundColor: Colors.cardElevated,
-    borderColor: Colors.borderLight,
+    backgroundColor: 'transparent',
+    borderColor: Colors.primary,
   },
   outline: {
     backgroundColor: 'transparent',
@@ -152,6 +153,10 @@ const styles = StyleSheet.create({
   success: {
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+  },
+  info: {
+    backgroundColor: Colors.info,
+    borderColor: Colors.info,
   },
 
   // Sizes
@@ -177,12 +182,13 @@ const styles = StyleSheet.create({
   label_md: {...Typography.btn},
   label_sm: {...Typography.btnSm},
 
-  label_primary: {color: Colors.textInverse},
-  label_secondary: {color: Colors.textPrimary},
+  label_primary: {color: '#09090B'},
+  label_secondary: {color: Colors.primary},
   label_outline: {color: Colors.primary},
   label_ghost: {color: Colors.primary},
   label_danger: {color: '#FFFFFF'},
   label_success: {color: '#FFFFFF'},
+  label_info: {color: '#FFFFFF'},
 });
 
 export default Button;

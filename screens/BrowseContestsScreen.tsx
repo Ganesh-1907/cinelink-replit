@@ -60,7 +60,7 @@ export default function BrowseContestsScreen({navigation}: any) {
 
   return (
     <View style={styles.safe}>
-      <Header title="🏆 Contests" noBorder />
+      <Header noBorder />
       <View style={styles.searchWrap}><Input placeholder="Search contests..." value={search} onChangeText={setSearch} leftIcon="🔍" /></View>
       {loading ? (
         <View style={styles.skeletonWrap}><SkeletonCard /><SkeletonCard /></View>

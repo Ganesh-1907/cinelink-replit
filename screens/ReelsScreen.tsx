@@ -94,7 +94,7 @@ export default function ReelsScreen({navigation}: any) {
               <Avatar
                 name={item.creatorName || 'Creator'}
                 size="sm"
-                source={item.creatorAvatar ? {uri: item.creatorAvatar} : undefined}
+                uri={item.creatorAvatar}
               />
               <Text style={styles.creatorName}>{item.creatorName || 'Creator'}</Text>
             </View>

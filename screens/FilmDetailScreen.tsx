@@ -47,8 +47,8 @@ export default function FilmDetailScreen({route, navigation}: any) {
     const newLiked = !liked;
     Animated.sequence([Animated.spring(heartScale, {toValue: 1.3, useNativeDriver: true, speed: 30, bounciness: 12}), Animated.spring(heartScale, {toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6})]).start();
     setLiked(newLiked);
-    setLikesCount(prev => newLiked ? prev + 1 : prev - 1);
-    try { await api.post(`/films/${filmId}/like`); } catch { setLiked(liked); setLikesCount(prev => newLiked ? prev - 1 : prev + 1); }
+    setLikesCount((prev: number) => newLiked ? prev + 1 : prev - 1);
+    try { await api.post(`/films/${filmId}/like`); } catch { setLiked(liked); setLikesCount((prev: number) => newLiked ? prev - 1 : prev + 1); }
   };
 
   const addComment = async () => {

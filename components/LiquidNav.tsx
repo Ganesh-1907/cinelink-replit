@@ -29,7 +29,19 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
             onPress={() => navigation.navigate(tab.key)}
             activeOpacity={0.7}>
             <Text style={{fontSize: 22}}>{tab.icon}</Text>
-            <Text style={[styles.label, {color: isActive ? (Colors.background !== '#FFFFFF' ? Colors.primary : Colors.primaryDark) : Colors.textSecondary}]}>{tab.label}</Text>
+            <Text
+              style={[
+                styles.label,
+                {
+                  color: isActive
+                    ? Colors.background !== '#FFFFFF'
+                      ? Colors.primary
+                      : Colors.primaryDark
+                    : Colors.textSecondary,
+                },
+              ]}>
+              {tab.label}
+            </Text>
             {isActive && <View style={[styles.indicator, {backgroundColor: Colors.primary}]} />}
           </TouchableOpacity>
         );

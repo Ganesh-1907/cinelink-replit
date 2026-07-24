@@ -66,6 +66,8 @@ import FeedbackModal from './screens/FeedbackModal';
 import IndustryGuideScreen from './screens/IndustryGuideScreen';
 import PhoneLoginScreen from './screens/PhoneLoginScreen';
 import PremiumCineLinkScreen from './src/screens/Premium/PremiumCineLinkScreen';
+import BrowseFilmsScreen from './screens/BrowseFilmsScreen';
+import BrowseUpdatesScreen from './screens/BrowseUpdatesScreen';
 import {LiquidNav} from './components/LiquidNav';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {Colors} from './src/theme';
@@ -305,6 +307,16 @@ function MainStack() {
         name="ImageViewer"
         component={ImageViewerScreen}
         options={{headerShown: false, animation: 'fade'}}
+      />
+      <Stack.Screen
+        name="BrowseFilms"
+        component={BrowseFilmsScreen}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="BrowseUpdates"
+        component={BrowseUpdatesScreen}
+        options={{headerShown: false}}
       />
       <Stack.Screen
         name="CastingRequest"

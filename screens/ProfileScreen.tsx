@@ -11,6 +11,7 @@ import {
   Share,
   Dimensions,
   Linking,
+  StatusBar,
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
 import {
@@ -82,6 +83,7 @@ export default function ProfileScreen({navigation, route}: any) {
   const [location, setLocation] = useState<string>('');
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [applicationsCount, setApplicationsCount] = useState(0);
 
   // Gallery
   const [portfolioMedia, setPortfolioMedia] = useState<string[]>([]);
@@ -147,6 +149,7 @@ export default function ProfileScreen({navigation, route}: any) {
         setPortfolioMedia(data?.portfolioMedia || []);
         setFollowersCount(data?.followerCount || 0);
         setFollowingCount(data?.followingCount || 0);
+        setApplicationsCount(data?.applicationsCount || 0);
       }
     } catch (e) {
       console.error('Error loading profile:', e);
@@ -444,49 +447,35 @@ export default function ProfileScreen({navigation, route}: any) {
 
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
-      <Header
-        title={isEditing ? 'Edit Profile' : 'My Profile'}
-        left={
-          isEditing ? (
+      <StatusBar
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+      />
+      {isEditing && (
+        <Header
+          title="Edit Profile"
+          left={
             <TouchableOpacity
               onPress={() => setIsEditing(false)}
               style={styles.headerBtn}>
               <Text style={styles.headerBtnTextCancel}>✕</Text>
             </TouchableOpacity>
-          ) : undefined
-        }
-        right={
-          isEditing ? (
+          }
+          right={
             <TouchableOpacity onPress={saveProfile} style={styles.headerBtn}>
               <Text style={styles.headerBtnTextSave}>✓</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={handleShare}
-              style={styles.shareHeaderBtn}>
-              <Text
-                style={[
-                  styles.shareHeaderIcon,
-                  {
-                    color:
-                      Colors.background !== '#FFFFFF'
-                        ? Colors.primary
-                        : Colors.primaryDark,
-                  },
-                ]}>
-                ↗
-              </Text>
-            </TouchableOpacity>
-          )
-        }
-      />
+          }
+        />
+      )}
       <ScrollView
         ref={scrollRef}
         style={[styles.scroll, {backgroundColor: Colors.background}]}
+        contentContainerStyle={!isEditing ? {paddingTop: insets.top + Spacing.sm} : undefined}
         showsVerticalScrollIndicator={false}>
-        {/* ── AVATAR ── */}
-        <View style={styles.avatarSection}>
-          {isEditing ? (
+        {/* ── PROFILE HEADER (AVATAR & INFO CENTERED) ── */}
+        {isEditing ? (
+          <View style={styles.avatarSection}>
             <TouchableOpacity
               onPress={pickProfilePhoto}
               style={styles.avatarWrapper}>
@@ -500,77 +489,123 @@ export default function ProfileScreen({navigation, route}: any) {
                 <Text style={styles.editBadgeText}>Edit</Text>
               </View>
             </TouchableOpacity>
-          ) : (
-            <View style={styles.avatarWrapper}>
+
+            {uploading && (
+              <View style={styles.uploadingRow}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.uploadingText}>Uploading...</Text>
+              </View>
+            )}
+
+            {verificationStatus === 'verified' && (
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedBadgeText}>✅ Verified</Text>
+              </View>
+            )}
+
+            {name ? (
+              <View style={styles.nameRow}>
+                <Text style={styles.profileName}>{name}</Text>
+                <PremiumBadge
+                  tier={premiumTier}
+                  verifiedReal={premiumVerifiedReal}
+                  size="large"
+                />
+              </View>
+            ) : null}
+            <Text style={styles.email}>
+              {email || user?.email || user?.phoneNumber || ''}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.centeredHeader}>
+            {/* Centered Avatar with overlapping Verified Badge */}
+            <View style={styles.centeredAvatarContainer}>
               <Avatar
                 uri={avatarUri}
                 name={name || user?.email}
                 size="xl"
                 ring
               />
+              {verificationStatus === 'verified' && (
+                <View style={styles.verifiedBadgeOverlap}>
+                  <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
+                </View>
+              )}
             </View>
-          )}
 
-          {uploading && (
-            <View style={styles.uploadingRow}>
-              <ActivityIndicator size="small" color={Colors.primary} />
-              <Text style={styles.uploadingText}>Uploading...</Text>
+            {/* Display Name */}
+            <View style={styles.centeredNameRow}>
+              <Text style={styles.centeredName}>{name || 'Anonymous User'}</Text>
             </View>
-          )}
 
-          {verificationStatus === 'verified' && (
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedBadgeText}>✅ Verified</Text>
+            {/* Role */}
+            <Text style={styles.centeredRole}>{role || 'Actor'}</Text>
+
+            {/* Location */}
+            {location ? (
+              <View style={styles.centeredLocationRow}>
+                <Text style={styles.centeredLocationIcon}>📍</Text>
+                <Text style={styles.centeredLocationText}>{location}</Text>
+              </View>
+            ) : null}
+
+            {/* Action Row */}
+            <View style={styles.profileActionRow}>
+              <TouchableOpacity
+                onPress={() => setIsEditing(true)}
+                style={styles.profileEditBtn}>
+                <Text style={styles.profileEditBtnText}>Edit Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleShare}
+                style={styles.profileIconBtn}>
+                <Text style={styles.profileIconBtnText}>✈️</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Settings')}
+                style={styles.profileIconBtn}>
+                <Text style={styles.profileIconBtnText}>⚙️</Text>
+              </TouchableOpacity>
             </View>
-          )}
 
-          {name ? (
-            <View style={styles.nameRow}>
-              <Text style={styles.profileName}>{name}</Text>
-              <PremiumBadge
-                tier={premiumTier}
-                verifiedReal={premiumVerifiedReal}
-                size="large"
-              />
+            {/* Flat Stats Row (Applications, Followers, Following) */}
+            <View style={styles.centeredStatsRow}>
+              <View style={styles.centeredStatItem}>
+                <Text style={styles.centeredStatNum}>{applicationsCount}</Text>
+                <Text style={styles.centeredStatLbl}>Applications</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.centeredStatItem}
+                onPress={() =>
+                  navigation.navigate('Followers', {
+                    userId: user?.uid,
+                    displayName,
+                    tab: 'followers',
+                  })
+                }>
+                <Text style={styles.centeredStatNum}>{followersCount}</Text>
+                <Text style={styles.centeredStatLbl}>Followers</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.centeredStatItem}
+                onPress={() =>
+                  navigation.navigate('Followers', {
+                    userId: user?.uid,
+                    displayName,
+                    tab: 'following',
+                  })
+                }>
+                <Text style={styles.centeredStatNum}>{followingCount}</Text>
+                <Text style={styles.centeredStatLbl}>Following</Text>
+              </TouchableOpacity>
             </View>
-          ) : null}
-          <Text style={styles.email}>
-            {email || user?.email || user?.phoneNumber || ''}
-          </Text>
-        </View>
-
-        {/* ── FOLLOWERS / FOLLOWING STATS ── */}
-        <Card variant="elevated" padding={0}>
-          <View style={styles.statsRow}>
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() =>
-                navigation.navigate('Followers', {
-                  userId: user?.uid,
-                  displayName,
-                  tab: 'followers',
-                })
-              }>
-              <Text style={styles.statNum}>{followersCount}</Text>
-              <Text style={styles.statLbl}>Followers</Text>
-            </TouchableOpacity>
-            <View style={styles.statDivider} />
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() =>
-                navigation.navigate('Followers', {
-                  userId: user?.uid,
-                  displayName,
-                  tab: 'following',
-                })
-              }>
-              <Text style={styles.statNum}>{followingCount}</Text>
-              <Text style={styles.statLbl}>Following</Text>
-            </TouchableOpacity>
           </View>
-        </Card>
+        )}
 
-        {/* ✅ PROFILE COMPLETION CARD */}
+        {/* ✅ PROFILE COMPLETION CARD
         <View style={styles.completionWrapper}>
           <ProfileCompletionCard
             name={name}
@@ -584,20 +619,7 @@ export default function ProfileScreen({navigation, route}: any) {
             onItemPress={handleItemPress}
           />
         </View>
-
-        {/* Edit Profile button when not editing */}
-        {!isEditing && (
-          <View style={styles.actionBtnWrapper}>
-            <Button
-              label="Edit Profile"
-              variant="outline"
-              size="md"
-              onPress={() => setIsEditing(true)}
-              style={styles.editProfileBtn}
-              fullWidth
-            />
-          </View>
-        )}
+        */}
 
         {isEditing ? (
           <View style={styles.section}>
@@ -905,36 +927,22 @@ export default function ProfileScreen({navigation, route}: any) {
           <View style={styles.section}>
             {/* ── BIO SECTION ── */}
             {bio && bio.trim() ? (
-              <Card variant="default" style={styles.viewSectionCard}>
+              <View style={styles.viewSectionContainer}>
                 <Text style={styles.viewSectionTitle}>About Me</Text>
                 <Text style={styles.viewBioText}>{bio}</Text>
-              </Card>
+              </View>
             ) : null}
 
             {/* ── BASIC DETAILS ── */}
-            <Card variant="outlined" style={styles.viewSectionCard}>
-              <Text style={styles.viewSectionTitle}>Basic Details</Text>
-              <View style={styles.detailItemRow}>
-                <Text style={styles.detailLabel}>🎭 Role</Text>
-                <Text style={styles.detailValue}>{role}</Text>
-              </View>
-              <View style={styles.detailDivider} />
-              {location ? (
-                <>
-                  <View style={styles.detailItemRow}>
-                    <Text style={styles.detailLabel}>📍 Location</Text>
-                    <Text style={styles.detailValue}>{location}</Text>
-                  </View>
-                  <View style={styles.detailDivider} />
-                </>
-              ) : null}
-              {phone ? (
+            {phone ? (
+              <View style={styles.viewSectionContainer}>
+                <Text style={styles.viewSectionTitle}>Basic Details</Text>
                 <View style={styles.detailItemRow}>
                   <Text style={styles.detailLabel}>📱 Phone</Text>
                   <Text style={styles.detailValue}>{phone}</Text>
                 </View>
-              ) : null}
-            </Card>
+              </View>
+            ) : null}
 
             {/* ── CASTING PROFILE ── */}
             {availabilityStatus ||
@@ -945,7 +953,7 @@ export default function ProfileScreen({navigation, route}: any) {
             ageRange ||
             height ||
             bodyType ? (
-              <Card variant="default" style={styles.viewSectionCard}>
+              <View style={styles.viewSectionContainer}>
                 <Text style={styles.viewSectionTitle}>
                   Casting & Physical Stats
                 </Text>
@@ -1040,13 +1048,24 @@ export default function ProfileScreen({navigation, route}: any) {
                     ) : null}
                   </View>
                 ) : null}
-              </Card>
+              </View>
             ) : null}
 
             {/* ── PORTFOLIO PHOTOS ── */}
             {portfolioPhotos.length > 0 ? (
-              <Card variant="outlined" style={styles.viewSectionCard}>
-                <Text style={styles.viewSectionTitle}>Featured Photos</Text>
+              <View style={styles.viewSectionContainer}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.viewSectionTitle}>Featured Photos</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (portfolioPhotos.length > 0) {
+                        setGalleryIndex(0);
+                        setGalleryVisible(true);
+                      }
+                    }}>
+                    <Text style={styles.viewAllText}>View all</Text>
+                  </TouchableOpacity>
+                </View>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1060,18 +1079,30 @@ export default function ProfileScreen({navigation, route}: any) {
                     </View>
                   ))}
                 </ScrollView>
-              </Card>
+              </View>
             ) : null}
 
             {/* ── PORTFOLIO GALLERY ── */}
             {portfolioMedia.length > 0 ? (
-              <Card variant="default" style={styles.viewSectionCard}>
-                <Text style={styles.viewSectionTitle}>Portfolio Gallery</Text>
-                <View style={styles.mediaGrid}>
+              <View style={styles.viewSectionContainer}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.viewSectionTitle}>Portfolio Gallery</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setGalleryIndex(0);
+                      setGalleryVisible(true);
+                    }}>
+                    <Text style={styles.viewAllText}>View all</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.photoRow}>
                   {portfolioMedia.map((url, i) => (
                     <TouchableOpacity
                       key={i}
-                      style={styles.mediaCell}
+                      style={styles.photoBox}
                       onPress={() => {
                         setGalleryIndex(i);
                         setGalleryVisible(true);
@@ -1079,18 +1110,17 @@ export default function ProfileScreen({navigation, route}: any) {
                       activeOpacity={0.85}>
                       <Image
                         source={{uri: url}}
-                        style={styles.mediaCellImg}
-                        resizeMode="cover"
+                        style={styles.portfolioPhoto}
                       />
                     </TouchableOpacity>
                   ))}
-                </View>
-              </Card>
+                </ScrollView>
+              </View>
             ) : null}
 
             {/* ── VIDEO & LINKS ── */}
             {introVideoLink || portfolio1 || portfolio2 || portfolio3 ? (
-              <Card variant="outlined" style={styles.viewSectionCard}>
+              <View style={styles.viewSectionContainer}>
                 <Text style={styles.viewSectionTitle}>Videos & Work Links</Text>
 
                 {introVideoLink ? (
@@ -1146,89 +1176,176 @@ export default function ProfileScreen({navigation, route}: any) {
                     </Text>
                   </TouchableOpacity>
                 ) : null}
-              </Card>
+              </View>
             ) : null}
 
             {/* ── MENU ── */}
             <View
               style={[styles.menuSection, {marginBottom: insets.bottom + 60}]}>
+              
+              {/* App Settings Section */}
+              <Text style={styles.sectionHeader}>App Settings</Text>
               {[
                 {
                   icon: '🎬',
                   label: 'My Applications',
+                  desc: 'Track your audition and job applications',
                   screen: 'MyApplications',
                 },
-                ...(isApprovedDirector || isAdmin
-                  ? [
-                      {
-                        icon: '📋',
-                        label: 'Post Audition',
-                        screen: 'PostAudition',
-                      },
-                      {
-                        icon: '📊',
-                        label: 'Dashboard',
-                        screen: 'DirectorDashboard',
-                      },
-                    ]
-                  : []),
-                ...(isAdmin
-                  ? [
-                      {
-                        icon: '📢',
-                        label: 'Announcements',
-                        screen: 'Announcements',
-                      },
-                      {
-                        icon: '🏆',
-                        label: 'Post Contest',
-                        screen: 'PostContest',
-                      },
-                    ]
-                  : []),
-                {icon: '🎥', label: 'My Films', screen: 'MyFilms'},
-                {icon: '🏆', label: 'My Contests', screen: 'MyContests'},
+                {
+                  icon: '🎥',
+                  label: 'My Films',
+                  desc: 'Manage your uploaded short films',
+                  screen: 'MyFilms',
+                },
+                {
+                  icon: '🏆',
+                  label: 'My Contests',
+                  desc: 'View your contest participations',
+                  screen: 'MyContests',
+                },
                 {
                   icon: '💾',
                   label: 'Saved Auditions',
+                  desc: 'Your bookmarked casting calls',
                   screen: 'SavedAuditions',
                 },
-                {icon: '🎓', label: 'Industry Guide', screen: 'IndustryGuide'},
-                {icon: '⚙️', label: 'Settings', screen: 'Settings'},
+                {
+                  icon: '🎓',
+                  label: 'Industry Guide',
+                  desc: 'Learn and grow in the industry',
+                  screen: 'IndustryGuide',
+                },
+                {
+                  icon: '⚙️',
+                  label: 'Settings',
+                  desc: 'Preferences, theme, and security',
+                  screen: 'Settings',
+                },
               ].map(item => (
                 <TouchableOpacity
                   key={item.screen}
-                  style={styles.menuCard}
+                  style={styles.menuRow}
                   onPress={() => navigation.navigate(item.screen as any)}>
-                  <Text style={styles.menuEmoji}>{item.icon}</Text>
-                  <Text style={styles.menuText}>{item.label}</Text>
+                  <View style={styles.menuIconContainer}>
+                    <Text style={styles.menuEmoji}>{item.icon}</Text>
+                  </View>
+                  <View style={styles.menuTextContainer}>
+                    <Text style={styles.menuLabel}>{item.label}</Text>
+                    <Text style={styles.menuDesc}>{item.desc}</Text>
+                  </View>
                   <Text style={styles.menuArrow}>›</Text>
                 </TouchableOpacity>
               ))}
 
-              {!isApprovedDirector && (
-                <TouchableOpacity
-                  style={styles.directorCard}
-                  onPress={() => navigation.navigate('CastingRequest')}>
-                  <Text style={styles.menuEmoji}>🎬</Text>
-                  <Text style={styles.directorMenuText}>
-                    Become a Casting Director →
+              {/* Creator & Admin Panel Section */}
+              {(isAdmin || isApprovedDirector || !isApprovedDirector) && (
+                <>
+                  <Text style={[styles.sectionHeader, {marginTop: Spacing.xl}]}>
+                    Account & Support
                   </Text>
-                </TouchableOpacity>
+
+                  {/* Become Casting Director */}
+                  {!isApprovedDirector && (
+                    <TouchableOpacity
+                      style={styles.menuRow}
+                      onPress={() => navigation.navigate('CastingRequest')}>
+                      <View style={styles.menuIconContainer}>
+                        <Text style={styles.menuEmoji}>💼</Text>
+                      </View>
+                      <View style={styles.menuTextContainer}>
+                        <Text style={styles.menuLabel}>Become a Casting Director</Text>
+                        <Text style={styles.menuDesc}>Apply to post casting calls</Text>
+                      </View>
+                      <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Post Audition */}
+                  {(isApprovedDirector || isAdmin) && (
+                    <TouchableOpacity
+                      style={styles.menuRow}
+                      onPress={() => navigation.navigate('PostAudition')}>
+                      <View style={styles.menuIconContainer}>
+                        <Text style={styles.menuEmoji}>📋</Text>
+                      </View>
+                      <View style={styles.menuTextContainer}>
+                        <Text style={styles.menuLabel}>Post Audition</Text>
+                        <Text style={styles.menuDesc}>Create a new casting call</Text>
+                      </View>
+                      <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Dashboard */}
+                  {(isApprovedDirector || isAdmin) && (
+                    <TouchableOpacity
+                      style={styles.menuRow}
+                      onPress={() => navigation.navigate('DirectorDashboard')}>
+                      <View style={styles.menuIconContainer}>
+                        <Text style={styles.menuEmoji}>📊</Text>
+                      </View>
+                      <View style={styles.menuTextContainer}>
+                        <Text style={styles.menuLabel}>Dashboard</Text>
+                        <Text style={styles.menuDesc}>View applicant analytics</Text>
+                      </View>
+                      <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Announcements */}
+                  {isAdmin && (
+                    <TouchableOpacity
+                      style={styles.menuRow}
+                      onPress={() => navigation.navigate('Announcements')}>
+                      <View style={styles.menuIconContainer}>
+                        <Text style={styles.menuEmoji}>📢</Text>
+                      </View>
+                      <View style={styles.menuTextContainer}>
+                        <Text style={styles.menuLabel}>Announcements</Text>
+                        <Text style={styles.menuDesc}>Publish system announcements</Text>
+                      </View>
+                      <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Post Contest */}
+                  {isAdmin && (
+                    <TouchableOpacity
+                      style={styles.menuRow}
+                      onPress={() => navigation.navigate('PostContest')}>
+                      <View style={styles.menuIconContainer}>
+                        <Text style={styles.menuEmoji}>🏆</Text>
+                      </View>
+                      <View style={styles.menuTextContainer}>
+                        <Text style={styles.menuLabel}>Post Contest</Text>
+                        <Text style={styles.menuDesc}>Create a new talent contest</Text>
+                      </View>
+                      <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Admin Dashboard */}
+                  {isAdmin && (
+                    <TouchableOpacity
+                      style={styles.menuRow}
+                      onPress={() => navigation.navigate('AdminReports')}>
+                      <View style={styles.menuIconContainer}>
+                        <Text style={styles.menuEmoji}>🛡️</Text>
+                      </View>
+                      <View style={styles.menuTextContainer}>
+                        <Text style={styles.menuLabel}>Admin Dashboard</Text>
+                        <Text style={styles.menuDesc}>System administration controls</Text>
+                      </View>
+                      <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
 
-              {isAdmin && (
-                <TouchableOpacity
-                  style={styles.adminCard}
-                  onPress={() => navigation.navigate('AdminReports')}>
-                  <Text style={styles.menuEmoji}>🛡️</Text>
-                  <Text style={styles.adminCardText}>Admin Dashboard</Text>
-                  <Text style={styles.menuArrow}>›</Text>
-                </TouchableOpacity>
-              )}
-
+              {/* Logout Button */}
               <TouchableOpacity
-                style={styles.logoutCard}
+                style={styles.logoutBtn}
                 onPress={() => {
                   Alert.alert('Logout', 'Are you sure you want to logout?', [
                     {text: 'Cancel', style: 'cancel'},
@@ -1239,7 +1356,7 @@ export default function ProfileScreen({navigation, route}: any) {
                     },
                   ]);
                 }}>
-                <Text style={styles.logoutText}>🚪 Logout</Text>
+                <Text style={styles.logoutBtnText}>Logout</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1267,8 +1384,8 @@ const styles = StyleSheet.create({
 
   avatarSection: {
     alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.sm,
   },
   avatarWrapper: {position: 'relative', marginBottom: Spacing.md},
   editBadge: {
@@ -1313,10 +1430,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.lg,
-    marginHorizontal: Spacing.screenH,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.xs,
+    paddingVertical: Spacing.md + 2,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   statItem: {alignItems: 'center', flex: 1},
   statDivider: {width: 1, height: 36, backgroundColor: Colors.border},
@@ -1349,7 +1465,7 @@ const styles = StyleSheet.create({
 
   photoRow: {flexDirection: 'row', marginBottom: Spacing.sm},
   photoBox: {marginRight: Spacing.md, position: 'relative'},
-  portfolioPhoto: {width: 100, height: 100, borderRadius: Radius.md},
+  portfolioPhoto: {width: 80, height: 110, borderRadius: Radius.md},
   removeBtn: {
     position: 'absolute',
     top: -6,
@@ -1363,8 +1479,8 @@ const styles = StyleSheet.create({
   },
   removeBtnText: {...Typography.captionBold, color: '#FFFFFF'},
   addPhotoBtn: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 110,
     borderRadius: Radius.md,
     backgroundColor: Colors.card,
     borderWidth: 1,
@@ -1400,62 +1516,110 @@ const styles = StyleSheet.create({
   verifyBtnText: {...Typography.btn, color: Colors.primary},
   saveBtn: {marginTop: Spacing.lg},
 
-  menuSection: {marginTop: Spacing['3xl'], marginBottom: 60},
-  menuCard: {
+  profileHeaderCard: {
+    marginHorizontal: Spacing.screenH,
+    marginTop: Spacing.md,
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
     borderColor: Colors.border,
-  },
-  menuEmoji: {fontSize: 22, marginRight: Spacing.lg},
-  menuText: {...Typography.bodyLg, color: Colors.textPrimary, flex: 1},
-  menuArrow: {color: Colors.primary, fontSize: 22, fontWeight: 'bold'},
-  logoutCard: {
-    backgroundColor: Colors.errorFaint,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
     borderWidth: 1,
-    borderColor: Colors.errorBorder,
+    borderRadius: Radius.card,
+    padding: Spacing.md,
   },
-  logoutText: {...Typography.bodyLg, color: Colors.error, fontWeight: 'bold'},
-  directorCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    borderStyle: 'dashed',
+  profileHeaderCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
   },
-  directorMenuText: {
-    ...Typography.bodyLg,
-    color: Colors.primary,
-    fontWeight: 'bold',
+  avatarContainer: {
+    marginRight: Spacing.md,
+  },
+  profileHeaderInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
-  adminCard: {
+  nameRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: 4,
+  },
+  profileHeaderName: {
+    ...Typography.label,
+    fontSize: 18,
+    color: Colors.textPrimary,
+  },
+  profileHeaderSubtitle: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  profileHeaderEditBtn: {
+    padding: Spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileHeaderEditIcon: {
+    fontSize: 20,
+    color: Colors.textSecondary,
+  },
+  sectionHeader: {
+    fontFamily: 'Poppins-SemiBold',
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    fontSize: 16,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xs,
+    marginHorizontal: Spacing.screenH,
+  },
+  menuSection: {marginTop: Spacing.md, marginBottom: 30},
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginHorizontal: Spacing.screenH,
+  },
+  menuIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.primaryFaint,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primary,
+    marginRight: Spacing.md,
   },
-  adminCardText: {
-    ...Typography.bodyLg,
-    color: Colors.primary,
-    fontWeight: 'bold',
+  menuEmoji: {
+    fontSize: 20,
+  },
+  menuTextContainer: {
     flex: 1,
+  },
+  menuLabel: {
+    ...Typography.label,
+    fontSize: 15,
+    color: Colors.textPrimary,
+  },
+  menuDesc: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    fontSize: 12,
+    marginTop: 1,
+  },
+  menuArrow: {
+    color: Colors.textTertiary,
+    fontSize: 18,
+  },
+  logoutBtn: {
+    backgroundColor: Colors.error,
+    borderRadius: Radius.button,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.xl,
+    marginHorizontal: Spacing.screenH,
+  },
+  logoutBtnText: {
+    ...Typography.label,
+    fontSize: 16,
+    color: '#FAFAFA',
   },
 
   // ── Portfolio Gallery ─────────────────────────────────────
@@ -1466,7 +1630,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     marginBottom: Spacing.lg,
   },
-  mediaCell: {width: CELL_SIZE, height: CELL_SIZE},
+  mediaCell: {width: 80, height: 110, borderRadius: Radius.md, overflow: 'hidden'},
   mediaCellImg: {width: '100%', height: '100%'},
   mediaCellAdd: {
     backgroundColor: Colors.card,
@@ -1532,14 +1696,112 @@ const styles = StyleSheet.create({
   },
   viewSectionCard: {
     marginHorizontal: Spacing.screenH,
-    marginTop: Spacing.lg,
-    padding: Spacing.lg,
+    marginTop: Spacing.md + 4,
+    padding: Spacing.md + 4,
+  },
+  viewSectionContainer: {
+    marginHorizontal: Spacing.screenH,
+    marginTop: Spacing.md + 4,
+    paddingVertical: Spacing.md,
+  },
+  centeredHeader: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.screenH,
+  },
+  centeredAvatarContainer: {
+    position: 'relative',
+    marginBottom: Spacing.sm,
+  },
+  verifiedBadgeOverlap: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: Colors.success,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verifiedBadgeOverlapText: {
+    color: '#FAFAFA',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  centeredNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
+  centeredName: {
+    ...Typography.h3,
+    color: Colors.textPrimary,
+  },
+  centeredRole: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  centeredLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: Spacing.md,
+  },
+  centeredLocationIcon: {
+    fontSize: 14,
+  },
+  centeredLocationText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  centeredStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    width: '100%',
+    marginTop: Spacing.sm,
+    paddingVertical: Spacing.md,
+  },
+  centeredStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  centeredStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: Colors.borderLight,
+  },
+  centeredStatNum: {
+    ...Typography.h3,
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  centeredStatLbl: {
+    ...Typography.micro,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  viewAllText: {
+    ...Typography.captionBold,
+    color: Colors.primary,
   },
   viewSectionTitle: {
     ...Typography.label,
     color: Colors.primary,
     fontSize: 16,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   viewBioText: {
     ...Typography.body,
@@ -1563,8 +1825,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   detailDivider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
+    height: 0,
     marginVertical: Spacing.xs,
   },
   availabilityViewRow: {
@@ -1667,6 +1928,44 @@ const styles = StyleSheet.create({
   },
   workLinkBtnText: {
     ...Typography.body,
+    color: Colors.textPrimary,
+  },
+  profileActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    width: '100%',
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  profileEditBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.cardElevated,
+  },
+  profileEditBtnText: {
+    ...Typography.bodySm,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  profileIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.cardElevated,
+  },
+  profileIconBtnText: {
+    fontSize: 16,
     color: Colors.textPrimary,
   },
 });

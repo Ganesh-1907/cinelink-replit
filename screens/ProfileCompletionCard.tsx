@@ -112,7 +112,7 @@ export default function ProfileCompletionCard({
 
   if (percent === 100) {
     return (
-      <Card variant="outlined" padding={Spacing.xxl}>
+      <View style={styles.completeContainer}>
         <View style={styles.completeInner}>
           <Text style={styles.completeEmoji}>🌟</Text>
           <Text style={styles.completeTitle}>Profile Complete!</Text>
@@ -120,14 +120,14 @@ export default function ProfileCompletionCard({
             You're fully set up to get discovered
           </Text>
         </View>
-      </Card>
+      </View>
     );
   }
 
   const barColor = getColor();
 
   return (
-    <Card variant="default" padding={Spacing.lg}>
+    <View style={styles.completionContainer}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerText}>
@@ -196,11 +196,18 @@ export default function ProfileCompletionCard({
             </View>
           ))}
       </View>
-    </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  completeContainer: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+  },
+  completionContainer: {
+    paddingVertical: Spacing.md,
+  },
   completeInner: {
     alignItems: 'center',
     paddingVertical: Spacing.sm,
@@ -220,7 +227,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   headerText: {flex: 1, marginRight: Spacing.sm},
   title: {
@@ -268,7 +275,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.borderLight,
     borderRadius: Radius.md,
-    padding: Spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.md,
     gap: Spacing.sm,
   },
   itemEmoji: {fontSize: 18},

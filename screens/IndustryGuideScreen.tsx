@@ -1,14 +1,15 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Colors, Typography, Spacing, Radius} from '../src/theme';
-import {Header, Card} from '../components/ui';
+import {Colors, Typography, Spacing, Radius, rs} from '../src/theme';
+import {Header} from '../components/ui';
 import {useTheme} from '../src/context/ThemeContext';
 
 const ROLES = [
@@ -301,6 +302,11 @@ export default function IndustryGuideScreen({navigation}: any) {
   const {isDark} = useTheme();
   const [activeRole, setActiveRole] = useState('actor');
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({y: 0, animated: false});
+  }, [activeRole]);
 
   const guide = GUIDE[activeRole] || [];
   const activeRoleData = ROLES.find(r => r.key === activeRole);
@@ -308,13 +314,28 @@ export default function IndustryGuideScreen({navigation}: any) {
     ? getRoleColor(activeRoleData.key, isDark)
     : Colors.primary;
 
+  const handleInsightsPress = () => {
+    Alert.alert(
+      "📊 Industry Insights",
+      "Unlock CineLink Premium to access exclusive industry insights, detailed role statistics, trend reports, and casting director tips.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Go Premium ✦", onPress: () => navigation.navigate('PremiumCineLink') }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Header
         title="🎬 Industry Guide"
         navigation={navigation}
         noBorder
-        right={<Text style={styles.headerSub}>Insights</Text>}
+        right={
+          <TouchableOpacity onPress={handleInsightsPress} activeOpacity={0.7}>
+            <Text style={styles.headerSub}>Insights</Text>
+          </TouchableOpacity>
+        }
       />
 
       {/* ROLE TABS */}
@@ -351,16 +372,14 @@ export default function IndustryGuideScreen({navigation}: any) {
       </ScrollView>
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
           {paddingBottom: insets.bottom + Spacing.xxl},
         ]}>
         {/* ROLE BANNER */}
-        <Card
-          variant="elevated"
-          padding={Spacing.lg}
-          style={[styles.roleBanner, {borderColor: `${activeRoleColor}44`}]}>
+        <View style={styles.roleBanner}>
           <Text style={styles.roleBannerTitle}>
             Guide for {activeRoleData?.label}
           </Text>
@@ -368,21 +387,17 @@ export default function IndustryGuideScreen({navigation}: any) {
             {guide.length} topics ·{' '}
             {guide.reduce((a, b) => a + b.tips.length, 0)} professional tips
           </Text>
-        </Card>
+        </View>
 
-        {/* ACCORDION CARDS */}
+        {/* ACCORDION ITEMS */}
         {guide.map((section, index) => (
-          <Card
-            key={index}
-            variant="default"
-            padding={false}
-            style={styles.card}>
+          <View key={index} style={styles.accordionItem}>
             <TouchableOpacity
               style={styles.cardHeader}
               onPress={() =>
                 setExpandedIndex(expandedIndex === index ? null : index)
               }
-              activeOpacity={0.8}>
+              activeOpacity={0.7}>
               <View style={styles.cardHeaderLeft}>
                 <Text style={styles.cardIcon}>{section.icon}</Text>
                 <Text style={styles.cardTitle}>{section.title}</Text>
@@ -409,15 +424,15 @@ export default function IndustryGuideScreen({navigation}: any) {
                 ))}
               </View>
             )}
-          </Card>
+          </View>
         ))}
 
-        <Card variant="outlined" padding={Spacing.lg} style={styles.bottomNote}>
+        <View style={styles.bottomNote}>
           <Text style={styles.bottomNoteText}>
             💡 These insights are curated from industry professionals and film
             veterans across India's cinema industry.
           </Text>
-        </Card>
+        </View>
       </ScrollView>
     </View>
   );
@@ -428,51 +443,60 @@ const styles = StyleSheet.create({
   headerSub: {...Typography.caption, color: Colors.primary},
   tabScroll: {
     flexGrow: 0,
+    backgroundColor: Colors.background,
+    zIndex: 10,
   },
   tabContent: {
     paddingHorizontal: Spacing.screenH,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     gap: Spacing.sm,
     flexDirection: 'row',
   },
   roleTab: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.card,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
     flexShrink: 0,
   },
   roleTabText: {
-    ...Typography.btnSm,
+    fontFamily: 'Inter-SemiBold',
+    fontSize: rs(12),
+    fontWeight: '600',
     color: Colors.textSecondary,
-    lineHeight: 24,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   content: {
     paddingHorizontal: Spacing.screenH,
-    paddingTop: Spacing.md,
-    gap: Spacing.lg,
+    paddingTop: Spacing.lg,
+    gap: 0,
   },
   roleBanner: {
-    borderWidth: 1,
+    paddingBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
-  roleBannerTitle: {...Typography.h3},
+  roleBannerTitle: {
+    ...Typography.h4,
+  },
   roleBannerSub: {
-    ...Typography.body,
+    ...Typography.bodySm,
     color: Colors.textSecondary,
     marginTop: Spacing.xs,
   },
-  card: {
-    overflow: 'hidden',
+  accordionItem: {
+    paddingVertical: Spacing.xs,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: Spacing.lg,
+    paddingVertical: Spacing.sm,
   },
   cardHeaderLeft: {
     flexDirection: 'row',
@@ -480,24 +504,51 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     flex: 1,
   },
-  cardIcon: {fontSize: 22},
-  cardTitle: {...Typography.h4, flex: 1},
-  expandIcon: {...Typography.captionBold, fontSize: 12},
-  tipsContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: Spacing.md,
-    gap: Spacing.md,
+  cardIcon: {fontSize: 20},
+  cardTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: rs(15),
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    flex: 1,
   },
-  tipRow: {flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start'},
-  tipDot: {width: 6, height: 6, borderRadius: 3, marginTop: 7, flexShrink: 0},
-  tipText: {...Typography.body, color: Colors.textSecondary, flex: 1},
-  bottomNote: {marginTop: Spacing.sm},
-  bottomNoteText: {
+  expandIcon: {
+    ...Typography.captionBold,
+    fontSize: 12,
+  },
+  tipsContainer: {
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
+    paddingLeft: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    alignItems: 'flex-start',
+  },
+  tipDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 7,
+    flexShrink: 0,
+  },
+  tipText: {
     ...Typography.bodySm,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    flex: 1,
+    lineHeight: 18,
   },
+  bottomNote: {
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  bottomNoteText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+
 });

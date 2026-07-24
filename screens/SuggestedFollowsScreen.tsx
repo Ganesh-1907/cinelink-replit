@@ -57,7 +57,7 @@ export default function SuggestedFollowsScreen({navigation}: any) {
             const isFollowed = following.has(uid);
             return (
               <View style={styles.userRow}>
-                <Avatar name={item.fullName || item.displayName || 'User'} size="md" source={item.photoUrl ? {uri: item.photoUrl} : undefined} />
+                <Avatar name={item.fullName || item.displayName || 'User'} size="md" uri={item.photoUrl} />
                 <View style={styles.userInfo}><Text style={styles.name}>{item.fullName || item.displayName || 'User'}</Text><Text style={styles.role}>{item.role || 'Artist'}</Text></View>
                 <Button label={isFollowed ? 'Following' : '+ Follow'} variant={isFollowed ? 'secondary' : 'primary'} size="sm" onPress={() => toggleFollow(uid)} />
               </View>
@@ -72,7 +72,7 @@ export default function SuggestedFollowsScreen({navigation}: any) {
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: Colors.background},
   list: {padding: Spacing.lg},
-  userRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, gap: Spacing.md, borderBottomWidth: 0.5, borderBottomColor: Colors.border},
+  userRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm, gap: Spacing.md, borderBottomWidth: 0.5, borderBottomColor: Colors.border},
   userInfo: {flex: 1},
   name: {color: Colors.textPrimary, fontWeight: '600', fontSize: 15},
   role: {color: Colors.textSecondary, fontSize: 13},

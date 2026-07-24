@@ -128,9 +128,9 @@ export default function AdminReportsScreen({navigation}: any) {
             </View>
             <View style={styles.actions}>
               {u.banned ? (
-                <Button label="✅ Unban" variant="success" size="sm" style={{flex: 1}} onPress={() => toggleBan(u._id || u.id, true).then(fetchData)} />
+                <Button label="✅ Unban" variant="success" size="sm" style={{flex: 1}} onPress={() => toggleBan(u._id || u.id).then(fetchData)} />
               ) : (
-                <Button label="🚫 Ban" variant="danger" size="sm" style={{flex: 1}} onPress={() => toggleBan(u._id || u.id, false).then(fetchData)} />
+                <Button label="🚫 Ban" variant="danger" size="sm" style={{flex: 1}} onPress={() => toggleBan(u._id || u.id).then(fetchData)} />
               )}
               {!u.isApprovedDirector && (
                 <Button label="🎬 Make Director" variant="primary" size="sm" style={{flex: 1}} onPress={async () => {

@@ -24,29 +24,29 @@ export type ColorPalette = {
 };
 
 export const darkColors: ColorPalette = {
-  background: '#090A0C', surface: '#111216', card: '#16171D',
-  cardElevated: '#1E2028', cardHigher: '#262933', inputBg: '#111216',
-  overlay: 'rgba(0,0,0,0.75)', border: '#1E2028', borderLight: '#262933', borderFocus: '#CF9F5A',
-  primary: '#CF9F5A', primaryLight: '#E8CEAA', primaryDark: '#9C6E35',
-  primaryFaint: 'rgba(207,159,90,0.10)', primaryGlow: 'rgba(207,159,90,0.18)', primaryMid: 'rgba(207,159,90,0.30)',
-  textPrimary: '#F7F8FA', textSecondary: '#9AA2AC', textTertiary: '#5C646E', textInverse: '#090A0C',
-  success: '#34D399', successFaint: 'rgba(52,211,153,0.10)', successBorder: 'rgba(52,211,153,0.30)',
-  error: '#F87171', errorFaint: 'rgba(248,113,113,0.10)', errorBorder: 'rgba(248,113,113,0.30)',
-  warning: '#FBBF24', warningFaint: 'rgba(251,191,36,0.10)', warningBorder: 'rgba(251,191,36,0.30)',
-  info: '#60A5FA', infoFaint: 'rgba(96,165,250,0.12)', infoBorder: 'rgba(96,165,250,0.30)',
+  background: '#09090B', surface: '#111113', card: '#18181B',
+  cardElevated: '#232326', cardHigher: '#2E2E32', inputBg: '#111113',
+  overlay: 'rgba(0,0,0,0.75)', border: '#2E2E32', borderLight: '#232326', borderFocus: '#F5C451',
+  primary: '#F5C451', primaryLight: '#FFE08A', primaryDark: '#E8B43D',
+  primaryFaint: 'rgba(245,196,81,0.10)', primaryGlow: 'rgba(245,196,81,0.18)', primaryMid: 'rgba(245,196,81,0.30)',
+  textPrimary: '#FAFAFA', textSecondary: '#A1A1AA', textTertiary: '#717178', textInverse: '#09090B',
+  success: '#22C55E', successFaint: 'rgba(34,197,94,0.10)', successBorder: 'rgba(34,197,94,0.30)',
+  error: '#E63946', errorFaint: 'rgba(230,57,70,0.10)', errorBorder: 'rgba(230,57,70,0.30)',
+  warning: '#F59E0B', warningFaint: 'rgba(245,158,11,0.10)', warningBorder: 'rgba(245,158,11,0.30)',
+  info: '#3B82F6', infoFaint: 'rgba(59,130,246,0.12)', infoBorder: 'rgba(59,130,246,0.30)',
 };
 
 export const lightColors: ColorPalette = {
-  background: '#FFFFFF', surface: '#FAFAFA', card: '#FFFFFF',
-  cardElevated: '#F8F9FA', cardHigher: '#F1F3F5', inputBg: '#F8F9FA',
-  overlay: 'rgba(0,0,0,0.4)', border: '#EBECEF', borderLight: '#F4F5F7', borderFocus: '#CF9F5A',
-  primary: '#CF9F5A', primaryLight: '#E8CEAA', primaryDark: '#9C6E35',
-  primaryFaint: 'rgba(207,159,90,0.12)', primaryGlow: 'rgba(207,159,90,0.15)', primaryMid: 'rgba(207,159,90,0.25)',
-  textPrimary: '#1A1C1E', textSecondary: '#5A626A', textTertiary: '#8A949E', textInverse: '#FFFFFF',
-  success: '#10B981', successFaint: 'rgba(16,185,129,0.08)', successBorder: 'rgba(16,185,129,0.25)',
-  error: '#EF4444', errorFaint: 'rgba(239,68,68,0.08)', errorBorder: 'rgba(239,68,68,0.25)',
+  background: '#F8F8F6', surface: '#F2F2EF', card: '#FFFFFF',
+  cardElevated: '#FAFAFA', cardHigher: '#E6E6E6', inputBg: '#F2F2EF',
+  overlay: 'rgba(0,0,0,0.4)', border: '#E6E6E6', borderLight: '#F2F2EF', borderFocus: '#D4A017',
+  primary: '#D4A017', primaryLight: '#F5D878', primaryDark: '#B8890E',
+  primaryFaint: 'rgba(212,160,23,0.12)', primaryGlow: 'rgba(212,160,23,0.15)', primaryMid: 'rgba(212,160,23,0.25)',
+  textPrimary: '#1F1F23', textSecondary: '#6B7280', textTertiary: '#9CA3AF', textInverse: '#FFFFFF',
+  success: '#22C55E', successFaint: 'rgba(34,197,94,0.08)', successBorder: 'rgba(34,197,94,0.25)',
+  error: '#E63946', errorFaint: 'rgba(230,57,70,0.08)', errorBorder: 'rgba(230,57,70,0.25)',
   warning: '#F59E0B', warningFaint: 'rgba(245,158,11,0.08)', warningBorder: 'rgba(245,158,11,0.25)',
-  info: '#3B82F6', infoFaint: 'rgba(59,130,246,0.08)', infoBorder: 'rgba(59,130,246,0.25)',
+  info: '#2563EB', infoFaint: 'rgba(37,99,235,0.08)', infoBorder: 'rgba(37,99,235,0.25)',
 };
 
 // Mutable Colors singleton
@@ -114,21 +114,21 @@ StyleSheet.create = ((stylesObj: any) => {
 export const Typography: Record<string, TextStyle> = {};
 const __buildTypography = () => {
   Object.assign(Typography, {
-    h1:         {fontSize: rs(28), fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5} as TextStyle,
-    h2:         {fontSize: rs(22), fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3} as TextStyle,
-    h3:         {fontSize: rs(18), fontWeight: '600', color: Colors.textPrimary, letterSpacing: -0.2} as TextStyle,
-    h4:         {fontSize: rs(16), fontWeight: '600', color: Colors.textPrimary} as TextStyle,
-    bodyLg:     {fontSize: rs(16), fontWeight: '400', color: Colors.textPrimary, lineHeight: rs(24)} as TextStyle,
-    body:       {fontSize: rs(14), fontWeight: '400', color: Colors.textPrimary, lineHeight: rs(22)} as TextStyle,
-    bodySm:     {fontSize: rs(13), fontWeight: '400', color: Colors.textPrimary, lineHeight: rs(20)} as TextStyle,
-    caption:    {fontSize: rs(12), fontWeight: '400', color: Colors.textSecondary} as TextStyle,
-    captionBold:{fontSize: rs(12), fontWeight: '600', color: Colors.textSecondary} as TextStyle,
-    micro:      {fontSize: rs(10), fontWeight: '500', color: Colors.textTertiary, letterSpacing: 0.5} as TextStyle,
-    label:      {fontSize: rs(13), fontWeight: '600', color: Colors.textPrimary} as TextStyle,
-    labelSm:    {fontSize: rs(11), fontWeight: '600', color: Colors.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase'} as TextStyle,
-    btnLg:      {fontSize: rs(16), fontWeight: '700'} as TextStyle,
-    btn:        {fontSize: rs(14), fontWeight: '600'} as TextStyle,
-    btnSm:      {fontSize: rs(13), fontWeight: '600'} as TextStyle,
+    h1:         {fontFamily: 'Poppins-SemiBold', fontSize: rs(34), fontWeight: '600', color: Colors.textPrimary, letterSpacing: -0.5} as TextStyle,
+    h2:         {fontFamily: 'Poppins-SemiBold', fontSize: rs(28), fontWeight: '600', color: Colors.textPrimary, letterSpacing: -0.3} as TextStyle,
+    h3:         {fontFamily: 'Poppins-SemiBold', fontSize: rs(24), fontWeight: '600', color: Colors.textPrimary, letterSpacing: -0.2} as TextStyle,
+    h4:         {fontFamily: 'Poppins-SemiBold', fontSize: rs(20), fontWeight: '600', color: Colors.textPrimary} as TextStyle,
+    bodyLg:     {fontFamily: 'Inter-Regular', fontSize: rs(18), fontWeight: '400', color: Colors.textPrimary, lineHeight: rs(26)} as TextStyle,
+    body:       {fontFamily: 'Inter-Regular', fontSize: rs(16), fontWeight: '400', color: Colors.textPrimary, lineHeight: rs(24)} as TextStyle,
+    bodySm:     {fontFamily: 'Inter-Regular', fontSize: rs(14), fontWeight: '400', color: Colors.textPrimary, lineHeight: rs(22)} as TextStyle,
+    caption:    {fontFamily: 'Inter-Regular', fontSize: rs(12), fontWeight: '400', color: Colors.textSecondary} as TextStyle,
+    captionBold:{fontFamily: 'Inter-SemiBold', fontSize: rs(12), fontWeight: '600', color: Colors.textSecondary} as TextStyle,
+    micro:      {fontFamily: 'Inter-Regular', fontSize: rs(10), fontWeight: '500', color: Colors.textTertiary, letterSpacing: 0.5} as TextStyle,
+    label:      {fontFamily: 'Inter-SemiBold', fontSize: rs(14), fontWeight: '600', color: Colors.textPrimary} as TextStyle,
+    labelSm:    {fontFamily: 'Inter-SemiBold', fontSize: rs(12), fontWeight: '600', color: Colors.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase'} as TextStyle,
+    btnLg:      {fontFamily: 'Inter-SemiBold', fontSize: rs(16), fontWeight: '600'} as TextStyle,
+    btn:        {fontFamily: 'Inter-SemiBold', fontSize: rs(14), fontWeight: '600'} as TextStyle,
+    btnSm:      {fontFamily: 'Inter-SemiBold', fontSize: rs(12), fontWeight: '600'} as TextStyle,
   });
 };
 __buildTypography();
@@ -142,25 +142,25 @@ export function applyColors(palette: ColorPalette) {
 
 // ─── Category colors ───────────────────────────────────────────────────────────
 const categoryColorsDark: Record<string, {bg: string; text: string; border: string}> = {
-  Movies:        {bg: 'rgba(201,149,108,0.15)', text: '#C9956C', border: 'rgba(201,149,108,0.5)'},
-  'Short Films': {bg: 'rgba(74,222,128,0.10)', text: '#4ADE80', border: 'rgba(74,222,128,0.4)'},
-  Theatre:       {bg: 'rgba(129,140,248,0.10)', text: '#818CF8', border: 'rgba(129,140,248,0.4)'},
-  'YouTube/Web': {bg: 'rgba(248,113,113,0.10)', text: '#F87171', border: 'rgba(248,113,113,0.4)'},
-  'TV/OTT':      {bg: 'rgba(251,191,36,0.10)', text: '#FBBF24', border: 'rgba(251,191,36,0.4)'},
+  Movies:        {bg: 'rgba(245,196,81,0.15)', text: '#F5C451', border: 'rgba(245,196,81,0.5)'},
+  'Short Films': {bg: 'rgba(34,197,94,0.10)',  text: '#22C55E', border: 'rgba(34,197,94,0.4)'},
+  Theatre:       {bg: 'rgba(59,130,246,0.10)',  text: '#3B82F6', border: 'rgba(59,130,246,0.4)'},
+  'YouTube/Web': {bg: 'rgba(230,57,70,0.10)',  text: '#E63946', border: 'rgba(230,57,70,0.4)'},
+  'TV/OTT':      {bg: 'rgba(245,158,11,0.10)',  text: '#F59E0B', border: 'rgba(245,158,11,0.4)'},
 };
 
 const categoryColorsLight: Record<string, {bg: string; text: string; border: string}> = {
-  Movies:        {bg: 'rgba(201,149,108,0.12)', text: '#A3734E', border: 'rgba(201,149,108,0.3)'},
-  'Short Films': {bg: 'rgba(22,163,74,0.08)',   text: '#16A34A', border: 'rgba(22,163,74,0.25)'},
-  Theatre:       {bg: 'rgba(79,70,229,0.08)',   text: '#4F70E5', border: 'rgba(79,70,229,0.25)'},
-  'YouTube/Web': {bg: 'rgba(220,38,38,0.08)',   text: '#DC2626', border: 'rgba(220,38,38,0.25)'},
-  'TV/OTT':      {bg: 'rgba(217,119,6,0.08)',   text: '#D97706', border: 'rgba(217,119,6,0.25)'},
+  Movies:        {bg: 'rgba(212,160,23,0.12)', text: '#D4A017', border: 'rgba(212,160,23,0.3)'},
+  'Short Films': {bg: 'rgba(34,197,94,0.08)',  text: '#22C55E', border: 'rgba(34,197,94,0.25)'},
+  Theatre:       {bg: 'rgba(37,99,235,0.08)',  text: '#2563EB', border: 'rgba(37,99,235,0.25)'},
+  'YouTube/Web': {bg: 'rgba(230,57,70,0.08)',  text: '#E63946', border: 'rgba(230,57,70,0.25)'},
+  'TV/OTT':      {bg: 'rgba(245,158,11,0.08)',  text: '#F59E0B', border: 'rgba(245,158,11,0.25)'},
 };
 
 export const categoryColors: Record<string, {bg: string; text: string; border: string}> = new Proxy({} as any, {
   get(target, prop) {
     if (typeof prop !== 'string') return undefined;
-    const isLight = Colors.background === '#FFFFFF';
+    const isLight = Colors.background === '#F8F8F6';
     const source = isLight ? categoryColorsLight : categoryColorsDark;
     const normalizedProp = prop.trim().replace(/\s*\/\s*/g, '/');
     return source[normalizedProp] || source[prop] || source['Movies'];
@@ -169,26 +169,48 @@ export const categoryColors: Record<string, {bg: string; text: string; border: s
 
 // ─── Spacing ───────────────────────────────────────────────────────────────────
 export const Spacing = {
-  xs: rs(4), sm: rs(8), md: rs(12), lg: rs(16), xl: rs(20),
-  xxl: rs(24), '3xl': rs(32), '4xl': rs(40), '5xl': rs(48),
+  xs: rs(4), sm: rs(8), md: rs(16), lg: rs(24), xl: rs(32),
+  xxl: rs(48), '3xl': rs(64), '4xl': rs(80), '5xl': rs(96),
   screenH: rs(20), screenV: rs(16),
 } as const;
 
 export const Radius = {
   xs: rs(4), sm: rs(8), md: rs(12), lg: rs(16), xl: rs(20), xxl: rs(24),
-  pill: rs(100), full: 9999,
+  button: rs(14),
+  search: rs(16),
+  card: rs(18),
+  bottomSheet: rs(28),
+  pill: rs(100),
+  full: 9999,
 } as const;
 
 export const Shadows = {
-  sm: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.04,shadowRadius:3}, android:{elevation:2}}),
-  md: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:6},shadowOpacity:0.06,shadowRadius:8}, android:{elevation:4}}),
-  lg: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:12},shadowOpacity:0.10,shadowRadius:16}, android:{elevation:8}}),
-  primary: Platform.select({ios: {shadowColor: Colors.primary, shadowOffset:{width:0,height:4},shadowOpacity:0.2,shadowRadius:10}, android:{elevation:5}}),
+  sm: Platform.select({
+    ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.04, shadowRadius: 3},
+    android: {elevation: 2}
+  }),
+  md: Platform.select({
+    ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.08, shadowRadius: 12},
+    android: {elevation: 4}
+  }),
+  lg: Platform.select({
+    ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 12}, shadowOpacity: 0.45, shadowRadius: 16},
+    android: {elevation: 8}
+  }),
+  primary: Platform.select({
+    ios: {
+      shadowColor: '#F5C451',
+      shadowOffset: {width: 0, height: 0},
+      shadowOpacity: 0.05,
+      shadowRadius: 20
+    },
+    android: {elevation: 3}
+  }),
 } as const;
 
 export const IconSize = {xs: rs(14), sm: rs(18), md: rs(22), lg: rs(26), xl: rs(32)} as const;
 export const HitSlop = {sm: {top:8,bottom:8,left:8,right:8}, md: {top:12,bottom:12,left:12,right:12}, lg: {top:16,bottom:16,left:16,right:16}} as const;
-export const Duration = {fast: 150, normal: 250, slow: 400} as const;
+export const Duration = {fast: 200, normal: 250, slow: 300} as const;
 
 export const Theme = {Colors, Typography, Spacing, Radius, Shadows, IconSize, HitSlop, Duration, screen, rs} as const;
 export default Theme;
