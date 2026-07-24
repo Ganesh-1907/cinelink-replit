@@ -28,7 +28,7 @@ export default function CrewMarketplaceScreen({navigation}: any) {
   return (
     <View style={styles.safe}>
       <Header title="🎬 Crew Marketplace" navigation={navigation} />
-      <FlatList horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} data={CRAFTS} renderItem={({item}) => <Chip label={item} selected={craftFilter === item} onPress={() => setCraftFilter(item)} />} keyExtractor={i => i} />
+      <FlatList horizontal showsHorizontalScrollIndicator={false} style={styles.filterList} contentContainerStyle={styles.filterRow} data={CRAFTS} renderItem={({item}) => <Chip label={item} selected={craftFilter === item} onPress={() => setCraftFilter(item)} />} keyExtractor={i => i} />
       {loading ? <ActivityIndicator size="large" color={Colors.primary} style={{marginTop: 60}} /> : posts.length === 0 ? (
         <EmptyState icon="🎬" title="No posts yet" actionLabel="Post a Requirement" onAction={() => navigation.navigate('PostAudition')} />
       ) : (
@@ -51,6 +51,7 @@ export default function CrewMarketplaceScreen({navigation}: any) {
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: Colors.background},
+  filterList: {flexGrow: 0, maxHeight: 50},
   filterRow: {paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md},
   list: {padding: Spacing.lg},
   card: {marginBottom: Spacing.md},

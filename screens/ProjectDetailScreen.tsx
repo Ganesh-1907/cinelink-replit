@@ -1,16 +1,16 @@
 import React, {useEffect, useState, useCallback} from 'react';
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView} from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, Chip, Badge, Avatar, EmptyState, LoadingView} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 export default function ProjectDetailScreen({route, navigation}: any) {
   const {project: paramProject, projectId: paramProjectId} = route.params;
   const projectId = paramProjectId || paramProject?._id || paramProject?.id || '';
   const [project, setProject] = useState<any>(paramProject || {});
   const [loading, setLoading] = useState(false);
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   const fetchProject = useCallback(async () => {
     if (!projectId) return;

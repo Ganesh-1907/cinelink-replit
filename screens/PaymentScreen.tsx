@@ -1,15 +1,15 @@
 import React, {useEffect, useState} from 'react';
 import {View, Text, StyleSheet, Alert, SafeAreaView, ActivityIndicator} from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
 import RazorpayCheckout from 'react-native-razorpay';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, EmptyState} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 export default function PaymentScreen({route, navigation}: any) {
   const {amount, purpose, itemId, itemTitle, contestId} = route.params;
   const [loading, setLoading] = useState(false);
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   const handlePayment = async () => {
     setLoading(true);

@@ -9,7 +9,6 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import {
   Colors,
@@ -20,6 +19,7 @@ import {
   HitSlop,
 } from '../src/theme';
 import {Button, Chip} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 const REPORT_REASONS = [
   {id: 'fake', label: 'Fake / Scam Audition', icon: '🚫'},
@@ -58,7 +58,7 @@ export default function ReportModal({
       return;
     }
 
-    const currentUser = auth().currentUser;
+    const {user: currentUser} = useApp();
     if (!currentUser) {
       return;
     }

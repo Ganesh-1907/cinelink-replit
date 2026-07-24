@@ -10,9 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
 import EngagementBar from '../components/EngagementBar';
-import {ADMIN_EMAIL} from '../src/api/config';
+import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Input, Chip, EmptyState, SkeletonCard} from '../components/ui';
@@ -21,8 +20,7 @@ const ROLES = ['All', 'Hero', 'Heroine', 'Villain', 'Supporting', 'Child Artist'
 
 export default function BrowseAuditionsScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
-  const currentUser = auth().currentUser;
-  const isAdmin = currentUser?.email === ADMIN_EMAIL;
+  const {isAdmin, user: currentUser} = useApp();
   const [auditions, setAuditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

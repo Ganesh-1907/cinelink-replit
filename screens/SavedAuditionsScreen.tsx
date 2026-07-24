@@ -11,17 +11,17 @@ import {
   RefreshControl,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, Badge} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 export default function SavedAuditionsScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
   const [savedAuditions, setSavedAuditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   useEffect(() => {
     loadSavedAuditions();
@@ -111,7 +111,7 @@ export default function SavedAuditionsScreen({navigation}: any) {
           ) : (
             savedAuditions.map((item: any) => (
               <Card
-                key={item.id}
+                key={item._id || item.id}
                 variant="default"
                 padding={Spacing.lg}
                 style={styles.card}>
@@ -162,7 +162,7 @@ export default function SavedAuditionsScreen({navigation}: any) {
                   />
                   <Button
                     label="🗑"
-                    onPress={() => unsaveAudition(item.id)}
+                    onPress={() => unsaveAudition(item._id || item.id)}
                     variant="danger"
                     size="md"
                     style={styles.removeBtn}

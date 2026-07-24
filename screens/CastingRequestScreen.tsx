@@ -11,12 +11,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import api from '../src/api/client';
 import {uploadImage} from '../src/services/uploadService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Input, Card} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 const STEPS = ['Basic Info', 'ID Proof', 'Phone Verify', 'Submit'];
 
@@ -45,7 +45,7 @@ export default function CastingRequestScreen({navigation}: any) {
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
 
-  const user = auth().currentUser;
+  const {user} = useApp();
   const userName = user?.displayName || user?.email?.split('@')[0] || 'User';
 
   useEffect(() => {
@@ -54,12 +54,9 @@ export default function CastingRequestScreen({navigation}: any) {
 
   const checkExistingRequest = async () => {
     try {
-      const snap = await firestore()
-        .collection('castingRequests')
-        .where('userId', '==', user?.uid)
-        .get();
-      if (!snap.empty) {
-        setRequestStatus(snap.docs[0].data()?.status || 'pending');
+      const res = await api.get<{status: string | null}>('/users/casting-request-status');
+      if (res.status) {
+        setRequestStatus(res.status);
       }
     } catch (e) {
       console.log(e);
@@ -167,64 +164,18 @@ export default function CastingRequestScreen({navigation}: any) {
   const submitRequest = async () => {
     setLoading(true);
     try {
-      const userDoc = await firestore()
-        .collection('users')
-        .doc(user?.uid)
-        .get();
-      const userData = userDoc.data();
-
-      await firestore()
-        .collection('castingRequests')
-        .add({
-          userId: user?.uid,
-          userEmail: user?.email,
-          userName,
-          role: userData?.role || 'Director',
-          bio: userData?.bio || '',
-          companyName: companyName.trim(),
-          yearsExperience: yearsExp.trim(),
-          message: message.trim(),
-          experience: experience.trim(),
-          portfolio: portfolio.trim(),
-          idType,
-          idProofUrl: idPhotoUrl,
-          companyDocUrl: companyPhotoUrl,
-          phone: `+91${phone}`,
-          phoneVerified,
-          status: 'pending',
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      const adminSnap = await firestore()
-        .collection('users')
-        .where('email', '==', 'anilkumardevarakonda03@gmail.com')
-        .limit(1)
-        .get();
-
-      console.log('Admin snap empty?', adminSnap.empty);
-
-      let adminUid = '';
-      if (!adminSnap.empty) {
-        adminUid = adminSnap.docs[0].id;
-        console.log('Found admin UID:', adminUid);
-      } else {
-        console.log('Admin NOT found in users collection!');
-        adminUid = 'moVQIEK5RqhXUOf4wk1L7913kZZ2';
-      }
-
-      await firestore()
-        .collection('notifications')
-        .add({
-          userId: adminUid,
-          type: 'casting_request',
-          title: '📋 New Casting Director Request!',
-          message: `${userName} (${companyName}) wants to post auditions. ID proof uploaded.`,
-          senderId: user?.uid,
-          read: false,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      console.log('Notification sent to:', adminUid);
+      await api.post('/users/casting-request', {
+        companyName: companyName.trim(),
+        yearsExperience: yearsExp.trim(),
+        message: message.trim(),
+        experience: experience.trim(),
+        portfolio: portfolio.trim(),
+        idType,
+        idProofUrl: idPhotoUrl,
+        companyDocUrl: companyPhotoUrl,
+        phone: `+91${phone}`,
+        phoneVerified,
+      });
 
       setRequestStatus('pending');
       Alert.alert(

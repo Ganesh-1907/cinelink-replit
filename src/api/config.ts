@@ -1,6 +1,11 @@
-export const ADMIN_EMAIL = 'anilkumardevarakonda03@gmail.com';
 export const ADMIN_UID = 'moVQIEK5RqhXUOf4wk1L7913kZZ2';
 export const GOOGLE_WEB_CLIENT_ID = '977625264040-361rbt4brb2avgb0hbg3g7uou27e8mo1.apps.googleusercontent.com';
+
+// Local backend API URL for development.
+// - Use 'http://10.0.2.2:3001/api' for Android Emulator.
+// - Use 'http://localhost:3001/api' for iOS Simulator or if using 'adb reverse' (recommended).
+// - Use 'http://10.229.125.126:3001/api' for physical devices over Wi-Fi.
+export const DEV_API_URL = 'http://localhost:3001/api';
 
 export const APP_CONFIG = {
   APP_NAME: 'CineLink',

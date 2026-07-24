@@ -1,19 +1,31 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, RefreshControl} from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
+import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, Chip, Badge, EmptyState, LoadingView, Avatar} from '../components/ui';
 
 export default function DirectorDashboardScreen({navigation}: any) {
+  const {isAdmin, isApprovedDirector, user} = useApp();
   const [auditions, setAuditions] = useState<any[]>([]);
-  const [selectedAudition, setSelectedAudition] = useState<any>(null);
   const [applications, setApplications] = useState<any[]>([]);
+  const [selectedAudition, setSelectedAudition] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const user = auth().currentUser;
+  const [accessChecked, setAccessChecked] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin && !isApprovedDirector) {
+      Alert.alert('Access Denied', 'Only approved directors can access the dashboard.', [
+        {text: 'Go Back', onPress: () => navigation.goBack()},
+      ]);
+    } else {
+      setAccessChecked(true);
+    }
+  }, [isAdmin, isApprovedDirector, navigation]);
 
   const fetchData = useCallback(async () => {
+    if (!accessChecked) return;
     try {
       const res = await api.get<{auditions: any[]}>('/auditions');
       setAuditions((res.auditions || []).filter((a: any) => (a.postedById || a.directorId) === user?.uid));
@@ -23,7 +35,7 @@ export default function DirectorDashboardScreen({navigation}: any) {
       }
     } catch (e) { console.log(e); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [selectedAudition, user]);
+  }, [selectedAudition, user, accessChecked]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

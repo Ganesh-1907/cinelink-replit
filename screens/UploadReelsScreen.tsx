@@ -10,17 +10,17 @@ import {
   SafeAreaView,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import Video from 'react-native-video';
 import {uploadVideo} from '../src/services/uploadService';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Button, Header, Input} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 const MAX_DURATION = 90;
 
 export default function UploadReelsScreen({navigation}: any) {
-  const currentUser = auth().currentUser;
+  const {user: currentUser} = useApp();
   const [videoUri, setVideoUri] = useState('');
   const [videoDuration, setVideoDuration] = useState(0);
   const [caption, setCaption] = useState('');

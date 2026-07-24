@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import api from '../src/api/client';
+import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Chip} from '../components/ui';
 
@@ -158,7 +159,7 @@ export default function AIAssistantScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
-        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={Colors.background}
       />
 

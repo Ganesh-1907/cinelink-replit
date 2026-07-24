@@ -1,27 +1,27 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Linking} from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
-import {ADMIN_EMAIL} from '../src/api/config';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, LoadingView, Badge, Chip} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 export default function MyContestsScreen({navigation}: any) {
   const [tab, setTab] = useState<'entered' | 'created'>('entered');
   const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   const fetchContests = useCallback(async () => {
     try {
+      const id = user?.uid || user?._id;
+      if (!id) { setLoading(false); return; }
+      
       if (tab === 'created') {
-        // Creator's contests - get all contests, filter client-side
-        const res = await api.get<{contests: any[]}>('/contests');
-        setContests((res.contests || []).filter((c: any) => c.createdBy === user?.uid));
+        const res = await api.get<{contests: any[]}>(`/contests?createdBy=${id}`);
+        setContests(res.contests || []);
       } else {
-        // Entered contests
-        const res = await api.get<{entries?: any[]}>('/contests');
-        setContests(res.entries || []);
+        const res = await api.get<{contests: any[]}>('/contests/user/entered');
+        setContests(res.contests || []);
       }
     } catch (e) { console.log(e); }
     finally { setLoading(false); }

@@ -1,9 +1,5 @@
-import api from '../api/client';
+import api, {API_BASE_URL} from '../api/client';
 import {storageService} from './storageService';
-
-const API_BASE_URL = __DEV__
-  ? 'http://192.168.29.187:3001/api'
-  : 'https://cinelink-api.onrender.com/api';
 
 type UploadType = 'image' | 'video';
 

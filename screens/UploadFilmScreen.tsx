@@ -13,11 +13,11 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {launchImageLibrary} from 'react-native-image-picker';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import {uploadImage, uploadVideo} from '../src/services/uploadService';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Chip, Card, EmptyState} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 const GENRES = [
   'Drama',
@@ -44,7 +44,7 @@ export default function UploadFilmScreen({navigation}: any) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [loading, setLoading] = useState(false);
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   const pickPoster = async () => {
     const result = await launchImageLibrary({mediaType: 'photo', quality: 0.8});
@@ -128,7 +128,7 @@ export default function UploadFilmScreen({navigation}: any) {
   return (
     <SafeAreaView style={[styles.safe, {backgroundColor: Colors.background}]}>
       <StatusBar
-        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={Colors.background}
       />
       <Header title="Upload Short Film" navigation={navigation} />

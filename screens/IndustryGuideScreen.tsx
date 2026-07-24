@@ -5,19 +5,36 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
+import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const ROLES = [
-  {key: 'actor', label: 'Actor', color: Colors.primary},
-  {key: 'director', label: 'Director', color: Colors.success},
-  {key: 'writer', label: 'Writer', color: Colors.info},
-  {key: 'crew', label: 'Crew', color: Colors.warning},
-  {key: 'producer', label: 'Producer', color: '#A78BFA'},
+  {key: 'actor', label: 'Actor'},
+  {key: 'director', label: 'Director'},
+  {key: 'writer', label: 'Writer'},
+  {key: 'crew', label: 'Crew'},
+  {key: 'producer', label: 'Producer'},
 ];
+
+const getRoleColor = (roleKey: string, isDark: boolean) => {
+  switch (roleKey) {
+    case 'actor':
+      return Colors.primary;
+    case 'director':
+      return Colors.success;
+    case 'writer':
+      return Colors.info;
+    case 'crew':
+      return Colors.warning;
+    case 'producer':
+      return isDark ? '#A78BFA' : '#7C3AED';
+    default:
+      return Colors.primary;
+  }
+};
 
 const GUIDE: Record<string, any[]> = {
   actor: [
@@ -281,14 +298,18 @@ const GUIDE: Record<string, any[]> = {
 
 export default function IndustryGuideScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
+  const {isDark} = useTheme();
   const [activeRole, setActiveRole] = useState('actor');
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
 
   const guide = GUIDE[activeRole] || [];
   const activeRoleData = ROLES.find(r => r.key === activeRole);
+  const activeRoleColor = activeRoleData
+    ? getRoleColor(activeRoleData.key, isDark)
+    : Colors.primary;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Header
         title="🎬 Industry Guide"
         navigation={navigation}
@@ -300,17 +321,19 @@ export default function IndustryGuideScreen({navigation}: any) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.tabScroll}
         contentContainerStyle={styles.tabContent}>
         {ROLES.map(role => {
           const active = activeRole === role.key;
+          const roleColor = getRoleColor(role.key, isDark);
           return (
             <TouchableOpacity
               key={role.key}
               style={[
                 styles.roleTab,
                 active && {
-                  backgroundColor: role.color + '22',
-                  borderColor: role.color,
+                  backgroundColor: roleColor + '22',
+                  borderColor: roleColor,
                 },
               ]}
               onPress={() => {
@@ -319,7 +342,7 @@ export default function IndustryGuideScreen({navigation}: any) {
               }}>
               <Text
                 allowFontScaling={false}
-                style={[styles.roleTabText, active && {color: role.color}]}>
+                style={[styles.roleTabText, active && {color: roleColor}]}>
                 {role.label}
               </Text>
             </TouchableOpacity>
@@ -337,10 +360,7 @@ export default function IndustryGuideScreen({navigation}: any) {
         <Card
           variant="elevated"
           padding={Spacing.lg}
-          style={[
-            styles.roleBanner,
-            {borderColor: `${activeRoleData?.color || Colors.primary}44`},
-          ]}>
+          style={[styles.roleBanner, {borderColor: `${activeRoleColor}44`}]}>
           <Text style={styles.roleBannerTitle}>
             Guide for {activeRoleData?.label}
           </Text>
@@ -367,11 +387,7 @@ export default function IndustryGuideScreen({navigation}: any) {
                 <Text style={styles.cardIcon}>{section.icon}</Text>
                 <Text style={styles.cardTitle}>{section.title}</Text>
               </View>
-              <Text
-                style={[
-                  styles.expandIcon,
-                  {color: activeRoleData?.color || Colors.primary},
-                ]}>
+              <Text style={[styles.expandIcon, {color: activeRoleColor}]}>
                 {expandedIndex === index ? '▲' : '▼'}
               </Text>
             </TouchableOpacity>
@@ -384,8 +400,7 @@ export default function IndustryGuideScreen({navigation}: any) {
                       style={[
                         styles.tipDot,
                         {
-                          backgroundColor:
-                            activeRoleData?.color || Colors.primary,
+                          backgroundColor: activeRoleColor,
                         },
                       ]}
                     />
@@ -404,13 +419,16 @@ export default function IndustryGuideScreen({navigation}: any) {
           </Text>
         </Card>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.background},
   headerSub: {...Typography.caption, color: Colors.primary},
+  tabScroll: {
+    flexGrow: 0,
+  },
   tabContent: {
     paddingHorizontal: Spacing.screenH,
     paddingVertical: Spacing.md,

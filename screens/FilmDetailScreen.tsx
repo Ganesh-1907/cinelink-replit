@@ -2,9 +2,9 @@ import React, {useEffect, useState, useRef} from 'react';
 import {View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, TextInput, Share, SafeAreaView, Animated} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
 import {Colors, Typography, Spacing, Radius, Shadows, HitSlop} from '../src/theme';
 import {Header, Avatar, Card, Button, Input, EmptyState} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 const getId = (obj: any) => obj?._id || obj?.id || '';
 
@@ -17,7 +17,7 @@ export default function FilmDetailScreen({route, navigation}: any) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(paramFilm?.likes || 0);
   const heartScale = useRef(new Animated.Value(1)).current;
-  const currentUser = auth().currentUser;
+  const {user: currentUser} = useApp();
 
   useEffect(() => {
     loadFilm();

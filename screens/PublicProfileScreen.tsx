@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, SafeAreaView, ActivityIndicator} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, SafeAreaView, ActivityIndicator, Image} from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Avatar, Button, Card, Chip, Badge, EmptyState} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 export default function PublicProfileScreen({route, navigation}: any) {
   const {userId: paramUserId} = route.params;
@@ -11,7 +11,7 @@ export default function PublicProfileScreen({route, navigation}: any) {
   const [profile, setProfile] = useState<any>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const currentUser = auth().currentUser;
+  const {user: currentUser} = useApp();
   const isOwn = userId === currentUser?.uid;
 
   useEffect(() => {
@@ -59,16 +59,16 @@ export default function PublicProfileScreen({route, navigation}: any) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Portfolio</Text>
             <View style={styles.portfolioGrid}>{profile.portfolioPhotos.map((url: string, i: number) => (
-              <TouchableOpacity key={i} style={styles.portfolioItem}>
-                <Text style={styles.portfolioEmoji}>📸</Text>
+              <TouchableOpacity key={i} style={styles.portfolioItem} onPress={() => navigation.navigate('ImageViewer', {imageUrl: url})}>
+                <Image source={{uri: url}} style={styles.portfolioImage} />
               </TouchableOpacity>
             ))}</View>
           </View>
         )}
         <View style={styles.statsRow}>
-          <Card variant="elevated" padding={Spacing.md} style={styles.statCard}><Text style={styles.statNumber}>0</Text><Text style={styles.statLabel}>Films</Text></Card>
-          <Card variant="elevated" padding={Spacing.md} style={styles.statCard}><Text style={styles.statNumber}>0</Text><Text style={styles.statLabel}>Auditions</Text></Card>
-          <TouchableOpacity style={[styles.statCard, styles.statTouchable]} onPress={() => navigation.navigate('Followers', {userId, initialTab: 'followers'})}><Text style={styles.statNumber}>0</Text><Text style={styles.statLabel}>Followers</Text></TouchableOpacity>
+          <Card variant="elevated" padding={Spacing.md} style={styles.statCard}><Text style={styles.statNumber}>{profile.filmCount || 0}</Text><Text style={styles.statLabel}>Films</Text></Card>
+          <Card variant="elevated" padding={Spacing.md} style={styles.statCard}><Text style={styles.statNumber}>{profile.auditionCount || 0}</Text><Text style={styles.statLabel}>Auditions</Text></Card>
+          <TouchableOpacity style={[styles.statCard, styles.statTouchable]} onPress={() => navigation.navigate('Followers', {userId, tab: 'followers'})}><Text style={styles.statNumber}>{profile.followerCount || 0}</Text><Text style={styles.statLabel}>Followers</Text></TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -85,7 +85,8 @@ const styles = StyleSheet.create({
   section: {gap: Spacing.sm},
   sectionTitle: {color: Colors.primary, fontWeight: 'bold', fontSize: 16},
   portfolioGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm},
-  portfolioItem: {width: '30%', aspectRatio: 1, backgroundColor: Colors.card, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center'},
+  portfolioItem: {width: '30%', aspectRatio: 1, backgroundColor: Colors.card, borderRadius: Radius.md, overflow: 'hidden'},
+  portfolioImage: {width: '100%', height: '100%', resizeMode: 'cover'},
   portfolioEmoji: {fontSize: 28},
   statsRow: {flexDirection: 'row', gap: Spacing.sm},
   statCard: {flex: 1, alignItems: 'center'},

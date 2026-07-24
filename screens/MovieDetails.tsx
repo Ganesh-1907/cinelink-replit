@@ -82,7 +82,7 @@ export default function MovieDetails({route, navigation}: any) {
           {justifyContent: 'center', alignItems: 'center'},
         ]}>
         <StatusBar
-          barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+          barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
           backgroundColor={Colors.background}
         />
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -101,7 +101,7 @@ export default function MovieDetails({route, navigation}: any) {
           {justifyContent: 'center', alignItems: 'center', padding: Spacing.xl},
         ]}>
         <StatusBar
-          barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+          barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
           backgroundColor={Colors.background}
         />
         <Text style={{fontSize: 48, marginBottom: Spacing.md}}>🎬</Text>
@@ -138,7 +138,7 @@ export default function MovieDetails({route, navigation}: any) {
       <Header title="Movie Details" navigation={navigation} transparent />
       <ScrollView style={styles.container}>
         <StatusBar
-          barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+          barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
           backgroundColor={Colors.background}
         />
 

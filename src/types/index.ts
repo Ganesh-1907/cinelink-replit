@@ -1,5 +1,3 @@
-import {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
-
 // ── Premium tiers ────────────────────────────────────────────────────────────
 export type PremiumTier =
   | 'none'
@@ -9,9 +7,11 @@ export type PremiumTier =
   | 'premiereElite'
   | 'black';
 
-// ── Core user document (mirrors users/{uid} in Firestore) ────────────────────
+// ── Core user document (mirrors MongoDB User schema) ─────────────────────────
 export interface User {
-  uid: string;
+  id?: string;
+  uid?: string;
+  _id?: string;
   displayName?: string | null;
   fullName?: string | null;
   name?: string | null;
@@ -25,24 +25,22 @@ export interface User {
   isApprovedDirector?: boolean;
   isAdmin?: boolean;
   isOnline?: boolean;
-  lastSeen?: FirebaseFirestoreTypes.Timestamp;
+  lastSeen?: string;
   fcmToken?: string;
   profileLikes?: number;
   profileLikedBy?: string[];
   profileViews?: number;
   votedEntries?: string[];
-  createdAt?: FirebaseFirestoreTypes.Timestamp;
+  createdAt?: string;
 
-  // ── Premium fields — written by server only ──────────────────────────────
   premiumTier: PremiumTier;
-  premiumExpiry: FirebaseFirestoreTypes.Timestamp | null;
+  premiumExpiry: string | null;
   verifiedReal: boolean;
   subscriptionId: string | null;
   monthlyApplicationCount: number;
   isTopDirector: boolean;
   verifiedProductionHouse: boolean;
 
-  // ── Portfolio ──
   introVideoLink?: string;
   portfolio1?: string;
   portfolio2?: string;
@@ -60,13 +58,12 @@ export interface User {
   verificationStatus?: string;
 }
 
-// ── Subscription ledger (subscriptions/{id}) ─────────────────────────────────
 export interface Subscription {
   id: string;
   userId: string;
   tier: Exclude<PremiumTier, 'none'>;
   paymentId: string;
-  startDate: FirebaseFirestoreTypes.Timestamp;
-  endDate: FirebaseFirestoreTypes.Timestamp;
+  startDate: string;
+  endDate: string;
   status: 'active' | 'expired' | 'cancelled';
 }

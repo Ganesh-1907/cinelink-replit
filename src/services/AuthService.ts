@@ -1,7 +1,6 @@
 import api from '../api/client';
 import {storageService} from './storageService';
 import {User, AuthResponse} from '../types';
-
 const BASE = '/auth';
 
 export const authService = {
@@ -47,9 +46,18 @@ export const authService = {
 
   async restoreSession(): Promise<{token: string; user: User} | null> {
     const token = await storageService.getToken();
-    const user = await storageService.getUserData();
-    if (token && user) return {token, user};
-    return null;
+    if (!token) return null;
+    try {
+      const res = await api.get<{user: User}>('/users/profile');
+      if (res.user) {
+        await storageService.setUserData(res.user);
+        return {token, user: res.user};
+      }
+      return null;
+    } catch (e) {
+      await storageService.clearAll();
+      return null;
+    }
   },
 
   async fetchProfile(): Promise<User> {

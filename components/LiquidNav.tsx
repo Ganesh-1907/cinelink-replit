@@ -1,5 +1,6 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Spacing, Radius, Shadows, Typography} from '../src/theme';
 
 interface LiquidNavProps {
@@ -16,8 +17,9 @@ const tabs = [
 ];
 
 export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.container, {backgroundColor: Colors.card, borderTopColor: Colors.border}]}>
+    <View style={[styles.container, {backgroundColor: Colors.card, borderTopColor: Colors.border, paddingBottom: Spacing.xs + 8 + insets.bottom}]}>
       {tabs.map((tab, idx) => {
         const isActive = idx === activeTab;
         return (
@@ -27,7 +29,7 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
             onPress={() => navigation.navigate(tab.key)}
             activeOpacity={0.7}>
             <Text style={{fontSize: 22}}>{tab.icon}</Text>
-            <Text style={[styles.label, {color: isActive ? (Colors.background === '#0A0A0A' ? Colors.primary : Colors.primaryDark) : Colors.textSecondary}]}>{tab.label}</Text>
+            <Text style={[styles.label, {color: isActive ? (Colors.background !== '#FFFFFF' ? Colors.primary : Colors.primaryDark) : Colors.textSecondary}]}>{tab.label}</Text>
             {isActive && <View style={[styles.indicator, {backgroundColor: Colors.primary}]} />}
           </TouchableOpacity>
         );
@@ -37,7 +39,7 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {flexDirection: 'row', borderTopWidth: 1, paddingTop: Spacing.sm, paddingBottom: Spacing.xs + 8, ...Shadows.sm},
+  container: {flexDirection: 'row', borderTopWidth: 1, paddingTop: Spacing.sm, ...Shadows.sm},
   tab: {flex: 1, alignItems: 'center', gap: 2, position: 'relative'},
   activeTab: {},
   label: {fontSize: 10, fontWeight: '600'},

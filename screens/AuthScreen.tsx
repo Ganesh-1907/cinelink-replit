@@ -9,12 +9,12 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
+import {GOOGLE_WEB_CLIENT_ID} from '../src/api/config';
 import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import {GOOGLE_WEB_CLIENT_ID} from '../src/api/config';
+import api from '../src/api/client';
 import {authService} from '../src/services/AuthService';
 import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -37,6 +37,7 @@ export default function AuthScreen({navigation}: any) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const {refreshUserData} = useApp();
 
@@ -53,6 +54,7 @@ export default function AuthScreen({navigation}: any) {
       await authService.googleSignIn(idToken);
       await refreshUserData();
     } catch (e: any) {
+      await GoogleSignin.signOut().catch(() => {});
       console.log('GOOGLE SIGN IN ERROR:', e);
       if (e.code === statusCodes.SIGN_IN_CANCELLED) {
         // cancelled
@@ -63,7 +65,7 @@ export default function AuthScreen({navigation}: any) {
       } else {
         Alert.alert(
           'Google Sign In Failed',
-          e?.message || 'Could not sign in with Google.',
+          'Could not sign in with Google. Please try again.',
         );
       }
     } finally {
@@ -81,7 +83,7 @@ export default function AuthScreen({navigation}: any) {
       await authService.login(email.trim(), password.trim());
       await refreshUserData();
     } catch (e: any) {
-      Alert.alert('Login Failed', e?.message || 'Invalid email or password.');
+      Alert.alert('Login Failed', 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -101,7 +103,7 @@ export default function AuthScreen({navigation}: any) {
       await authService.signup(email.trim(), password.trim(), name.trim());
       await refreshUserData();
     } catch (e: any) {
-      Alert.alert('Signup Failed', e?.message || 'Could not create account.');
+      Alert.alert('Signup Failed', 'Could not create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -136,7 +138,7 @@ export default function AuthScreen({navigation}: any) {
           {googleLoading ? (
             <Button
               label="Continue with Google"
-              onPress={handleGoogleSignIn}
+              onPress={() => {}}
               variant="secondary"
               size="lg"
               loading
@@ -254,24 +256,21 @@ export default function AuthScreen({navigation}: any) {
             <TouchableOpacity
               onPress={() => {
                 if (!email.trim()) {
-                  Alert.alert(
-                    'Enter Email',
-                    'Please enter your email address first.',
-                  );
+                  Alert.alert('Enter Email', 'Please enter your email address first.');
                   return;
                 }
-                auth()
-                  .sendPasswordResetEmail(email.trim())
+                if (resetLoading) return;
+                setResetLoading(true);
+                api.post('/auth/forgot-password', {email: email.trim()})
                   .then(() =>
-                    Alert.alert(
-                      'Email Sent!',
-                      'Check your inbox to reset your password.',
-                    ),
+                    Alert.alert('Email Sent!', 'Check your inbox to reset your password.'),
                   )
-                  .catch((e: any) => Alert.alert('Error', e.message));
+                  .catch((e: any) => Alert.alert('Error', e.message))
+                  .finally(() => setResetLoading(false));
               }}
-              style={styles.forgotBtn}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              style={styles.forgotBtn}
+              disabled={resetLoading}>
+              <Text style={styles.forgotText}>{resetLoading ? 'Sending...' : 'Forgot Password?'}</Text>
             </TouchableOpacity>
           )}
         </View>

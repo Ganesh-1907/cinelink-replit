@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,9 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useApp} from '../src/context/AppContext';
 import {
   Header,
   EmptyState,
@@ -122,44 +122,42 @@ export default function NotificationsScreen({navigation}: any) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [senderNames, setSenderNames] = useState<any>({});
   const [loading, setLoading] = useState(true);
-  const user = auth().currentUser;
+  const {user} = useApp();
+
+  const loadSenderNames = useCallback((notifList: any[]) => {
+    const names: Record<string, string> = {};
+    for (const notif of notifList) {
+      const senderId = notif.senderId || notif.viewerId || notif.fromUserId;
+      const name = notif.senderName || notif.fromName || notif.userName;
+      if (senderId && name) names[senderId] = name;
+    }
+    setSenderNames(names);
+  }, []);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const res = await api.get<{notifications: any[]; unreadCount?: number}>('/notifications');
+      const data: any[] = Array.isArray(res.notifications) ? res.notifications : [];
+      console.log('[NotificationsScreen] Loaded', data.length, 'notifications, unread:', res.unreadCount);
+      setNotifications(data);
+      loadSenderNames(data);
+    } catch (e) {
+      console.log('[NotificationsScreen] ERROR:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadSenderNames]);
 
   useEffect(() => {
-    loadNotifications();
-  }, []);
+    if (user) loadNotifications();
+  }, [user, loadNotifications]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadNotifications();
     });
     return unsubscribe;
-  }, [navigation]);
-
-  const loadNotifications = async () => {
-    if (!user?.uid) return;
-    try {
-      const res = await api.get<{notifications: any[]; unreadCount?: number}>('/notifications');
-      const data = res.notifications || [];
-      setNotifications(data);
-      loadSenderNames(data);
-    } catch (e) {
-      console.log('NOTIFICATIONS ERROR:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadSenderNames = (notifList: any[]) => {
-    const names: any = {};
-    for (const notif of notifList) {
-      const senderId = notif.senderId || notif.viewerId || notif.fromUserId;
-      const name = notif.senderName || notif.fromName || notif.userName;
-      if (senderId && name) {
-        names[senderId] = name;
-      }
-    }
-    setSenderNames(names);
-  };
+  }, [navigation, loadNotifications]);
 
   const resolveMessage = (item: any): string => {
     const raw = item.message || '';
@@ -223,10 +221,11 @@ export default function NotificationsScreen({navigation}: any) {
     ) {
       navigation.navigate('MyApplications');
     } else if (isApplicationNotif(item.type)) {
-      navigation.navigate('DirectorDashboard');
-      navigation.navigate('AuditionDetail', {
-        auditionId: item.auditionId,
-      });
+      if (item.auditionId) {
+        navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
+      } else {
+        navigation.navigate('DirectorDashboard');
+      }
     } else if (isAuditionNotif(item.type)) {
       if (item.auditionId) {
         navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
@@ -237,6 +236,8 @@ export default function NotificationsScreen({navigation}: any) {
       navigation.navigate('PublicProfile', {
         userId: senderId,
       });
+    } else if (item.type === 'comment' && item.auditionId) {
+      navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
     }
   };
 
@@ -307,7 +308,7 @@ export default function NotificationsScreen({navigation}: any) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar
-        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={Colors.background}
       />
       <Header

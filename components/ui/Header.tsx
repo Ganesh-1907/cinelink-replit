@@ -62,7 +62,7 @@ export function Header({
         style,
       ]}>
       <StatusBar
-        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={transparent ? 'transparent' : Colors.background}
       />
 

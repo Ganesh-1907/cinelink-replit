@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import crashlytics from '@react-native-firebase/crashlytics';
+import {Colors} from '../src/theme';
 
 interface Props {
   children: ReactNode;
@@ -31,7 +31,6 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    crashlytics().recordError(error);
     console.error('[ErrorBoundary]', error, errorInfo);
   }
 
@@ -47,21 +46,20 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <SafeAreaView style={styles.container}>
-          <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+        <SafeAreaView style={[styles.container, {backgroundColor: Colors.background}]}>
           <View style={styles.content}>
             <Text style={styles.emoji}>⚠️</Text>
-            <Text style={styles.title}>Something went wrong</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, {color: Colors.textPrimary}]}>Something went wrong</Text>
+            <Text style={[styles.subtitle, {color: Colors.textSecondary}]}>
               An unexpected error occurred. Please try again.
             </Text>
             {__DEV__ && this.state.error && (
               <Text style={styles.errorText}>{this.state.error.message}</Text>
             )}
             <TouchableOpacity
-              style={styles.retryButton}
+              style={[styles.retryButton, {backgroundColor: Colors.primary}]}
               onPress={this.handleRetry}>
-              <Text style={styles.retryText}>Try Again</Text>
+              <Text style={[styles.retryText, {color: Colors.textPrimary}]}>Try Again</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -75,7 +73,6 @@ class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
   },
   content: {
     flex: 1,

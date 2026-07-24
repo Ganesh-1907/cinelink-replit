@@ -1,7 +1,6 @@
 import React, {useEffect, useState, useCallback} from 'react';
 import {View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, Alert} from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, Chip, Avatar, EmptyState, LoadingView} from '../components/ui';
 

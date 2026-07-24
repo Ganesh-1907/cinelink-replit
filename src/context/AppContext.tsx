@@ -17,6 +17,7 @@ interface AppState {
   isPremium: boolean;
   isVerified: boolean;
   isAdmin: boolean;
+  isApprovedDirector: boolean;
   role: string;
   loading: boolean;
   refreshUserData: () => Promise<void>;
@@ -31,6 +32,7 @@ const AppContext = createContext<AppState>({
   isPremium: false,
   isVerified: false,
   isAdmin: false,
+  isApprovedDirector: false,
   role: 'Actor',
   loading: true,
   refreshUserData: async () => {},
@@ -44,21 +46,31 @@ export function AppProvider({children}: {children: ReactNode}) {
   const [premiumExpiry, setPremiumExpiry] = useState<Date | null>(null);
   const [role, setRole] = useState('Actor');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isApprovedDirector, setIsApprovedDirector] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const populateFromUserData = useCallback((data: User) => {
+    const userId = (data as any)._id || data.id;
+    setUser({
+      uid: userId,
+      _id: userId,
+      email: data.email,
+      displayName: data.fullName || data.name,
+      photoURL: data.photoUrl,
+    });
     setUserData(data);
     (globalThis as any).userData = data;
     (globalThis as any).user = {
-      uid: data.id,
+      uid: userId,
       email: data.email,
       displayName: data.fullName || data.name,
+      photoURL: data.photoUrl,
     };
     setPremiumTier(data.premiumTier || 'none');
     setPremiumExpiry(data.premiumExpiry ? new Date(data.premiumExpiry) : null);
     setRole(data.role || 'Actor');
-    const adminEmail = 'anilkumardevarakonda03@gmail.com';
-    setIsAdmin(data.isAdmin === true || data.email === adminEmail);
+    setIsAdmin(data.isAdmin === true);
+    setIsApprovedDirector(data.isApprovedDirector === true);
   }, []);
 
   const refreshUserData = useCallback(async () => {
@@ -67,6 +79,7 @@ export function AppProvider({children}: {children: ReactNode}) {
       populateFromUserData(data);
     } catch (e) {
       console.warn('[AppContext] refreshUserData error:', e);
+      throw e;
     }
   }, [populateFromUserData]);
 
@@ -78,6 +91,7 @@ export function AppProvider({children}: {children: ReactNode}) {
     setPremiumExpiry(null);
     setRole('Actor');
     setIsAdmin(false);
+    setIsApprovedDirector(false);
   }, []);
 
   // Restore session on mount
@@ -88,6 +102,8 @@ export function AppProvider({children}: {children: ReactNode}) {
         if (session) {
           setUser({email: session.user.email, _id: session.user._id});
           populateFromUserData(session.user);
+          const data = await authService.fetchProfile();
+          populateFromUserData(data);
         }
       } catch (e) {
         console.warn('[AppContext] session restore error:', e);
@@ -95,7 +111,8 @@ export function AppProvider({children}: {children: ReactNode}) {
         setLoading(false);
       }
     })();
-  }, [populateFromUserData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isPremium = premiumTier !== 'none';
   const isVerified = userData?.verifiedReal === true;
@@ -110,6 +127,7 @@ export function AppProvider({children}: {children: ReactNode}) {
         isPremium,
         isVerified,
         isAdmin,
+        isApprovedDirector,
         role,
         loading,
         refreshUserData,

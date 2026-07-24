@@ -65,7 +65,7 @@ export default function BrowseProjectsScreen({navigation}: any) {
           onChangeText={setSearch}
         />
       </View>
-      <FlatList horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} data={PROJECT_TYPES} renderItem={({item}) => <Chip label={item} selected={filter === item} onPress={() => setFilter(item)} />} keyExtractor={i => i} />
+      <FlatList horizontal showsHorizontalScrollIndicator={false} style={styles.filterList} contentContainerStyle={styles.filterRow} data={PROJECT_TYPES} renderItem={({item}) => <Chip label={item} selected={filter === item} onPress={() => setFilter(item)} />} keyExtractor={i => i} />
       {loading ? <ActivityIndicator size="large" color={Colors.primary} style={{marginTop: 60}} /> : (
         <FlatList data={filtered} keyExtractor={item => item._id || item.id} renderItem={renderItem} contentContainerStyle={[styles.list, {paddingBottom: insets.bottom + 80}]} showsVerticalScrollIndicator={false}
           ListEmptyComponent={<EmptyState icon="📂" title="No projects found" subtitle="Check back later" actionLabel="Create Project" onAction={() => navigation.navigate('CreateProject')} />} />
@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: Colors.background},
   searchWrap: {paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm},
   search: {backgroundColor: Colors.card, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, color: Colors.textPrimary, fontSize: 14, borderWidth: 1, borderColor: Colors.border},
+  filterList: {flexGrow: 0, maxHeight: 50},
   filterRow: {paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md},
   list: {padding: Spacing.lg},
   card: {marginBottom: Spacing.md},

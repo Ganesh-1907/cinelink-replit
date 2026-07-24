@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,8 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
+import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Chip, Card} from '../components/ui';
@@ -51,6 +51,15 @@ const LANGUAGES = [
 ];
 
 export default function CreateProjectScreen({navigation}: any) {
+  const {isAdmin, isApprovedDirector} = useApp();
+
+  useEffect(() => {
+    if (!isAdmin && !isApprovedDirector) {
+      Alert.alert('Access Denied', 'Only approved directors and admins can create projects.', [
+        {text: 'Go Back', onPress: () => navigation.goBack()},
+      ]);
+    }
+  }, []);
   const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [type, setType] = useState('Short Film');
@@ -60,7 +69,7 @@ export default function CreateProjectScreen({navigation}: any) {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const currentUser = auth().currentUser;
+  const {user: currentUser} = useApp();
   const directorName =
     currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Director';
 

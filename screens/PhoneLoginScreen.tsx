@@ -12,8 +12,9 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
+import {storageService} from '../src/services/storageService';
+import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LiquidPress} from '../components/LiquidPress';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
@@ -39,6 +40,7 @@ const errorMessage = (msg: string): string => {
 };
 
 export default function PhoneLoginScreen({navigation}: any) {
+  const {refreshUserData} = useApp();
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -49,7 +51,6 @@ export default function PhoneLoginScreen({navigation}: any) {
   const [countdown, setCountdown] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const confirmationRef = useRef<any>(null);
 
   useEffect(() => {
     return () => {
@@ -97,8 +98,8 @@ export default function PhoneLoginScreen({navigation}: any) {
   const handleVerifyOTP = async () => {
     setErrorMsg('');
     const otpCleaned = otp.replace(/\s/g, '');
-    if (!/^\d{4,6}$/.test(otpCleaned)) {
-      setErrorMsg('Please enter the OTP sent to your number.');
+    if (!/^\d{6}$/.test(otpCleaned)) {
+      setErrorMsg('Please enter a valid 6-digit OTP sent to your number.');
       return;
     }
     setVerifying(true);
@@ -108,11 +109,14 @@ export default function PhoneLoginScreen({navigation}: any) {
         otp: otpCleaned,
       });
 
-      // Sign in with the custom token from backend
-      await auth().signInWithCustomToken(res.token);
-      // App.tsx onAuthStateChanged auto-routes to MainStack
+      // After OTP verification, do phone-based login
+      const loginRes = await api.post('/auth/phone-login', {phone: phone.replace(/\s/g, '')});
+      await storageService.setToken(loginRes.token);
+      await storageService.setUserData(loginRes.user);
+      await refreshUserData();
     } catch (e: any) {
       setErrorMsg(errorMessage(e.message));
+    } finally {
       setVerifying(false);
     }
   };
@@ -138,7 +142,6 @@ export default function PhoneLoginScreen({navigation}: any) {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    confirmationRef.current = null;
     setStep('phone');
     setOtp('');
     setErrorMsg('');
@@ -151,7 +154,7 @@ export default function PhoneLoginScreen({navigation}: any) {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <StatusBar
-          barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+          barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
           backgroundColor={Colors.background}
         />
         <ScrollView

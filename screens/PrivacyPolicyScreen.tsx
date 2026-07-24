@@ -65,7 +65,7 @@ export default function PrivacyPolicyScreen({navigation}: any) {
             bullets={[
               'With other users as part of the networking features (name, role, profile photo)',
               'With Razorpay for secure payment processing',
-              'With Firebase/Google for app infrastructure and authentication',
+              'With MongoDB and secure servers for app infrastructure and authentication',
               'With Cloudinary for secure media storage',
               'When required by law or legal process',
             ]}
@@ -74,7 +74,7 @@ export default function PrivacyPolicyScreen({navigation}: any) {
           <Section
             num="4"
             title="Data Storage & Security"
-            text="Your data is stored securely on Google Firebase servers. We implement industry-standard security measures including encrypted data transmission (HTTPS), Firebase Authentication for secure login, Firestore Security Rules to protect your data, and Cloudinary secure media storage."
+            text="Your data is stored securely on MongoDB servers. We implement industry-standard security measures including encrypted data transmission (HTTPS), secure authentication via REST API, database access controls to protect your data, and Cloudinary secure media storage."
           />
 
           <Section
@@ -100,7 +100,7 @@ export default function PrivacyPolicyScreen({navigation}: any) {
             title="Third-Party Services"
             text="CineLink uses the following third-party services, each with their own privacy policies:"
             bullets={[
-              'Google Firebase — Authentication and database',
+              'MongoDB — Database and authentication',
               'Cloudinary — Media storage and delivery',
               'Razorpay — Payment processing',
               'Google Sign In — Optional social login',

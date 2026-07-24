@@ -11,10 +11,9 @@ import {
   Modal,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
-import {ADMIN_EMAIL} from '../src/api/config';
 import {uploadImage} from '../src/services/uploadService';
+import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Button, Input, Chip} from '../components/ui';
@@ -60,8 +59,8 @@ export default function PostAuditionScreen({navigation}: any) {
   const [budget, setBudget] = useState('');
   const [positions, setPositions] = useState('');
 
-  const user = auth().currentUser;
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const {isAdmin, isApprovedDirector, user} = useApp();
+  const isAdminUser = isAdmin;
   const directorName =
     user?.displayName || user?.email?.split('@')[0] || 'Director';
   const pendingUploadRef = React.useRef<Promise<string> | null>(null);

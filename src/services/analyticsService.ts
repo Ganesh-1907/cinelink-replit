@@ -1,53 +1,26 @@
-/**
- * CineLink Analytics Service
- *
- * Provides Firebase Analytics event tracking for key user actions.
- * Drop-in replacement for console.log-based tracking.
- */
+const noop = async () => {};
 
-let analytics: any = { logEvent: async () => {} };
-try {
-  analytics = require('@react-native-firebase/analytics').default;
-} catch {}; // Graceful fallback if analytics not installed
-
-export async function trackEvent(eventName: string, params?: Record<string, any>) {
-  try {
-    await analytics().logEvent(eventName, params);
-  } catch (e) {
-    // Analytics should never crash the app
-    console.warn('[Analytics] Failed to log event:', eventName);
-  }
+export async function trackEvent(_eventName: string, _params?: Record<string, any>) {
+  // Firebase Analytics removed — using REST/MongoDB backend only
 }
 
-// ── Auth Events ──
-export const trackSignUp = (method: string) => trackEvent('sign_up', { method });
-export const trackLogin = (method: string) => trackEvent('login', { method });
+export const trackSignUp = (_method: string) => {};
+export const trackLogin = (_method: string) => {};
 
-// ── Content Events ──
-export const trackPostAudition = () => trackEvent('post_audition');
-export const trackApplyAudition = (auditionId: string) => trackEvent('apply_audition', { audition_id: auditionId });
-export const trackUploadFilm = () => trackEvent('upload_film');
-export const trackCreateContest = () => trackEvent('create_contest');
-export const trackEnterContest = (contestId: string) => trackEvent('enter_contest', { contest_id: contestId });
-export const trackSendMessage = () => trackEvent('send_message');
-export const trackFollowUser = () => trackEvent('follow_user');
+export const trackPostAudition = () => {};
+export const trackApplyAudition = (_auditionId: string) => {};
+export const trackUploadFilm = () => {};
+export const trackCreateContest = () => {};
+export const trackEnterContest = (_contestId: string) => {};
+export const trackSendMessage = () => {};
+export const trackFollowUser = () => {};
 
-// ── Payment Events ──
-export const trackPurchasePremium = (tier: string, amount: number) =>
-  trackEvent('purchase_premium', { tier, amount });
-export const trackContestPayment = (contestId: string, amount: number) =>
-  trackEvent('contest_payment', { contest_id: contestId, amount });
+export const trackPurchasePremium = (_tier: string, _amount: number) => {};
+export const trackContestPayment = (_contestId: string, _amount: number) => {};
 
-// ── Engagement Events ──
-export const trackScreenView = (screenName: string) =>
-  trackEvent('screen_view', { screen_name: screenName });
-export const trackShare = (contentType: string) =>
-  trackEvent('share', { content_type: contentType });
+export const trackScreenView = (_screenName: string) => {};
+export const trackShare = (_contentType: string) => {};
 
-// ── Screen Tracking (call in useEffect for each screen) ──
-export const useScreenTracking = (screenName: string) => {
-  const React = require('react');
-  React.useEffect(() => {
-    trackScreenView(screenName);
-  }, [screenName]);
+export const useScreenTracking = (_screenName: string) => {
+  // No-op: Firebase Analytics removed
 };

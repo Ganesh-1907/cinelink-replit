@@ -1,18 +1,18 @@
-﻿export const COLORS = {
-  primary: '#C9956C',
-  primaryLight: '#FF8C5A',
-  primaryDark: '#E55A24',
-  secondary: '#0B2C4F',
-  secondaryLight: '#0F3A5F',
-  secondaryDark: '#051B35',
-  background: '#0A0A0A',
-  surface: '#1C1C1C',
-  surfaceLight: '#2A2A2A',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#A09080',
-  textTertiary: '#A09080',
-  border: '#2A2A2A',
-  borderLight: '#333333',
+export const COLORS = {
+  primary: '#CF9F5A',
+  primaryLight: '#E8CEAA',
+  primaryDark: '#9C6E35',
+  secondary: '#111216',
+  secondaryLight: '#16171D',
+  secondaryDark: '#090A0C',
+  background: '#090A0C',
+  surface: '#111216',
+  surfaceLight: '#16171D',
+  textPrimary: '#F7F8FA',
+  textSecondary: '#9AA2AC',
+  textTertiary: '#5C646E',
+  border: '#1E2028',
+  borderLight: '#262933',
   transparent: 'transparent',
   white: '#FFFFFF',
   black: '#000000',
@@ -20,3 +20,10 @@
 };
 
 export default COLORS;
+
+describe('COLORS constant', () => {
+  it('has primary and background defined', () => {
+    expect(COLORS.primary).toBe('#CF9F5A');
+    expect(COLORS.background).toBe('#090A0C');
+  });
+});

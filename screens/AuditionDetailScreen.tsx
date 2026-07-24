@@ -11,11 +11,10 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import api from '../src/api/client';
 import {LiquidPress} from '../components/LiquidPress';
-import {ADMIN_EMAIL, ADMIN_UID} from '../src/api/config';
+import {ADMIN_UID} from '../src/api/config';
+import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {
   Header,
@@ -66,219 +65,88 @@ export default function AuditionDetailScreen({route, navigation}: any) {
   const [applicants, setApplicants] = useState<any[]>([]);
   const [myRole, setMyRole] = useState<string>('');
 
-  const user = auth().currentUser;
+  const {isAdmin, user} = useApp();
   const currentUserName =
     user?.displayName || user?.email?.split('@')[0] || 'User';
   const phoneNumber = extractPhoneNumber(audition?.description || '');
 
   const isOwner = !!audition?.directorId && audition.directorId === user?.uid;
-  const isAdmin = myRole === 'admin';
   const canSeeApplicants = isOwner || isAdmin;
 
   useEffect(() => {
     if (!paramAudition && paramAuditionId) {
-      firestore()
-        .collection('auditions')
-        .doc(paramAuditionId)
-        .get()
-        .then(doc => {
-          if (doc.exists) {
-            setAudition({id: doc.id, ...doc.data()});
-          }
-          setFetching(false);
-        })
-        .catch(() => setFetching(false));
+      api.get<{audition: any}>(`/auditions/${paramAuditionId}`)
+        .then(res => { if (res.audition) setAudition({...res.audition, id: res.audition._id || res.audition.id}); })
+        .catch(() => {})
+        .finally(() => setFetching(false));
     }
   }, []);
 
   useEffect(() => {
-    if (!audition?.id) {
-      return;
-    }
+    if (!audition?.id) return;
     checkIfApplied();
     loadDirectorProfile();
     checkIfSaved();
-    notifyDirector();
-    const unsubscribe = loadComments();
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
+    loadComments();
   }, [audition?.id]);
 
   useEffect(() => {
-    if (!user?.uid) {
-      return;
-    }
-    firestore()
-      .collection('users')
-      .doc(user.uid)
-      .get()
-      .then(doc => setMyRole(doc.data()?.role || ''))
-      .catch(() => {});
+    if (!user?.uid) return;
+    api.get<{user: any}>('/users/profile').then(res => {
+      setMyRole(res.user?.role || '');
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!audition?.id || !user?.uid) {
-      return;
-    }
-    const own = audition.directorId === user.uid;
-    if (!own && myRole !== 'admin') {
-      return;
-    }
-    loadApplicants(own);
-  }, [audition?.id, myRole]);
+    if (!audition?.id || !user?.uid || !canSeeApplicants) return;
+    loadApplicants();
+  }, [audition?.id, canSeeApplicants]);
 
-  const loadApplicants = async (own: boolean) => {
+  const loadApplicants = async () => {
     try {
-      let query: any = firestore()
-        .collection('applications')
-        .where('auditionId', '==', audition.id);
-      if (own) {
-        query = query.where('directorId', '==', user?.uid);
-      }
-      const snap = await query.get();
-      const data = snap.docs.map((d: any) => ({id: d.id, ...d.data()}));
-      data.sort(
-        (a: any, b: any) =>
-          (b.appliedAt?.toDate?.()?.getTime() || 0) -
-          (a.appliedAt?.toDate?.()?.getTime() || 0),
-      );
-      setApplicants(data);
-    } catch (e) {
-      console.log('APPLICANTS ERROR:', e);
-    }
+      const res = await api.get<any>(`/applications/${audition.id}`);
+      setApplicants(res.applications || []);
+    } catch (e) { console.log(e); }
   };
 
   const checkIfApplied = async () => {
     try {
-      const snapshot = await firestore()
-        .collection('applications')
-        .where('auditionId', '==', audition.id)
-        .where('applicantId', '==', user?.uid)
-        .get();
-      if (!snapshot.empty) {
-        setApplied(true);
-      }
-    } catch (e) {
-      console.log(e);
-    }
+      const res = await api.get<any>('/applications/my');
+      const mine = (res.applications || []).some((a: any) => a.auditionId === audition.id);
+      if (mine) setApplied(true);
+    } catch (e) { console.log(e); }
   };
 
   const checkIfSaved = async () => {
     try {
-      const userDoc = await firestore()
-        .collection('users')
-        .doc(user?.uid)
-        .get();
-      const savedIds = userDoc.data()?.savedAuditions || [];
+      const res = await api.get<any>('/saved-auditions');
+      const savedIds = (res.savedAuditions || []).map((s: any) => s.auditionId);
       setSaved(savedIds.includes(audition.id));
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) { console.log(e); }
   };
 
   const loadDirectorProfile = async () => {
-    if (!audition?.directorId) {
-      return;
-    }
+    if (!audition?.directorId) return;
     try {
-      const doc = await firestore()
-        .collection('users')
-        .doc(audition.directorId)
-        .get();
-      if (doc.exists) {
-        setDirectorProfile(doc.data());
-      }
-    } catch (e) {
-      console.log(e);
-    }
+      const res = await api.get<any>(`/users/${audition.directorId}`);
+      if (res?.user) setDirectorProfile(res.user);
+    } catch (e) { console.log(e); }
   };
 
-  const notifyDirector = async () => {
-    if (!audition?.directorId || audition.directorId === user?.uid) {
-      return;
-    }
+  const loadComments = async () => {
     try {
-      const existing = await firestore()
-        .collection('notifications')
-        .where('userId', '==', audition.directorId)
-        .where('senderId', '==', user?.uid)
-        .where('type', '==', 'profile_view')
-        .where('auditionId', '==', audition.id)
-        .get();
-
-      if (!existing.empty) {
-        return;
-      }
-
-      await firestore()
-        .collection('notifications')
-        .add({
-          userId: audition.directorId,
-          type: 'profile_view',
-          title: '👀 Someone viewed your audition!',
-          message: `${currentUserName} viewed your audition "${audition.title}"`,
-          senderId: user?.uid,
-          auditionId: audition.id,
-          read: false,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
-  const loadComments = () => {
-    return firestore()
-      .collection('auditions')
-      .doc(audition.id)
-      .collection('comments')
-      .orderBy('createdAt', 'asc')
-      .onSnapshot(
-        snapshot => {
-          const data = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-          setComments(data);
-        },
-        err => console.log('COMMENTS ERROR:', err),
-      );
+      const res = await api.get<any>(`/comments/audition/${audition.id}`);
+      setComments(res.comments || []);
+    } catch (e) { console.log(e); }
   };
 
   const postComment = async () => {
-    if (!commentText.trim()) {
-      return;
-    }
+    if (!commentText.trim()) return;
     setPostingComment(true);
     try {
-      await firestore()
-        .collection('auditions')
-        .doc(audition.id)
-        .collection('comments')
-        .add({
-          text: commentText.trim(),
-          userId: user?.uid,
-          userName: currentUserName,
-          userEmail: user?.email,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-      if (audition.directorId !== user?.uid) {
-        await firestore()
-          .collection('notifications')
-          .add({
-            userId: audition.directorId,
-            type: 'comment',
-            title: '💬 New Comment!',
-            message: `${currentUserName} commented on "${audition.title}"`,
-            senderId: user?.uid,
-            auditionId: audition.id,
-            read: false,
-            createdAt: firestore.FieldValue.serverTimestamp(),
-          });
-      }
-
+      await api.post(`/comments/audition/${audition.id}`, {text: commentText.trim()});
       setCommentText('');
+      loadComments();
     } catch (e) {
       console.log(e);
       Alert.alert('Error', 'Could not post comment.');
@@ -287,27 +155,15 @@ export default function AuditionDetailScreen({route, navigation}: any) {
   };
 
   const deleteComment = async (commentId: string, commentUserId: string) => {
-    if (commentUserId !== user?.uid && audition.directorId !== user?.uid) {
-      return;
-    }
+    if (commentUserId !== user?.uid && audition.directorId !== user?.uid && !isAdmin) return;
     Alert.alert('Delete Comment', 'Delete this comment?', [
       {text: 'Cancel', style: 'cancel'},
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await firestore()
-              .collection('auditions')
-              .doc(audition.id)
-              .collection('comments')
-              .doc(commentId)
-              .delete();
-          } catch (e) {
-            console.log(e);
-          }
-        },
-      },
+      {text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await api.delete(`/comments/${commentId}`);
+          loadComments();
+        } catch (e) { console.log(e); }
+      }},
     ]);
   };
 
@@ -332,18 +188,9 @@ export default function AuditionDetailScreen({route, navigation}: any) {
 
   const toggleSave = async () => {
     try {
-      await firestore()
-        .collection('users')
-        .doc(user?.uid)
-        .update({
-          savedAuditions: saved
-            ? firestore.FieldValue.arrayRemove(audition.id)
-            : firestore.FieldValue.arrayUnion(audition.id),
-        });
+      await api.post('/saved-auditions', {auditionId: audition.id});
       setSaved(!saved);
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) { console.log(e); }
   };
 
   const startChat = async () => {
@@ -352,59 +199,18 @@ export default function AuditionDetailScreen({route, navigation}: any) {
       return;
     }
 
-    const isAdminUser = user?.uid === ADMIN_UID || user?.email === ADMIN_EMAIL;
-
-    if (!isAdminUser) {
-      try {
-        const connSnap = await firestore()
-          .collection('connections')
-          .where('users', 'array-contains', user?.uid)
-          .get();
-        const connected = connSnap.docs.some(doc =>
-          doc.data().users?.includes(audition.directorId),
-        );
-        if (!connected) {
-          Alert.alert(
-            'Not Connected',
-            'Connect with this director first to send a message.',
-          );
-          return;
-        }
-      } catch (e) {
-        console.log('CONNECTION CHECK ERROR:', e);
-      }
-    }
-
     try {
-      const chatId = [user?.uid, audition.directorId].sort().join('_');
-      const directorName =
-        directorProfile?.displayName ||
-        directorProfile?.fullName ||
-        directorProfile?.name ||
-        cleanName(directorProfile?.email) ||
-        cleanName(audition.directorEmail) ||
-        'Director';
-
-      await firestore()
-        .collection('chats')
-        .doc(chatId)
-        .set(
-          {
-            participants: [user?.uid, audition.directorId],
-            participantNames: [currentUserName, directorName],
-            participantEmails: [user?.email, audition.directorEmail],
-            lastMessage: '',
-            updatedAt: firestore.FieldValue.serverTimestamp(),
-          },
-          {merge: true},
-        );
-
+      const res = await api.post<{chatId: string; chat: any}>('/chat/start', {otherUserId: audition.directorId});
+      const directorName = directorProfile?.displayName || directorProfile?.fullName || directorProfile?.name || cleanName(directorProfile?.email) || 'Director';
       navigation.navigate('ChatScreen', {
-        chat: {id: chatId, participantNames: [currentUserName, directorName]},
+        chat: {
+          id: res.chatId || audition.id,
+          _id: res.chatId,
+          participants: [user?.uid, audition.directorId],
+          participantNames: [currentUserName, directorName],
+        },
       });
-    } catch (e) {
-      console.log(e);
-    }
+    } catch (e) { console.log(e); }
   };
 
   const openWhatsApp = async () => {
@@ -451,34 +257,10 @@ export default function AuditionDetailScreen({route, navigation}: any) {
           await Linking.openURL(audition.contactLink);
         }
       }
-      await firestore()
-        .collection('applications')
-        .add({
-          auditionId: audition.id,
-          auditionTitle: audition.title,
-          applicantId: user?.uid,
-          applicantEmail: user?.email,
-          applicantName: currentUserName,
-          applicantPhone: user?.phoneNumber || '',
-          directorId: audition.directorId,
-          directorEmail: audition.directorEmail,
-          note: note.trim(),
-          status: 'Pending',
-          appliedAt: firestore.FieldValue.serverTimestamp(),
-        });
-      await firestore()
-        .collection('notifications')
-        .add({
-          userId: audition.directorId,
-          type: 'application',
-          title: '📋 New Application Received!',
-          message: `${currentUserName} applied for "${audition.title}"`,
-          senderId: user?.uid,
-          auditionId: audition.id,
-          applicationStatus: 'pending',
-          read: false,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
+      await api.post('/applications', {
+        auditionId: audition.id,
+        note: note.trim(),
+      });
       setApplied(true);
       setShowNoteInput(false);
       setNote('');
@@ -1260,3 +1042,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+

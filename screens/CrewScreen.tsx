@@ -1,5 +1,5 @@
-import React, {useState, useEffect, useCallback} from 'react';
-import {View, Text, StyleSheet, FlatList, TouchableOpacity} from 'react-native';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
+import {View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator} from 'react-native';
 import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Avatar, Header, Chip, EmptyState, Input} from '../components/ui';
@@ -11,17 +11,25 @@ export default function CrewScreen({navigation}: any) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
 
   const fetchUsers = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (roleFilter !== 'All') params.set('role', roleFilter);
-      if (search.trim()) params.set('query', search.trim());
+      if (debouncedSearch.trim()) params.set('query', debouncedSearch.trim());
       const res = await api.get<any>(`/users/search?${params}`);
       setUsers(res.users || []);
     } catch (e) { console.log(e); }
     finally { setLoading(false); }
-  }, [roleFilter, search]);
+  }, [roleFilter, debouncedSearch]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -29,8 +37,8 @@ export default function CrewScreen({navigation}: any) {
     <View style={styles.safe}>
       <Header title="🎥 Crew" />
       <View style={styles.searchWrap}><Input value={search} onChangeText={setSearch} placeholder="🔍 Search by name, location..." /></View>
-      <FlatList horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} data={['All', 'Actor', 'Director', 'Writer', 'DOP', 'Editor', 'Producer']} renderItem={({item}) => <Chip label={item} selected={roleFilter === item} onPress={() => setRoleFilter(item)} />} keyExtractor={i => i} />
-      {loading ? null : users.length === 0 ? <EmptyState icon="🎥" title="No crew found" subtitle="Try changing filters" /> : (
+      <FlatList horizontal showsHorizontalScrollIndicator={false} style={styles.filterList} contentContainerStyle={styles.filterRow} data={['All', 'Actor', 'Director', 'Writer', 'DOP', 'Editor', 'Producer']} renderItem={({item}) => <Chip label={item} selected={roleFilter === item} onPress={() => setRoleFilter(item)} />} keyExtractor={i => i} />
+      {loading ? <ActivityIndicator size="large" color={Colors.primary} style={{marginTop: 60}} /> : users.length === 0 ? <EmptyState icon="🎥" title="No crew found" subtitle="Try changing filters" /> : (
         <FlatList data={users} keyExtractor={item => item._id || item.id} contentContainerStyle={[styles.list, {paddingBottom: insets.bottom + 40}]}
           renderItem={({item}) => (
             <TouchableOpacity style={styles.userRow} onPress={() => navigation.navigate('PublicProfile', {userId: item._id || item.id})}>
@@ -47,6 +55,7 @@ export default function CrewScreen({navigation}: any) {
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: Colors.background},
   searchWrap: {paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm},
+  filterList: {flexGrow: 0, maxHeight: 50},
   filterRow: {paddingHorizontal: Spacing.lg, gap: Spacing.sm, marginBottom: Spacing.md},
   list: {paddingHorizontal: Spacing.lg},
   userRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, gap: Spacing.md, borderBottomWidth: 0.5, borderBottomColor: Colors.border},

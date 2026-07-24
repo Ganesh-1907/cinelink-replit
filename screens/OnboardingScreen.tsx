@@ -68,6 +68,7 @@ interface OnboardingProps {
 export default function OnboardingScreen({onDone}: OnboardingProps) {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const isScrolling = useRef(false);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
@@ -77,12 +78,15 @@ export default function OnboardingScreen({onDone}: OnboardingProps) {
   };
 
   const goNext = () => {
+    if (isScrolling.current) return;
     if (currentIndex < SLIDES.length - 1) {
+      isScrolling.current = true;
       flatListRef.current?.scrollToIndex({
         index: currentIndex + 1,
         animated: true,
       });
       setCurrentIndex(currentIndex + 1);
+      setTimeout(() => { isScrolling.current = false; }, 400);
     } else {
       handleDone();
     }
@@ -144,7 +148,7 @@ export default function OnboardingScreen({onDone}: OnboardingProps) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
-        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={Colors.background}
       />
 

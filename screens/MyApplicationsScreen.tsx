@@ -11,17 +11,17 @@ import {
   SafeAreaView,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, Badge, Chip} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 export default function MyApplicationsScreen({route, navigation}: any) {
   const insets = useSafeAreaInsets();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   useEffect(() => {
     loadApplications();
@@ -48,6 +48,7 @@ export default function MyApplicationsScreen({route, navigation}: any) {
 
   const onRefresh = () => {
     setRefreshing(true);
+    loadApplications();
   };
 
   const getStatusConfig = (status: string) => {
@@ -61,6 +62,12 @@ export default function MyApplicationsScreen({route, navigation}: any) {
         return {
           variant: 'error',
           message: '😔 Not selected this time. Keep trying!',
+        };
+      case 'Shortlisted':
+      case 'shortlisted':
+        return {
+          variant: 'info',
+          message: '⭐ You have been shortlisted! The director is reviewing your profile.',
         };
       default:
         return {
@@ -82,7 +89,7 @@ export default function MyApplicationsScreen({route, navigation}: any) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
-        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={Colors.background}
       />
       <Header title="My Applications" navigation={navigation} />

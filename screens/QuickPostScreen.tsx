@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,8 @@ import {
   StatusBar,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
+import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, Input} from '../components/ui';
 
@@ -70,6 +70,13 @@ const getErrorMessage = (e: unknown): string => {
 };
 
 export default function QuickPostScreen({navigation}: any) {
+  const {isAdmin} = useApp();
+
+  useEffect(() => {
+    if (!isAdmin) {
+      Alert.alert('Access Denied', 'Admin access required.', [{text: 'Go Back', onPress: () => navigation.goBack()}]);
+    }
+  }, []);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [form, setForm] = useState<AuditionForm>(EMPTY_FORM);
@@ -77,7 +84,7 @@ export default function QuickPostScreen({navigation}: any) {
   const [posting, setPosting] = useState(false);
   const [aiDone, setAiDone] = useState(false);
 
-  const user = auth().currentUser;
+  const {user} = useApp();
   const directorName =
     user?.displayName || user?.email?.split('@')[0] || 'Admin';
 
@@ -185,7 +192,7 @@ export default function QuickPostScreen({navigation}: any) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
-        barStyle={Colors.background === '#0A0A0A' ? 'light-content' : 'dark-content'}
+        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={Colors.background}
       />
       <Header

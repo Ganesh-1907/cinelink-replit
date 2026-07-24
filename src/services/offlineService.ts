@@ -1,21 +1,17 @@
-// CineLink Offline Support
-// Enables Firestore offline persistence and provides connectivity awareness
+// CineLink Offline Support — uses backend health check
 
-import firestore from '@react-native-firebase/firestore';
-
-let persistenceEnabled = false;
+import api from '../api/client';
 
 export function enableOfflinePersistence() {
-  if (persistenceEnabled) return;
-  try {
-    firestore().settings({ persistence: true });
-    persistenceEnabled = true;
-    console.log('[Offline] Firestore persistence enabled');
-  } catch (e) {
-    console.warn('[Offline] Failed to enable persistence:', e);
-  }
+  // No Firestore needed — app uses REST APIs through MongoDB backend
+  console.log('[Offline] No Firestore persistence — using REST APIs');
 }
 
-export function isOnline(): Promise<boolean> {
-  return firestore().waitForPendingWrites().then(() => true).catch(() => false);
+export async function isOnline(): Promise<boolean> {
+  try {
+    await api.get('/health');
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -77,7 +77,7 @@ export function Button({
     styles[`label_${size}` as keyof typeof styles],
     styles[`label_${variant}` as keyof typeof styles],
     variant === 'primary' && {
-      color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A',
+      color: Colors.background !== '#FFFFFF' ? Colors.background : '#1A1C1E',
     },
     textStyle,
   ];

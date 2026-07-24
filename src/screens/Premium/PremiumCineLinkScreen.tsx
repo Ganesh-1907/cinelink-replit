@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, StatusBar, ActivityIndicator, Alert,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
+import {useApp} from '../../context/AppContext';
 import {usePremiumStatus} from '../../../hooks/usePremiumStatus';
 import {initiateSubscriptionCheckout} from '../../services/razorpaySubscriptionService';
 import type {PremiumTier} from '../../types';
@@ -87,7 +87,7 @@ const TIERS: TierConfig[] = [
 ];
 
 export default function PremiumCineLinkScreen({navigation}: any) {
-  const user = auth().currentUser;
+  const {user} = useApp();
   const {isPremium, tier: currentTier, expiryDate, isExpiringSoon, loading} = usePremiumStatus();
   const [processingTier, setProcessingTier] = useState<TierKey | null>(null);
 
@@ -98,7 +98,7 @@ export default function PremiumCineLinkScreen({navigation}: any) {
     }
     setProcessingTier(tier);
     try {
-      const result = await initiateSubscriptionCheckout(tier, user.uid);
+      const result = await initiateSubscriptionCheckout(tier, user._id, user.displayName || '', user.email || '');
       if (result.status === 'success') {
         Alert.alert(
           '✦ Subscribed!',
@@ -107,7 +107,9 @@ export default function PremiumCineLinkScreen({navigation}: any) {
         );
       } else if (result.status === 'error') {
         const isConfigError = result.message.includes('not yet configured');
-        if (!isConfigError) {
+        if (isConfigError) {
+          Alert.alert('Coming Soon', 'Subscription payments will be available shortly. Please try again later.');
+        } else {
           Alert.alert('Payment Failed', result.message);
         }
       }

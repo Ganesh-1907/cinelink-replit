@@ -7,10 +7,9 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import api from '../src/api/client';
 import {parseDeadline} from '../utils/contestUtils';
-import {ADMIN_EMAIL} from '../src/api/config';
+import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Card, Chip} from '../components/ui';
@@ -35,12 +34,10 @@ export default function PostContestScreen({navigation}: any) {
   const [entryFee, setEntryFee] = useState('0');
   const [loading, setLoading] = useState(false);
 
-  const user = auth().currentUser;
+  const {isAdmin, user} = useApp();
 
   const creatorName =
     user?.displayName || user?.email?.split('@')[0] || 'Creator';
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const postContest = async () => {
     if (!isAdmin) {

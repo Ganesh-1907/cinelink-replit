@@ -24,29 +24,29 @@ export type ColorPalette = {
 };
 
 export const darkColors: ColorPalette = {
-  background: '#0A0A0A', surface: '#111111', card: '#141414',
-  cardElevated: '#1A1A1A', cardHigher: '#242424', inputBg: '#0E0E0E',
-  overlay: 'rgba(0,0,0,0.75)', border: '#1E1E1E', borderLight: '#2A2A2A', borderFocus: '#3A3A3A',
-  primary: '#C9956C', primaryLight: '#E8C4A0', primaryDark: '#A3734E',
-  primaryFaint: 'rgba(201,149,108,0.10)', primaryGlow: 'rgba(201,149,108,0.18)', primaryMid: 'rgba(201,149,108,0.30)',
-  textPrimary: '#F5F0EB', textSecondary: '#9A8A7A', textTertiary: '#5C5048', textInverse: '#0A0A0A',
-  success: '#4ADE80', successFaint: 'rgba(74,222,128,0.12)', successBorder: 'rgba(74,222,128,0.30)',
-  error: '#EF4444', errorFaint: 'rgba(239,68,68,0.12)', errorBorder: 'rgba(239,68,68,0.30)',
+  background: '#090A0C', surface: '#111216', card: '#16171D',
+  cardElevated: '#1E2028', cardHigher: '#262933', inputBg: '#111216',
+  overlay: 'rgba(0,0,0,0.75)', border: '#1E2028', borderLight: '#262933', borderFocus: '#CF9F5A',
+  primary: '#CF9F5A', primaryLight: '#E8CEAA', primaryDark: '#9C6E35',
+  primaryFaint: 'rgba(207,159,90,0.10)', primaryGlow: 'rgba(207,159,90,0.18)', primaryMid: 'rgba(207,159,90,0.30)',
+  textPrimary: '#F7F8FA', textSecondary: '#9AA2AC', textTertiary: '#5C646E', textInverse: '#090A0C',
+  success: '#34D399', successFaint: 'rgba(52,211,153,0.10)', successBorder: 'rgba(52,211,153,0.30)',
+  error: '#F87171', errorFaint: 'rgba(248,113,113,0.10)', errorBorder: 'rgba(248,113,113,0.30)',
   warning: '#FBBF24', warningFaint: 'rgba(251,191,36,0.10)', warningBorder: 'rgba(251,191,36,0.30)',
   info: '#60A5FA', infoFaint: 'rgba(96,165,250,0.12)', infoBorder: 'rgba(96,165,250,0.30)',
 };
 
 export const lightColors: ColorPalette = {
-  background: '#FAFAFA', surface: '#FFFFFF', card: '#FFFFFF',
-  cardElevated: '#F0F0F0', cardHigher: '#E8E8E8', inputBg: '#F5F5F5',
-  overlay: 'rgba(0,0,0,0.4)', border: '#E0E0E0', borderLight: '#D0D0D0', borderFocus: '#B0B0B0',
-  primary: '#C9956C', primaryLight: '#D9B89C', primaryDark: '#A3734E',
-  primaryFaint: 'rgba(201,149,108,0.12)', primaryGlow: 'rgba(201,149,108,0.15)', primaryMid: 'rgba(201,149,108,0.25)',
-  textPrimary: '#1A1A1A', textSecondary: '#6B5E50', textTertiary: '#999999', textInverse: '#FFFFFF',
-  success: '#16A34A', successFaint: 'rgba(22,163,74,0.10)', successBorder: 'rgba(22,163,74,0.25)',
-  error: '#DC2626', errorFaint: 'rgba(220,38,38,0.10)', errorBorder: 'rgba(220,38,38,0.25)',
-  warning: '#D97706', warningFaint: 'rgba(217,119,6,0.10)', warningBorder: 'rgba(217,119,6,0.25)',
-  info: '#2563EB', infoFaint: 'rgba(37,99,235,0.10)', infoBorder: 'rgba(37,99,235,0.25)',
+  background: '#FFFFFF', surface: '#FAFAFA', card: '#FFFFFF',
+  cardElevated: '#F8F9FA', cardHigher: '#F1F3F5', inputBg: '#F8F9FA',
+  overlay: 'rgba(0,0,0,0.4)', border: '#EBECEF', borderLight: '#F4F5F7', borderFocus: '#CF9F5A',
+  primary: '#CF9F5A', primaryLight: '#E8CEAA', primaryDark: '#9C6E35',
+  primaryFaint: 'rgba(207,159,90,0.12)', primaryGlow: 'rgba(207,159,90,0.15)', primaryMid: 'rgba(207,159,90,0.25)',
+  textPrimary: '#1A1C1E', textSecondary: '#5A626A', textTertiary: '#8A949E', textInverse: '#FFFFFF',
+  success: '#10B981', successFaint: 'rgba(16,185,129,0.08)', successBorder: 'rgba(16,185,129,0.25)',
+  error: '#EF4444', errorFaint: 'rgba(239,68,68,0.08)', errorBorder: 'rgba(239,68,68,0.25)',
+  warning: '#F59E0B', warningFaint: 'rgba(245,158,11,0.08)', warningBorder: 'rgba(245,158,11,0.25)',
+  info: '#3B82F6', infoFaint: 'rgba(59,130,246,0.08)', infoBorder: 'rgba(59,130,246,0.25)',
 };
 
 // Mutable Colors singleton
@@ -162,7 +162,7 @@ const categoryColorsLight: Record<string, {bg: string; text: string; border: str
 export const categoryColors: Record<string, {bg: string; text: string; border: string}> = new Proxy({} as any, {
   get(target, prop) {
     if (typeof prop !== 'string') return undefined;
-    const isLight = Colors.background === '#FAFAFA';
+    const isLight = Colors.background === '#FFFFFF';
     const source = isLight ? categoryColorsLight : categoryColorsDark;
     const normalizedProp = prop.trim().replace(/\s*\/\s*/g, '/');
     return source[normalizedProp] || source[prop] || source['Movies'];
@@ -182,10 +182,10 @@ export const Radius = {
 } as const;
 
 export const Shadows = {
-  sm: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:1},shadowOpacity:0.25,shadowRadius:4}, android:{elevation:2}}),
-  md: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:4},shadowOpacity:0.35,shadowRadius:8}, android:{elevation:5}}),
-  lg: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:8},shadowOpacity:0.45,shadowRadius:16}, android:{elevation:10}}),
-  primary: Platform.select({ios: {shadowColor: Colors.primary, shadowOffset:{width:0,height:4},shadowOpacity:0.3,shadowRadius:12}, android:{elevation:6}}),
+  sm: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.04,shadowRadius:3}, android:{elevation:2}}),
+  md: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:6},shadowOpacity:0.06,shadowRadius:8}, android:{elevation:4}}),
+  lg: Platform.select({ios: {shadowColor:'#000',shadowOffset:{width:0,height:12},shadowOpacity:0.10,shadowRadius:16}, android:{elevation:8}}),
+  primary: Platform.select({ios: {shadowColor: Colors.primary, shadowOffset:{width:0,height:4},shadowOpacity:0.2,shadowRadius:10}, android:{elevation:5}}),
 } as const;
 
 export const IconSize = {xs: rs(14), sm: rs(18), md: rs(22), lg: rs(26), xl: rs(32)} as const;

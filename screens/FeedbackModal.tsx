@@ -12,11 +12,10 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import crashlytics from '@react-native-firebase/crashlytics';
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Button, Chip} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -39,7 +38,7 @@ export default function FeedbackModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('feedback');
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   useEffect(() => {
     if (!visible) {
@@ -82,7 +81,7 @@ export default function FeedbackModal({
       });
 
       if (feedbackType === 'bug') {
-        crashlytics().log(`Bug report from ${user?.email}: ${message}`);
+        console.log(`Bug report from ${user?.email}: ${message}`);
       }
 
       setSubmitted(true);

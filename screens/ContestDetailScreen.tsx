@@ -1,9 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, ActivityIndicator} from 'react-native';
 import api from '../src/api/client';
-import auth from '@react-native-firebase/auth';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, Chip, Badge, Avatar, Input, EmptyState, LoadingView} from '../components/ui';
+import {useApp} from '../src/context/AppContext';
 
 export default function ContestDetailScreen({route, navigation}: any) {
   const {contest: paramContest, contestId: paramContestId} = route.params;
@@ -13,7 +13,7 @@ export default function ContestDetailScreen({route, navigation}: any) {
   const [videoLink, setVideoLink] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const user = auth().currentUser;
+  const {user} = useApp();
 
   const fetchData = useCallback(async () => {
     try {

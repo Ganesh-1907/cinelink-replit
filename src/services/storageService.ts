@@ -16,8 +16,13 @@ export const storageService = {
     await AsyncStorage.removeItem(KEYS.AUTH_TOKEN);
   },
   async getUserData(): Promise<any | null> {
-    const data = await AsyncStorage.getItem(KEYS.USER_DATA);
-    return data ? JSON.parse(data) : null;
+    try {
+      const data = await AsyncStorage.getItem(KEYS.USER_DATA);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      await AsyncStorage.removeItem(KEYS.USER_DATA);
+      return null;
+    }
   },
   async setUserData(user: any): Promise<void> {
     await AsyncStorage.setItem(KEYS.USER_DATA, JSON.stringify(user));

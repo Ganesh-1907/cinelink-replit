@@ -14,8 +14,7 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import api from '../src/api/client';
 import {launchImageLibrary} from 'react-native-image-picker';
 
 import ReportModal from './ReportModal';
@@ -23,9 +22,9 @@ import {LiquidPress} from '../components/LiquidPress';
 import EngagementBar from '../components/EngagementBar';
 import {RippleIcon} from '../components/RippleIcon';
 import {CrownIcon} from '../components/CrownIcon';
-import api from '../src/api/client';
-import {ADMIN_EMAIL, FILTER_TAGS, CATEGORY_COLORS} from '../src/api/config';
+import {CATEGORY_COLORS} from '../src/api/config';
 import {uploadImage} from '../src/services/uploadService';
+import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {
@@ -74,7 +73,7 @@ function PhoneText({text, textStyle}: {text: string; textStyle: any}) {
 }
 
 function ProfileCard({item, navigation}: any) {
-  const currentUser = auth().currentUser;
+  const {user: currentUser} = useApp();
   const [connected, setConnected] = useState(false);
 
   const handleConnect = async () => {
@@ -84,28 +83,7 @@ function ProfileCard({item, navigation}: any) {
     try {
       const currentUserName =
         currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
-      await firestore()
-        .collection('connectionRequests')
-        .add({
-          fromUserId: currentUser.uid,
-          fromUserName: currentUserName,
-          toUserId: item.id,
-          toUserName: item.displayName || item.name || 'User',
-          status: 'pending',
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
-      await firestore()
-        .collection('notifications')
-        .add({
-          userId: item.id,
-          type: 'connect_request',
-          title: '🤝 Connection Request',
-          message: `${currentUserName} wants to connect with you`,
-          senderId: currentUser.uid,
-          senderName: currentUserName,
-          read: false,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
+      await api.post('/connections/request', {targetUserId: item.id});
       setConnected(true);
     } catch (e) {
       console.log('CONNECT ERROR:', e);
@@ -145,7 +123,7 @@ function ProfileCard({item, navigation}: any) {
             </View>
           ) : (
             <LiquidPress style={styles.connectBtn} onPress={handleConnect}>
-              <Text style={[styles.connectBtnText, {color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A'}]}>Connect</Text>
+              <Text style={[styles.connectBtnText, {color: Colors.background !== '#FFFFFF' ? Colors.background : '#1A1C1E'}]}>Connect</Text>
             </LiquidPress>
           )}
         </View>
@@ -212,12 +190,13 @@ function AuditionCard({item, navigation}: any) {
   return (
     <TouchableOpacity
       style={styles.auditionCard}
-      onPress={() =>
-        isAuditionDoc
-          ? navigation.navigate('AuditionDetail', {audition: item})
-          : navigation.navigate('BrowseAuditions')
-      }
-      activeOpacity={0.85}>
+      onPress={() => {
+        if (isAuditionDoc) {
+          navigation.navigate('AuditionDetail', {audition: item});
+        } else {
+          navigation.navigate('BrowseAuditions');
+        }
+      }}      activeOpacity={0.85}>
       {/* Header */}
       <View style={styles.auditionCardHeader}>
         <View style={styles.auditionBadge}>
@@ -363,7 +342,7 @@ function AuditionCard({item, navigation}: any) {
 }
 
 function PostBubble({item, isAdmin, onDelete, navigation}: any) {
-  const currentUser = auth().currentUser;
+  const {user: currentUser} = useApp();
   const currentUserName =
     currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
 
@@ -373,37 +352,24 @@ function PostBubble({item, isAdmin, onDelete, navigation}: any) {
   const [postingComment, setPostingComment] = useState(false);
 
   useEffect(() => {
-    const unsub = firestore()
-      .collection('feedPosts')
-      .doc(item.id)
-      .collection('comments')
-      .orderBy('createdAt', 'asc')
-      .limit(10)
-      .onSnapshot(
-        snap => setPostComments(snap.docs.map(d => ({id: d.id, ...d.data()}))),
-        err => console.log('FEED COMMENTS ERROR:', err),
-      );
-    return () => unsub();
+    loadComments();
   }, [item.id]);
 
+  const loadComments = async () => {
+    try {
+      const res = await api.get<any>(`/comments/feedPost/${item.id}`);
+      setPostComments(res.comments || []);
+    } catch (e) { console.log(e); }
+  };
+
   const postComment = async () => {
-    if (!commentText.trim()) {
-      return;
-    }
+    if (!commentText.trim()) return;
     setPostingComment(true);
     try {
-      await firestore()
-        .collection('feedPosts')
-        .doc(item.id)
-        .collection('comments')
-        .add({
-          text: commentText.trim(),
-          userId: currentUser?.uid,
-          userName: currentUserName,
-          createdAt: firestore.FieldValue.serverTimestamp(),
-        });
+      await api.post(`/comments/feedPost/${item.id}`, {text: commentText.trim()});
       setCommentText('');
       setShowComments(false);
+      loadComments();
     } catch (e) {
       console.log(e);
       Alert.alert('Error', 'Could not post comment.');
@@ -412,35 +378,21 @@ function PostBubble({item, isAdmin, onDelete, navigation}: any) {
   };
 
   const deleteComment = async (commentId: string, commentUserId: string) => {
-    if (commentUserId !== currentUser?.uid && !isAdmin) {
-      return;
-    }
+    if (commentUserId !== currentUser?.uid && !isAdmin) return;
     Alert.alert('Delete Comment', 'Delete this comment?', [
       {text: 'Cancel', style: 'cancel'},
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await firestore()
-              .collection('feedPosts')
-              .doc(item.id)
-              .collection('comments')
-              .doc(commentId)
-              .delete();
-          } catch (e) {
-            console.log(e);
-          }
-        },
-      },
+      {text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await api.delete(`/comments/${commentId}`);
+          loadComments();
+        } catch (e) { console.log(e); }
+      }},
     ]);
   };
 
   const formatTime = (ts: any) => {
-    if (!ts?.toDate) {
-      return '';
-    }
-    const d = ts.toDate();
+    if (!ts) return '';
+    const d = ts?.toDate ? ts.toDate() : new Date(ts);
     const now = new Date();
     const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
     if (diff < 60) {
@@ -599,7 +551,6 @@ function PostBubble({item, isAdmin, onDelete, navigation}: any) {
 export default function HomeScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
   const [selectedTab, setSelectedTab] = useState('Auditions');
-  const [activeFilter, setActiveFilter] = useState('All');
   const [searchText, setSearchText] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [auditionPosts, setAuditionPosts] = useState<any[]>([]);
@@ -614,169 +565,84 @@ export default function HomeScreen({navigation}: any) {
   const [filmsLoading, setFilmsLoading] = useState(true);
   const [contestsLoading, setContestsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTarget, setReportTarget] = useState<any>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(
-    auth().currentUser?.photoURL || null,
-  );
+  const {isAdmin, user: currentUser} = useApp();
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
-  const currentUser = auth().currentUser;
-  const isAdmin = currentUser?.email === ADMIN_EMAIL;
+  const loadNotifications = async () => {
+    if (!currentUser) return;
+    try {
+      const res = await api.get<{notifications: any[]; unreadCount: number}>('/notifications');
+      setUnreadCount(res.unreadCount || 0);
+    } catch (e) {}
+  };
 
-  useEffect(() => {
-    if (!currentUser) {
-      return;
-    }
-    const unsub = firestore()
-      .collection('notifications')
-      .where('userId', '==', currentUser.uid)
-      .where('read', '==', false)
-      .onSnapshot(snap => setUnreadCount(snap.size));
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) {
-      return;
-    }
-    const unsub = firestore()
-      .collection('chats')
-      .where('participants', 'array-contains', currentUser.uid)
-      .onSnapshot(
-        snap => {
-          let total = 0;
-          snap.docs.forEach(doc => {
-            const d = doc.data();
-            total += d.unreadCount?.[currentUser.uid] || 0;
-          });
-          setChatUnreadCount(total);
-        },
-        () => {},
-      );
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) {
-      return;
-    }
-    const unsub = firestore()
-      .collection('users')
-      .doc(currentUser.uid)
-      .onSnapshot(doc => {
-        const data = doc.data();
-        if (data?.photoUrl) {
-          setProfilePhoto(data.photoUrl);
-        } else if (data?.photoURL) {
-          setProfilePhoto(data.photoURL);
-        }
+  const loadChatUnread = async () => {
+    if (!currentUser) return;
+    try {
+      const res = await api.get<{chats: any[]}>('/chat/list');
+      let total = 0;
+      (res.chats || []).forEach((c: any) => {
+        total += c.unreadCount?.[currentUser.uid] || 0;
       });
-    return () => unsub();
+      setChatUnreadCount(total);
+    } catch (e) {}
+  };
+
+  const loadProfilePhoto = async () => {
+    try {
+      const res = await api.get<{user: any}>('/users/profile');
+      const data = res.user;
+      if (data?.photoUrl) setProfilePhoto(data.photoUrl);
+      else if (data?.photoURL) setProfilePhoto(data.photoURL);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    loadChatUnread();
+    loadProfilePhoto();
+    const interval = setInterval(() => { loadNotifications(); loadChatUnread(); }, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  // ── Load auditions: merge feedPosts + auditions collections ──
+  // ── Load feed posts + auditions ──
   useEffect(() => {
     setFeedLoading(true);
+    Promise.all([
+      api.get<{auditions: any[]}>('/auditions'),
+    ]).then(([audRes]) => {
+      const audItems = (audRes.auditions || []).filter((a: any) => a.isActive !== false).map((a: any) => ({...a, id: a._id || a.id, source: 'audition'}));
+      setAuditionPosts(audItems.sort((a: any, b: any) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      ));
+      setFeedLoading(false);
+    }).catch(() => setFeedLoading(false));
 
-    const unsubFeed = firestore()
-      .collection('feedPosts')
-      .where('tab', '==', 'auditions')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(
-        feedSnap => {
-          const feedItems = feedSnap.docs.map(d => ({
-            id: d.id,
-            source: 'feed',
-            ...d.data(),
-          }));
-
-          // Fetch auditions separately (no composite index needed)
-          firestore()
-            .collection('auditions')
-            .orderBy('createdAt', 'desc')
-            .get()
-            .then(audSnap => {
-              const audItems = audSnap.docs
-                .map(d => ({id: d.id, source: 'audition', ...d.data()}))
-                .filter((a: any) => a.isActive !== false); // filter inactive in JS
-
-              // Merge both lists and sort by time
-              const merged = [...feedItems, ...audItems].sort(
-                (a: any, b: any) => {
-                  const aTime = (a.createdAt as any)?.seconds || 0;
-                  const bTime = (b.createdAt as any)?.seconds || 0;
-                  return bTime - aTime;
-                },
-              );
-
-              setAuditionPosts(merged);
-              setFeedLoading(false);
-            })
-            .catch(err => {
-              console.log('AUDITIONS FETCH ERROR:', err);
-              // Still show feed posts even if auditions fetch fails
-              setAuditionPosts(feedItems);
-              setFeedLoading(false);
-            });
-        },
-        err => {
-          console.log('FEED ERROR:', err);
-          setFeedLoading(false);
-        },
-      );
-
-    const unsubGeneral = firestore()
-      .collection('feedPosts')
-      .where('tab', '==', 'general')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(
-        snap => setGeneralPosts(snap.docs.map(d => ({id: d.id, ...d.data()}))),
-        err => console.log('GENERAL ERROR:', err),
-      );
-
-    return () => {
-      unsubFeed();
-      unsubGeneral();
-    };
-  }, []);
+    api.get<{posts: any[]}>('/feed-posts').then(res => {
+      setGeneralPosts((res.posts || []).filter((p: any) => p.postType === 'general').map((p: any) => ({...p, id: p._id || p.id})));
+    }).catch(() => {});
+  }, [refreshKey]);
 
   useEffect(() => {
     setFilmsLoading(true);
-    const unsub = firestore()
-      .collection('films')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(
-        snap => {
-          setFilms(snap.docs.map(doc => ({id: doc.id, ...doc.data()})));
-          setFilmsLoading(false);
-        },
-        err => {
-          console.log('FILMS ERROR:', err);
-          setFilmsLoading(false);
-        },
-      );
-    return () => unsub();
-  }, []);
+    api.get<{films: any[]}>('/films').then(res => {
+      setFilms((res.films || []).map((f: any) => ({...f, id: f._id || f.id})));
+      setFilmsLoading(false);
+    }).catch(() => setFilmsLoading(false));
+  }, [refreshKey]);
 
   useEffect(() => {
     setContestsLoading(true);
-    const unsub = firestore()
-      .collection('contests')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(
-        snap => {
-          setContests(snap.docs.map(doc => ({id: doc.id, ...doc.data()})));
-          setContestsLoading(false);
-        },
-        err => {
-          console.log('CONTESTS ERROR:', err);
-          setContestsLoading(false);
-        },
-      );
-    return () => unsub();
-  }, []);
+    api.get<{contests: any[]}>('/contests').then(res => {
+      setContests((res.contests || []).map((c: any) => ({...c, id: c._id || c.id})));
+      setContestsLoading(false);
+    }).catch(() => setContestsLoading(false));
+  }, [refreshKey]);
 
   const handleSearchChange = (text: string) => {
     setSearchText(text);
@@ -812,24 +678,15 @@ export default function HomeScreen({navigation}: any) {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setRefreshKey(prev => prev + 1);
     setTimeout(() => setRefreshing(false), 2000);
   }, []);
 
   const loadComments = async (filmId: string) => {
     try {
-      const snap = await firestore()
-        .collection('films')
-        .doc(filmId)
-        .collection('comments')
-        .orderBy('createdAt', 'desc')
-        .get();
-      setComments((prev: any) => ({
-        ...prev,
-        [filmId]: snap.docs.map(doc => ({id: doc.id, ...doc.data()})),
-      }));
-    } catch (e) {
-      console.log('LOAD COMMENTS ERROR:', e);
-    }
+      const res = await api.get<any>(`/comments/film/${filmId}`);
+      setComments((prev: any) => ({...prev, [filmId]: res.comments || []}));
+    } catch (e) { console.log(e); }
   };
 
   const sendPost = async (tab: 'auditions' | 'general') => {
@@ -880,23 +737,11 @@ export default function HomeScreen({navigation}: any) {
   };
 
   const handleLike = async (filmId: string, likedBy: string[] = []) => {
-    if (!currentUser) {
-      return;
-    }
-    const alreadyLiked = likedBy.includes(currentUser.uid);
+    if (!currentUser) return;
     try {
-      await firestore()
-        .collection('films')
-        .doc(filmId)
-        .update({
-          likes: firestore.FieldValue.increment(alreadyLiked ? -1 : 1),
-          likedBy: alreadyLiked
-            ? firestore.FieldValue.arrayRemove(currentUser.uid)
-            : firestore.FieldValue.arrayUnion(currentUser.uid),
-        });
-    } catch (e) {
-      console.log('LIKE ERROR:', e);
-    }
+      await api.post(`/films/${filmId}/like`);
+      setRefreshKey(k => k + 1);
+    } catch (e) { console.log(e); }
   };
 
   const deleteFilm = (filmId: string) => {
@@ -907,7 +752,8 @@ export default function HomeScreen({navigation}: any) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await firestore().collection('films').doc(filmId).delete();
+            await api.delete(`/films/${filmId}`);
+            setRefreshKey(k => k + 1);
           } catch (e) {
             console.log(e);
           }
@@ -1004,14 +850,6 @@ export default function HomeScreen({navigation}: any) {
               .includes(searchText.toLowerCase()) ||
             p.location?.toLowerCase().includes(searchText.toLowerCase()),
         )
-      : activeFilter !== 'All'
-      ? allPosts.filter(
-          p =>
-            (p.text || p.title)
-              ?.toLowerCase()
-              .includes(activeFilter.toLowerCase()) ||
-            p.role?.toLowerCase().includes(activeFilter.toLowerCase()),
-        )
       : allPosts;
 
     return (
@@ -1024,23 +862,6 @@ export default function HomeScreen({navigation}: any) {
           </TouchableOpacity>
         )}
 
-        {/* Filter pills using Chip */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.pillsScroll}
-          contentContainerStyle={styles.pillsContent}>
-          {FILTER_TAGS.map(tag => (
-            <Chip
-              key={tag}
-              label={tag}
-              selected={activeFilter === tag}
-              onPress={() => setActiveFilter(tag)}
-            />
-          ))}
-        </ScrollView>
-
-        {renderComposer(tab)}
         {feedLoading ? (
           <ActivityIndicator
             color={Colors.primary}
@@ -1183,7 +1004,7 @@ export default function HomeScreen({navigation}: any) {
             <LiquidPress
               style={styles.watchBtn}
               onPress={() => navigation.navigate('FilmDetail', {film: item})}>
-              <Text style={[styles.watchBtnText, {color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A'}]}>🎬 Watch Film</Text>
+              <Text style={[styles.watchBtnText, {color: Colors.background !== '#FFFFFF' ? Colors.background : '#1A1C1E'}]}>🎬 Watch Film</Text>
             </LiquidPress>
             {isOwner && (
               <TouchableOpacity
@@ -1263,7 +1084,7 @@ export default function HomeScreen({navigation}: any) {
         <LiquidPress
           style={styles.watchBtn}
           onPress={() => navigation.navigate('ContestDetail', {contest: item})}>
-          <Text style={[styles.watchBtnText, {color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A'}]}>Enter Contest →</Text>
+          <Text style={[styles.watchBtnText, {color: Colors.background !== '#FFFFFF' ? Colors.background : '#1A1C1E'}]}>Enter Contest →</Text>
         </LiquidPress>
       </View>
     ));
@@ -1279,8 +1100,8 @@ export default function HomeScreen({navigation}: any) {
             </Text>
             <Text style={styles.welcome}>Welcome back 👋</Text>
             <Text style={styles.userHandle}>
-              {auth().currentUser?.displayName ||
-                auth().currentUser?.email?.split('@')[0] ||
+              {currentUser?.displayName ||
+                currentUser?.email?.split('@')[0] ||
                 'Creator'}
             </Text>
           </View>
@@ -1340,10 +1161,9 @@ export default function HomeScreen({navigation}: any) {
                   />
                 ) : (
                   <Text style={styles.profileLetter}>
-                    {auth()
-                      .currentUser?.displayName?.charAt(0)
+                    {currentUser?.displayName?.charAt(0)
                       ?.toUpperCase() ||
-                      auth().currentUser?.email?.charAt(0)?.toUpperCase() ||
+                      currentUser?.email?.charAt(0)?.toUpperCase() ||
                       'C'}
                   </Text>
                 )}
@@ -1431,7 +1251,7 @@ export default function HomeScreen({navigation}: any) {
                     styles.tabText,
                     selectedTab === tab && styles.activeText,
                     selectedTab === tab && {
-                      color: Colors.background === '#0A0A0A' ? '#0A0A0A' : '#1A1A1A',
+                      color: Colors.background !== '#FFFFFF' ? Colors.background : '#1A1C1E',
                     },
                   ]}>
                   {tab === 'Auditions'

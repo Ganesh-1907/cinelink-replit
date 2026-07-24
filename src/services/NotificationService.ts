@@ -1,13 +1,6 @@
-import messaging, {
-  FirebaseMessagingTypes,
-} from '@react-native-firebase/messaging';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
 import {Platform, Alert} from 'react-native';
+import api from '../api/client';
 
-// ── Navigation ref (set this up in App.tsx) ──────────────────
-// We use a ref so the background handler can navigate without
-// needing the NavigationContainer to be mounted.
 let _navigator: any = null;
 export const setNavigator = (ref: any) => {
   _navigator = ref;
@@ -19,7 +12,6 @@ const navigateTo = (screen: string, params?: any) => {
   }
 };
 
-// ── Map notification type → screen + params ──────────────────
 const resolveNavigation = (data: any) => {
   const type = data?.type;
   if (!type) return null;
@@ -32,7 +24,7 @@ const resolveNavigation = (data: any) => {
     return {screen: 'Main', params: {screen: 'Contests'}};
   }
   if (type === 'message' && data.chatId) {
-    return {screen: 'ChatScreen', params: {chatId: data.chatId}};
+    return {screen: 'ChatScreen', params: {chat: {id: data.chatId, participants: []}}};
   }
   if (['casting_request', 'new_casting_request'].includes(type)) {
     return {screen: 'AdminReports', params: undefined};
@@ -52,87 +44,25 @@ const resolveNavigation = (data: any) => {
   return null;
 };
 
-// ── Background + quit-state handler (must be outside React) ──
-// Call this once at the top of index.js BEFORE AppRegistry
 export const registerBackgroundHandler = () => {
-  messaging().setBackgroundMessageHandler(async remoteMessage => {
-    console.log('BG message:', remoteMessage);
-    // Nothing to do here — tapping the notification triggers
-    // getInitialNotification / onNotificationOpenedApp instead.
-  });
+  // No-op: FCM background handler removed (Firebase removed).
+  // Background push will be handled natively in android/app & ios/.
 };
 
-// ── Foreground message handler ────────────────────────────────
-const handleForegroundMessage = (
-  remoteMessage: FirebaseMessagingTypes.RemoteMessage,
-) => {
-  const {notification, data} = remoteMessage;
-  if (!notification) return;
-
-  Alert.alert(
-    notification.title || '🔔 CineLink',
-    notification.body || '',
-    [
-      {
-        text: 'View',
-        onPress: () => {
-          const nav = resolveNavigation(data);
-          if (nav) navigateTo(nav.screen, nav.params);
-        },
-      },
-      {text: 'Dismiss', style: 'cancel'},
-    ],
-  );
-};
-
-// ── Tap handler (app in background, notification tapped) ──────
-const handleNotificationTap = (
-  remoteMessage: FirebaseMessagingTypes.RemoteMessage,
-) => {
-  const nav = resolveNavigation(remoteMessage.data);
-  if (nav) navigateTo(nav.screen, nav.params);
-};
-
-// ── Main init (call from App.tsx when user logs in) ───────────
 export const initNotifications = async () => {
+  // No-op: FCM messaging removed.
+  // Register device token for push via REST API if available
   try {
-    const authStatus = await messaging().requestPermission();
-    const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-    if (!enabled) return;
-
-    // Save token
-    const token = await messaging().getToken();
-    if (token) await saveFCMToken(token);
-
-    // Refresh token
-    messaging().onTokenRefresh(saveFCMToken);
-
-    // Foreground messages
-    messaging().onMessage(handleForegroundMessage);
-
-    // App opened from background by tapping notification
-    messaging().onNotificationOpenedApp(handleNotificationTap);
-
-    // App opened from quit state by tapping notification
-    const initial = await messaging().getInitialNotification();
-    if (initial) handleNotificationTap(initial);
-
+    // Device token registration should be handled natively
   } catch (e) {
-    console.log('Notification init error:', e);
+    console.log('Notification init skipped (Firebase removed):', e);
   }
 };
 
 export const saveFCMToken = async (token: string) => {
-  const user = auth().currentUser;
-  if (!user) return;
   try {
-    await firestore()
-      .collection('users')
-      .doc(user.uid)
-      .set({fcmToken: token, platform: Platform.OS}, {merge: true});
+    await api.put('/users/profile', {fcmToken: token, platform: Platform.OS});
   } catch (e) {
-    console.log('FCM token error:', e);
+    console.log('FCM token save error:', e);
   }
 };
