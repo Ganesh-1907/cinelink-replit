@@ -118,34 +118,8 @@ export default function ProfileScreen({navigation, route}: any) {
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag],
     );
 
-  useFocusEffect(
-    React.useCallback(() => {
-      const timer = setTimeout(() => loadProfile(), 300);
-      return () => clearTimeout(timer);
-    }, [loadProfile]),
-  );
-
-  // ── Real-time followers/following counts ──
-  useEffect(() => {
-    if (!user?.uid) {
-      return;
-    }
-    Promise.all([
-      api.get<any>(`/users/${user.uid}/followers?limit=1`),
-      api.get<any>(`/users/${user.uid}/following?limit=1`),
-    ])
-      .then(([fRes, fgRes]) => {
-        setFollowersCount(fRes?.total || 0);
-        setFollowingCount(fgRes?.total || 0);
-      })
-      .catch(() => {});
-  }, [user?.uid]);
-
   const loadProfile = React.useCallback(async () => {
     try {
-      if (!user?.uid) {
-        return;
-      }
       const res = await api.get<any>('/users/profile');
       if (res?.user) {
         const data = res.user;
@@ -171,11 +145,20 @@ export default function ProfileScreen({navigation, route}: any) {
         setHeight(data?.height || '');
         setBodyType(data?.bodyType || '');
         setPortfolioMedia(data?.portfolioMedia || []);
+        setFollowersCount(data?.followerCount || 0);
+        setFollowingCount(data?.followingCount || 0);
       }
     } catch (e) {
       console.error('Error loading profile:', e);
     }
-  }, [user?.uid]);
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const timer = setTimeout(() => loadProfile(), 300);
+      return () => clearTimeout(timer);
+    }, [loadProfile]),
+  );
 
   const pickProfilePhoto = () => {
     Alert.alert('Choose Photo', 'Select source', [

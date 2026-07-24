@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {authService} from '../services/AuthService';
 import {User, PremiumTier} from '../types';
+import {useTheme} from './ThemeContext';
 
 interface AppState {
   user: any | null;
@@ -40,6 +41,7 @@ const AppContext = createContext<AppState>({
 });
 
 export function AppProvider({children}: {children: ReactNode}) {
+  const {resetToSystemTheme} = useTheme();
   const [user, setUser] = useState<any | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
   const [premiumTier, setPremiumTier] = useState<PremiumTier>('none');
@@ -69,8 +71,8 @@ export function AppProvider({children}: {children: ReactNode}) {
     setPremiumTier(data.premiumTier || 'none');
     setPremiumExpiry(data.premiumExpiry ? new Date(data.premiumExpiry) : null);
     setRole(data.role || 'Actor');
-    setIsAdmin(data.isAdmin === true);
-    setIsApprovedDirector(data.isApprovedDirector === true);
+    setIsAdmin(data.role === 'Admin');
+    setIsApprovedDirector(data.role === 'Director' && data.isApprovedDirector === true);
   }, []);
 
   const refreshUserData = useCallback(async () => {
@@ -85,6 +87,7 @@ export function AppProvider({children}: {children: ReactNode}) {
 
   const signOut = useCallback(async () => {
     await authService.logout();
+    resetToSystemTheme();
     setUser(null);
     setUserData(null);
     setPremiumTier('none');
@@ -92,7 +95,7 @@ export function AppProvider({children}: {children: ReactNode}) {
     setRole('Actor');
     setIsAdmin(false);
     setIsApprovedDirector(false);
-  }, []);
+  }, [resetToSystemTheme]);
 
   // Restore session on mount
   useEffect(() => {
@@ -104,6 +107,8 @@ export function AppProvider({children}: {children: ReactNode}) {
           populateFromUserData(session.user);
           const data = await authService.fetchProfile();
           populateFromUserData(data);
+        } else {
+          resetToSystemTheme();
         }
       } catch (e) {
         console.warn('[AppContext] session restore error:', e);
@@ -112,7 +117,7 @@ export function AppProvider({children}: {children: ReactNode}) {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [resetToSystemTheme]);
 
   const isPremium = premiumTier !== 'none';
   const isVerified = userData?.verifiedReal === true;

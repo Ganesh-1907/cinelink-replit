@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, {useEffect, useState, useCallback, useRef} from 'react';
 
 import {
   SafeAreaView,
@@ -13,7 +13,11 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
+  Animated,
+  Modal,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useTheme} from '../src/context/ThemeContext';
 import api from '../src/api/client';
 import {launchImageLibrary} from 'react-native-image-picker';
 
@@ -570,8 +574,67 @@ export default function HomeScreen({navigation}: any) {
   const [reportTarget, setReportTarget] = useState<any>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
-  const {isAdmin, user: currentUser} = useApp();
+  const {isAdmin, isApprovedDirector, user: currentUser, signOut} = useApp();
+  const {isDark, toggleTheme} = useTheme();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  const getInitials = (name: string) => {
+    if (!name) return 'CL';
+    const cleanName = name.trim();
+    const parts = cleanName.split(/\s+/);
+    if (parts.length >= 2) {
+      const firstInitial = parts[0][0];
+      const lastInitial = parts[parts.length - 1][0];
+      return (firstInitial + lastInitial).toUpperCase();
+    }
+    if (parts.length === 1 && parts[0].length > 0) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return 'CL';
+  };
+
+  // Drawer & Welcome logic
+  const [isFirstOpen, setIsFirstOpen] = useState(true);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(-280)).current;
+
+  useEffect(() => {
+    if (currentUser?.id || currentUser?._id || currentUser?.uid) {
+      const userId = currentUser.id || currentUser._id || currentUser.uid;
+      AsyncStorage.getItem(`has_opened_before_${userId}`).then(val => {
+        if (val === 'true') {
+          setIsFirstOpen(false);
+        } else {
+          AsyncStorage.setItem(`has_opened_before_${userId}`, 'true');
+          setIsFirstOpen(true);
+        }
+      });
+    }
+  }, [currentUser]);
+
+  const openDrawer = () => {
+    setDrawerVisible(true);
+  };
+
+  const closeDrawer = () => {
+    Animated.timing(slideAnim, {
+      toValue: -280,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      setDrawerVisible(false);
+    });
+  };
+
+  useEffect(() => {
+    if (drawerVisible) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [drawerVisible]);
 
   const loadNotifications = async () => {
     if (!currentUser) return;
@@ -1094,24 +1157,19 @@ export default function HomeScreen({navigation}: any) {
     <>
       <View style={[styles.container, {paddingTop: insets.top, backgroundColor: Colors.background}]}>
         <View style={styles.headerContainer}>
-          <View style={{flex: 1}}>
-            <Text style={styles.logo} numberOfLines={1}>
-              CineLink
-            </Text>
-            <Text style={styles.welcome}>Welcome back 👋</Text>
-            <Text style={styles.userHandle}>
-              {currentUser?.displayName ||
-                currentUser?.email?.split('@')[0] ||
-                'Creator'}
-            </Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={openDrawer} style={styles.hamburgerBtn}>
+              <Text style={styles.hamburgerIcon}>☰</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerLogo}>CineLink</Text>
           </View>
           <View style={styles.headerRight}>
             {!isAdmin && (
               <RippleIcon
-                size={52}
+                size={42}
                 color="#D4AF37"
                 onPress={() => navigation.navigate('PremiumCineLink')}>
-                <View style={styles.premiumBtn}>
+                <View style={styles.premiumBtnSmall}>
                   <CrownIcon />
                 </View>
               </RippleIcon>
@@ -1148,29 +1206,170 @@ export default function HomeScreen({navigation}: any) {
                 )}
               </View>
             </RippleIcon>
-
-            <RippleIcon
-              size={52}
-              color={Colors.primary}
-              onPress={() => navigation.navigate('Profile')}>
-              <View style={styles.profileButton}>
-                {profilePhoto ? (
-                  <Image
-                    source={{uri: profilePhoto}}
-                    style={styles.profileImage}
-                  />
-                ) : (
-                  <Text style={styles.profileLetter}>
-                    {currentUser?.displayName?.charAt(0)
-                      ?.toUpperCase() ||
-                      currentUser?.email?.charAt(0)?.toUpperCase() ||
-                      'C'}
-                  </Text>
-                )}
-              </View>
-            </RippleIcon>
           </View>
         </View>
+
+        {/* ── PROFILE SIDE DRAWER MODAL ── */}
+        <Modal
+          transparent
+          visible={drawerVisible}
+          onRequestClose={closeDrawer}
+          animationType="fade"
+        >
+          <View style={styles.drawerOverlay}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={closeDrawer}
+            />
+
+            <Animated.View
+              style={[
+                styles.drawerContent,
+                {
+                  transform: [{ translateX: slideAnim }],
+                  backgroundColor: Colors.background,
+                  borderRightColor: Colors.border,
+                },
+              ]}
+            >
+              <SafeAreaView style={{flex: 1}}>
+                <View style={styles.drawerHeader}>
+                  <View style={styles.drawerUserInfo}>
+                    <View style={styles.drawerAvatarContainer}>
+                      {profilePhoto ? (
+                        <Image source={{uri: profilePhoto}} style={styles.drawerAvatar} />
+                      ) : (
+                        <View style={styles.drawerAvatarFallback}>
+                          <Text style={styles.drawerAvatarLetter}>
+                            {currentUser?.displayName?.charAt(0)?.toUpperCase() ||
+                              currentUser?.email?.charAt(0)?.toUpperCase() ||
+                              'C'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.drawerNameContainer}>
+                      <Text style={styles.drawerName} numberOfLines={1}>
+                        {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Creator'}
+                      </Text>
+                      <Text style={styles.drawerEmail} numberOfLines={1}>
+                        {currentUser?.email || 'No email linked'}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={closeDrawer} style={styles.drawerCloseBtn}>
+                    <Text style={styles.drawerCloseText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.drawerScroll} showsVerticalScrollIndicator={false}>
+                  {[
+                    {
+                      icon: '👤',
+                      label: 'My Profile',
+                      onPress: () => navigation.navigate('Profile'),
+                    },
+                    {
+                      icon: '✏️',
+                      label: 'Edit Profile',
+                      onPress: () => navigation.navigate('Profile', {edit: true}),
+                    },
+                    {
+                      icon: '🎥',
+                      label: 'My Films',
+                      onPress: () => navigation.navigate('MyFilms'),
+                    },
+                    {
+                      icon: '🏆',
+                      label: 'My Contests',
+                      onPress: () => navigation.navigate('MyContests'),
+                    },
+                    {
+                      icon: '💾',
+                      label: 'Saved Auditions',
+                      onPress: () => navigation.navigate('SavedAuditions'),
+                    },
+                    ...(isApprovedDirector || isAdmin
+                      ? [
+                          {
+                            icon: '📋',
+                            label: 'Post Audition',
+                            onPress: () => navigation.navigate('PostAudition'),
+                          },
+                          {
+                            icon: '📊',
+                            label: 'Director Dashboard',
+                            onPress: () => navigation.navigate('DirectorDashboard'),
+                          },
+                        ]
+                      : []),
+                    ...(isAdmin
+                      ? [
+                          {
+                            icon: '📢',
+                            label: 'Announcements',
+                            onPress: () => navigation.navigate('Announcements'),
+                          },
+                          {
+                            icon: '🏆',
+                            label: 'Post Contest',
+                            onPress: () => navigation.navigate('PostContest'),
+                          },
+                          {
+                            icon: '🛡️',
+                            label: 'Admin Reports',
+                            onPress: () => navigation.navigate('AdminReports'),
+                          },
+                        ]
+                      : []),
+                    {
+                      icon: '⚙️',
+                      label: 'Settings',
+                      onPress: () => navigation.navigate('Settings'),
+                    },
+                    {
+                      icon: '🚪',
+                      label: 'Logout',
+                      onPress: () => {
+                        Alert.alert('Logout', 'Are you sure you want to logout?', [
+                          {text: 'Cancel', style: 'cancel'},
+                          {
+                            text: 'Logout',
+                            style: 'destructive',
+                            onPress: async () => await signOut(),
+                          },
+                        ]);
+                      },
+                    },
+                  ].map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.drawerItem}
+                      onPress={() => {
+                        closeDrawer();
+                        item.onPress();
+                      }}
+                    >
+                      <Text style={styles.drawerItemIcon}>{item.icon}</Text>
+                      <Text style={styles.drawerItemText}>{item.label}</Text>
+                      <Text style={styles.drawerItemArrow}>›</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={[styles.drawerFooter, {borderTopColor: Colors.border}]}>
+                  <TouchableOpacity style={styles.drawerThemeToggle} onPress={toggleTheme}>
+                    <Text style={styles.drawerThemeIcon}>{isDark ? '🌙' : '☀️'}</Text>
+                    <Text style={styles.drawerThemeText}>
+                      {isDark ? 'Dark Mode' : 'Light Mode'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </SafeAreaView>
+            </Animated.View>
+          </View>
+        </Modal>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -1184,6 +1383,24 @@ export default function HomeScreen({navigation}: any) {
               progressBackgroundColor={Colors.card}
             />
           }>
+          {/* ── WELCOME CARD ── */}
+          <View style={styles.welcomeCard}>
+            <View style={styles.welcomeCardAvatarContainer}>
+              {profilePhoto ? (
+                <Image source={{uri: profilePhoto}} style={styles.welcomeCardAvatar} />
+              ) : (
+                <View style={styles.welcomeCardAvatarFallback}>
+                  <Text style={styles.welcomeCardAvatarText}>
+                    {getInitials(currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Creator')}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.welcomeCardText} numberOfLines={1}>
+              {isFirstOpen ? 'Welcome' : 'Welcome back'}, {(currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Creator').split(' ')[0]} 👋
+            </Text>
+          </View>
+
           {/* ── SEARCH BAR ── */}
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
@@ -2193,5 +2410,240 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '700',
     fontSize: 14,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    flex: 1,
+  },
+  hamburgerBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.cardElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  hamburgerIcon: {
+    fontSize: 22,
+    color: Colors.textPrimary,
+  },
+  welcomeContainer: {
+    justifyContent: 'center',
+    flex: 1,
+  },
+  welcomeSubtitle: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  welcomeTitle: {
+    fontSize: 17,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    flexDirection: 'row',
+  },
+  drawerContent: {
+    width: 280,
+    height: '100%',
+    borderRightWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 16,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  drawerUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: Spacing.sm + 2,
+  },
+  drawerAvatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+  },
+  drawerAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  drawerAvatarFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.cardElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerAvatarLetter: {
+    color: Colors.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  drawerNameContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  drawerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  drawerEmail: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  drawerCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.cardElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  drawerCloseText: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  drawerScroll: {
+    flex: 1,
+    paddingTop: Spacing.md,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md + 2,
+  },
+  drawerItemIcon: {
+    fontSize: 18,
+    marginRight: Spacing.md,
+    width: 24,
+    textAlign: 'center',
+  },
+  drawerItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  drawerItemArrow: {
+    fontSize: 18,
+    color: Colors.textTertiary,
+    fontWeight: 'bold',
+  },
+  drawerFooter: {
+    padding: Spacing.lg,
+    borderTopWidth: 1,
+    paddingBottom: Spacing.xl,
+  },
+  drawerThemeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  drawerThemeIcon: {
+    fontSize: 18,
+    marginRight: Spacing.md,
+    width: 24,
+    textAlign: 'center',
+  },
+  drawerThemeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  headerLogo: {
+    color: Colors.primary,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  premiumBtnSmall: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+  },
+  welcomeCard: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginHorizontal: Spacing.lg + 2,
+    marginBottom: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  welcomeCardAvatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.cardElevated,
+    marginRight: Spacing.md,
+  },
+  welcomeCardAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  welcomeCardAvatarFallback: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.cardElevated,
+  },
+  welcomeCardAvatarText: {
+    color: Colors.primary,
+    fontSize: 15,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  welcomeCardText: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    flex: 1,
   },
 });

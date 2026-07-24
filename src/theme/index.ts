@@ -53,13 +53,11 @@ export const lightColors: ColorPalette = {
 export const Colors: ColorPalette = {...darkColors};
 
 // Monkey-patch StyleSheet.create to make cached stylesheets responsive to theme changes.
-const originalCreate = StyleSheet.create;
 StyleSheet.create = ((stylesObj: any) => {
-  const created = originalCreate(stylesObj);
   const result: any = {};
 
-  for (const styleKey of Object.keys(created)) {
-    const styleVal = created[styleKey];
+  for (const styleKey of Object.keys(stylesObj)) {
+    const styleVal = stylesObj[styleKey];
     if (styleVal && typeof styleVal === 'object') {
       const propertyThemeMap: Record<string, string> = {};
       
