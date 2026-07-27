@@ -195,7 +195,7 @@ export default function NotificationsScreen({navigation}: any) {
     if (isCastingRequestNotif(item.type)) {
       navigation.navigate('AdminReports');
     } else if (isCastingApprovedNotif(item.type)) {
-      navigation.navigate('DirectorDashboard');
+      navigation.navigate('MyAuditions');
     } else if (isMessageNotif(item.type) && item.chatId) {
       navigation.navigate('ChatScreen', {
         chat: {
@@ -224,7 +224,7 @@ export default function NotificationsScreen({navigation}: any) {
       if (item.auditionId) {
         navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
       } else {
-        navigation.navigate('DirectorDashboard');
+        navigation.navigate('MyAuditions');
       }
     } else if (isAuditionNotif(item.type)) {
       if (item.auditionId) {
@@ -442,7 +442,7 @@ export default function NotificationsScreen({navigation}: any) {
                             : isMessageNotif(item.type)
                             ? 'Tap to open chat →'
                             : isCastingApprovedNotif(item.type)
-                            ? 'Tap to go to dashboard →'
+                            ? 'Tap to view auditions →'
                             : isContestNotif(item.type)
                             ? 'Tap to view contest →'
                             : 'Tap to view profile →'}

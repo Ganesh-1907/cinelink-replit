@@ -578,6 +578,9 @@ export default function HomeScreen({navigation}: any) {
   const {isDark, toggleTheme} = useTheme();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [suggestedLoading, setSuggestedLoading] = useState(true);
 
   const getGreeting = () => {
     const hours = new Date().getHours();
@@ -694,6 +697,60 @@ export default function HomeScreen({navigation}: any) {
     return () => clearInterval(interval);
   }, []);
 
+  const fetchSuggestions = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const uid = currentUser.uid || currentUser._id;
+      const followRes = await api.get<any>(`/users/${uid}/following`);
+      const followingList = followRes.following || [];
+      const followedSet = new Set<string>(followingList.map((u: any) => u._id || u.id));
+      setFollowingIds(followedSet);
+
+      const searchRes = await api.get<any>('/users/search?limit=30');
+      const allUsers = searchRes.users || [];
+      
+      const filtered = allUsers.filter((u: any) => {
+        const targetId = u._id || u.id;
+        return targetId !== uid && !followedSet.has(targetId);
+      });
+      
+      setSuggestedUsers(filtered);
+    } catch (e) {
+      console.log('Error fetching suggestions:', e);
+    } finally {
+      setSuggestedLoading(false);
+    }
+  }, [currentUser]);
+
+  const toggleFollowUser = async (targetId: string) => {
+    const isCurrentlyFollowing = followingIds.has(targetId);
+    
+    setFollowingIds(prev => {
+      const next = new Set(prev);
+      if (isCurrentlyFollowing) {
+        next.delete(targetId);
+      } else {
+        next.add(targetId);
+      }
+      return next;
+    });
+
+    try {
+      await api.post('/users/follow', {targetUserId: targetId});
+    } catch (e) {
+      setFollowingIds(prev => {
+        const next = new Set(prev);
+        if (isCurrentlyFollowing) {
+          next.add(targetId);
+        } else {
+          next.delete(targetId);
+        }
+        return next;
+      });
+      Alert.alert('Error', 'Could not update follow status.');
+    }
+  };
+
   // ── Load feed posts + auditions ──
   useEffect(() => {
     setFeedLoading(true);
@@ -708,15 +765,16 @@ export default function HomeScreen({navigation}: any) {
     }).catch(() => setFeedLoading(false));
 
     api.get<{posts: any[]}>('/feed-posts').then(res => {
-      setGeneralPosts((res.posts || []).filter((p: any) => p.postType === 'general').map((p: any) => ({...p, id: p._id || p.id})));
+      setGeneralPosts((res.posts || []).filter((p: any) => p.postType === 'general' || p.postType === 'announcement').map((p: any) => ({...p, id: p._id || p.id})));
     }).catch(() => {});
 
     if (currentUser) {
       api.get<{savedAuditions?: any[]}>('/saved-auditions').then(res => {
         setSavedIds((res.savedAuditions || []).map((s: any) => s.auditionId));
       }).catch(() => {});
+      fetchSuggestions();
     }
-  }, [refreshKey, currentUser]);
+  }, [refreshKey, currentUser, fetchSuggestions]);
 
   useEffect(() => {
     setFilmsLoading(true);
@@ -1200,19 +1258,28 @@ export default function HomeScreen({navigation}: any) {
             <Text style={styles.greetingText}>{getGreeting()}</Text>
             <Text style={styles.profileNameText}>{profileName} 👋</Text>
           </View>
-          <TouchableOpacity
-            style={styles.headerNotificationBtn}
-            onPress={() => navigation.navigate('Notifications')}
-          >
-            <Text style={styles.headerNotificationIcon}>🔔</Text>
-            {unreadCount > 0 && (
-              <View style={styles.headerNotifBadge}>
-                <Text style={styles.headerNotifBadgeText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={{flexDirection: 'row', gap: 10, alignItems: 'center'}}>
+            <TouchableOpacity
+              style={styles.headerNotificationBtn}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Text style={styles.headerNotificationIcon}>🔔</Text>
+              {unreadCount > 0 && (
+                <View style={styles.headerNotifBadge}>
+                  <Text style={styles.headerNotifBadgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.headerNotificationBtn}
+              onPress={openDrawer}
+            >
+              <Text style={[styles.headerNotificationIcon, {fontSize: 22, color: Colors.textPrimary}]}>☰</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── PROFILE SIDE DRAWER MODAL ── */}
@@ -1279,34 +1346,33 @@ export default function HomeScreen({navigation}: any) {
                     {
                       icon: '✏️',
                       label: 'Edit Profile',
-                      onPress: () => navigation.navigate('Profile', {edit: true}),
+                      onPress: () => navigation.navigate('MyProfile'),
                     },
-                    {
-                      icon: '🎥',
-                      label: 'My Films',
-                      onPress: () => navigation.navigate('MyFilms'),
-                    },
-                    {
-                      icon: '🏆',
-                      label: 'My Contests',
-                      onPress: () => navigation.navigate('MyContests'),
-                    },
-                    {
-                      icon: '💾',
-                      label: 'Saved Auditions',
-                      onPress: () => navigation.navigate('SavedAuditions'),
-                    },
+                    ...(!isAdmin
+                      ? [
+                          {
+                            icon: '💾',
+                            label: 'Saved Auditions',
+                            onPress: () => navigation.navigate('SavedAuditions'),
+                          },
+                        ]
+                      : []),
                     ...(isApprovedDirector || isAdmin
                       ? [
                           {
-                            icon: '📋',
-                            label: 'Post Audition',
-                            onPress: () => navigation.navigate('PostAudition'),
+                            icon: '🎥',
+                            label: isAdmin ? 'Films' : 'My Films',
+                            onPress: () => navigation.navigate('MyFilms'),
                           },
                           {
-                            icon: '📊',
-                            label: 'Director Dashboard',
-                            onPress: () => navigation.navigate('DirectorDashboard'),
+                            icon: '🏆',
+                            label: isAdmin ? 'Contests' : 'My Contests',
+                            onPress: () => navigation.navigate('MyContests'),
+                          },
+                          {
+                            icon: '🎭',
+                            label: isAdmin ? 'Auditions' : 'My Auditions',
+                            onPress: () => navigation.navigate('MyAuditions'),
                           },
                         ]
                       : []),
@@ -1316,11 +1382,6 @@ export default function HomeScreen({navigation}: any) {
                             icon: '📢',
                             label: 'Announcements',
                             onPress: () => navigation.navigate('Announcements'),
-                          },
-                          {
-                            icon: '🏆',
-                            label: 'Post Contest',
-                            onPress: () => navigation.navigate('PostContest'),
                           },
                           {
                             icon: '🛡️',
@@ -1390,76 +1451,9 @@ export default function HomeScreen({navigation}: any) {
             />
           }>
 
-          {/* ── SEARCH BAR ROW ── */}
-          <View style={styles.searchBarRow}>
-            <View style={styles.searchBarInner}>
-              <Text style={styles.searchIconSymbol}>🔍</Text>
-              <TextInput
-                placeholder="Search auditions, contests, people..."
-                placeholderTextColor={Colors.textTertiary}
-                value={searchText}
-                onChangeText={handleSearchChange}
-                style={[styles.searchInputField, {color: Colors.textPrimary}]}
-              />
-              {searchText.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSearchText('');
-                    setSuggestions([]);
-                  }}>
-                  <Text style={styles.clearSearchText}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <TouchableOpacity style={styles.filterTunerBtn} onPress={() => navigation.navigate('Discover')}>
-              <Text style={styles.filterTunerIcon}>🎛️</Text>
-            </TouchableOpacity>
-          </View>
 
-          {/* ── LIVE SUGGESTIONS ── */}
-          {suggestions.length > 0 && (
-            <View style={styles.suggestionsBox}>
-              {suggestions.map((s, i) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={[
-                    styles.suggestionItem,
-                    i < suggestions.length - 1 && styles.suggestionBorder,
-                  ]}
-                  onPress={() => {
-                    setSearchText(s.label || '');
-                    setSuggestions([]);
-                  }}>
-                  <Text style={styles.suggestionText} numberOfLines={1}>
-                    {s.type} {s.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
 
-          {/* ── QUICK ACTIONS ROW ── */}
-          <View style={styles.quickActionsRow}>
-            {isAdmin && (
-              <TouchableOpacity
-                style={styles.quickActionChip}
-                onPress={() => navigation.navigate('AIAssistant')}>
-                <Text style={styles.quickActionChipText}>🤖 AI Assistant</Text>
-              </TouchableOpacity>
-            )}
-            {isAdmin && (
-              <TouchableOpacity
-                style={styles.quickActionChip}
-                onPress={() => navigation.navigate('QuickPost')}>
-                <Text style={styles.quickActionChipText}>⚡ Quick Post</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.quickActionChip}
-              onPress={() => navigation.navigate('UploadFilm')}>
-              <Text style={styles.quickActionChipText}>🎬 Upload Film</Text>
-            </TouchableOpacity>
-          </View>
+
 
           {/* ── SECTIONS ── */}
           <View style={{paddingBottom: insets.bottom + 80}}>
@@ -1588,6 +1582,61 @@ export default function HomeScreen({navigation}: any) {
               </ScrollView>
             )}
 
+            {/* 3.5 People You May Know */}
+            {renderSectionHeader('People You May Know', () => navigation.navigate('Discover'))}
+            {suggestedLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{marginVertical: Spacing.lg}} />
+            ) : suggestedUsers.length === 0 ? (
+              <EmptyState icon="👥" title="No suggestions" subtitle="You are connected with everyone!" />
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestionsScroll}
+              >
+                {suggestedUsers.slice(0, 10).map(item => {
+                  const uid = item._id || item.id;
+                  const isFollowed = followingIds.has(uid);
+                  return (
+                    <View key={uid} style={styles.suggestionCard}>
+                      <TouchableOpacity
+                        onPress={() => navigation.navigate('PublicProfile', {userId: uid})}
+                        style={styles.suggestionCardTouchable}
+                      >
+                        <Avatar name={item.fullName || item.displayName || 'User'} size="lg" uri={item.photoUrl} />
+                        <Text style={styles.suggestionName} numberOfLines={1}>
+                          {item.fullName || item.displayName || item.name || 'User'}
+                        </Text>
+                        <Text style={styles.suggestionRole} numberOfLines={1}>
+                          {item.role || 'Artist'}
+                        </Text>
+                        {item.location ? (
+                          <Text style={styles.suggestionLocation} numberOfLines={1}>
+                            📍 {item.location}
+                          </Text>
+                        ) : (
+                          <Text style={styles.suggestionLocation} numberOfLines={1}>
+                            CineLink Member
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.suggestionFollowBtn,
+                          isFollowed ? styles.followedBtn : styles.followBtn
+                        ]}
+                        onPress={() => toggleFollowUser(uid)}
+                      >
+                        <Text style={isFollowed ? styles.followedBtnText : styles.followBtnText}>
+                          {isFollowed ? 'Following' : 'Follow'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+
             {/* 4. Director Posts / Updates */}
             {renderSectionHeader('Director Updates', () => navigation.navigate('BrowseUpdates'))}
             {feedLoading ? (
@@ -1627,8 +1676,10 @@ export default function HomeScreen({navigation}: any) {
                           <Text style={styles.updateAuthorName} numberOfLines={1}>{authorName}</Text>
                           <Text style={styles.updateTimeText}>{formatPostTime(item.createdAt)}</Text>
                         </View>
-                        <View style={styles.updateTypeBadge}>
-                          <Text style={styles.updateTypeBadgeText}>Update</Text>
+                        <View style={[styles.updateTypeBadge, item.postType === 'announcement' && styles.updateAnnouncementBadge]}>
+                          <Text style={[styles.updateTypeBadgeText, item.postType === 'announcement' && styles.updateAnnouncementBadgeText]}>
+                            {item.postType === 'announcement' ? 'Announcement' : 'Update'}
+                          </Text>
                         </View>
                       </View>
                       
@@ -2139,7 +2190,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  bubbleDeleteText: {color: Colors.error, fontSize: 12, fontWeight: '600'},
+  bubbleDeleteText: {color: Colors.primary, fontSize: 12, fontWeight: '600'},
 
   commentsBox: {
     marginTop: Spacing.sm + 2,
@@ -2220,7 +2271,7 @@ const styles = StyleSheet.create({
   commentTime: {color: Colors.textTertiary, fontSize: 11},
   commentText: {color: Colors.textPrimary, fontSize: 13, lineHeight: 18},
   deleteCommentBtn: {padding: Spacing.xs, flexShrink: 0},
-  deleteCommentText: {color: Colors.error, fontSize: 12, fontWeight: 'bold'},
+  deleteCommentText: {color: Colors.primary, fontSize: 12, fontWeight: 'bold'},
 
   profileCard: {
     backgroundColor: Colors.card,
@@ -2448,14 +2499,14 @@ const styles = StyleSheet.create({
   deleteFilmBtn: {
     width: 48,
     height: 48,
-    backgroundColor: Colors.errorFaint,
+    backgroundColor: Colors.cardElevated,
     borderWidth: 1,
-    borderColor: Colors.errorBorder,
+    borderColor: Colors.border,
     borderRadius: Radius.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  deleteFilmText: {color: Colors.error, fontSize: 18},
+  deleteFilmText: {color: Colors.primary, fontSize: 18},
   reportBtn: {
     marginTop: Spacing.md,
     paddingTop: Spacing.sm + 2,
@@ -2976,8 +3027,8 @@ const styles = StyleSheet.create({
 
   // Contest Horizontal Card (Side image, right text)
   contestHorizontalCard: {
-    width: 170,
-    height: 76,
+    width: 230,
+    height: 86,
     backgroundColor: Colors.card,
     borderRadius: 12,
     flexDirection: 'row',
@@ -2987,8 +3038,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   contestCardImg: {
-    width: 60,
-    height: 60,
+    width: 70,
+    height: 70,
     borderRadius: 8,
     backgroundColor: Colors.cardElevated,
   },
@@ -3047,6 +3098,79 @@ const styles = StyleSheet.create({
     color: '#D4AF37',
     marginTop: 4,
     fontWeight: '600',
+  },
+
+  // Suggested Connections Styles
+  suggestionsScroll: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  suggestionCard: {
+    width: 140,
+    padding: Spacing.md,
+    alignItems: 'center',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  suggestionCardTouchable: {
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    width: '100%',
+  },
+  suggestionName: {
+    color: Colors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 13,
+    marginTop: Spacing.sm,
+    textAlign: 'center',
+    width: '100%',
+  },
+  suggestionRole: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: 'center',
+    width: '100%',
+  },
+  suggestionLocation: {
+    color: Colors.textTertiary,
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
+    width: '100%',
+  },
+  suggestionFollowBtn: {
+    width: '100%',
+    paddingVertical: 6,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followBtn: {
+    backgroundColor: Colors.primary,
+  },
+  followBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  followedBtn: {
+    backgroundColor: Colors.primaryFaint,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  followedBtnText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   // Director Updates Feed Styles
@@ -3113,6 +3237,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#D4AF37',
     fontWeight: '700',
+  },
+  updateAnnouncementBadge: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+  },
+  updateAnnouncementBadgeText: {
+    color: '#EF4444',
   },
   updateBodyText: {
     fontSize: 13.5,

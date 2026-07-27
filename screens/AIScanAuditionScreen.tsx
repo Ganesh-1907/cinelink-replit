@@ -69,14 +69,39 @@ const getErrorMessage = (e: unknown): string => {
   return 'Unknown error occurred';
 };
 
-export default function QuickPostScreen({navigation}: any) {
-  const {isAdmin} = useApp();
+export default function AIScanAuditionScreen({navigation}: any) {
+  const {user, isAdmin, isApprovedDirector} = useApp();
 
   useEffect(() => {
-    if (!isAdmin) {
-      Alert.alert('Access Denied', 'Admin access required.', [{text: 'Go Back', onPress: () => navigation.goBack()}]);
-    }
-  }, []);
+    const checkAccess = async () => {
+      const hasAccess = isAdmin || isApprovedDirector;
+      if (!hasAccess) {
+        Alert.alert('Access Denied', 'Casting Director or Admin access required.', [
+          {text: 'Go Back', onPress: () => navigation.goBack()}
+        ]);
+        return;
+      }
+
+      if (!isAdmin && isApprovedDirector) {
+        try {
+          const audRes = await api.get<{auditions: any[]}>('/auditions');
+          const userAuditions = (audRes.auditions || []).filter(
+            (a: any) => (a.postedById || a.directorId) === user?.uid
+          );
+          if (userAuditions.length >= 1) {
+            Alert.alert(
+              'Limit Reached',
+              'Directors can only post one audition. Please edit your existing audition or contact admin to upgrade.',
+              [{text: 'Go Back', onPress: () => navigation.goBack()}]
+            );
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    };
+    checkAccess();
+  }, [isAdmin, isApprovedDirector, user, navigation]);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [form, setForm] = useState<AuditionForm>(EMPTY_FORM);
@@ -84,7 +109,6 @@ export default function QuickPostScreen({navigation}: any) {
   const [posting, setPosting] = useState(false);
   const [aiDone, setAiDone] = useState(false);
 
-  const {user} = useApp();
   const directorName =
     user?.displayName || user?.email?.split('@')[0] || 'Admin';
 
@@ -196,7 +220,7 @@ export default function QuickPostScreen({navigation}: any) {
         backgroundColor={Colors.background}
       />
       <Header
-        title="⚡ Quick Post"
+        title="✨ AI Audition Scan"
         navigation={navigation}
         onBack={() => navigation.goBack()}
       />

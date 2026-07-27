@@ -8,9 +8,9 @@ import {
   RefreshControl,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import api from '../src/api/client';
-import EngagementBar from '../components/EngagementBar';
 import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
@@ -95,59 +95,139 @@ export default function BrowseAuditionsScreen({navigation}: any) {
 
   const renderCard = ({item}: any) => {
     const isSaved = savedIds.includes(item._id || item.id);
+    const hasPoster = !!item.posterUrl;
+
     return (
-      <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => navigation.navigate('AuditionDetail', {audition: item})}>
-        <View style={styles.cardTopRow}>
-          <Chip label="🟢 Open" variant="success" static />
-          <TouchableOpacity onPress={() => toggleSave(item)} style={styles.saveBtn}>
-            <Text style={styles.saveBtnText}>{isSaved ? '❤️ Saved' : '🤍 Save'}</Text>
-          </TouchableOpacity>
-        </View>
-        {item.category ? <View style={styles.categoryRow}><Chip label={item.category} static /></View> : null}
-        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-        {item.budget || item.positions ? (
-          <View style={styles.budgetRow}>
-            {item.budget ? <View style={styles.budgetPill}><Text style={styles.budgetPillText}>💰 {item.budget}</Text></View> : null}
-            {item.positions ? <View style={styles.positionsPill}><Text style={styles.positionsPillText}>👥 {item.positions}</Text></View> : null}
+      <TouchableOpacity 
+        style={styles.card} 
+        activeOpacity={0.88} 
+        onPress={() => navigation.navigate('AuditionDetail', {audition: item, auditionId: item._id || item.id})}
+      >
+        <View style={styles.cardContent}>
+          {/* Left Side: Poster Thumbnail */}
+          {hasPoster ? (
+            <Image source={{uri: item.posterUrl}} style={styles.posterThumbnail} resizeMode="cover" />
+          ) : (
+            <View style={styles.posterPlaceholder}>
+              <Text style={styles.placeholderEmoji}>🎭</Text>
+            </View>
+          )}
+
+          {/* Right Side: Information column */}
+          <View style={styles.infoCol}>
+            <View style={styles.titleRow}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              {item.status !== 'Closed' ? (
+                <View style={styles.featuredBadge}>
+                  <Text style={styles.featuredBadgeText}>Featured</Text>
+                </View>
+              ) : (
+                <View style={[styles.featuredBadge, {backgroundColor: Colors.errorFaint, borderColor: Colors.errorBorder}]}>
+                  <Text style={[styles.featuredBadgeText, {color: Colors.error}]}>Closed</Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {item.category || 'Cinema'} · {item.role || 'Any Role'}
+            </Text>
+
+            <View style={styles.metaRow}>
+              {item.location ? <Text style={styles.metaItem}>📍 {item.location}</Text> : null}
+              {item.gender ? <Text style={styles.metaItem}>👤 {item.gender}</Text> : null}
+            </View>
+
+            <View style={styles.bottomRow}>
+              <Text style={styles.budgetVal} numberOfLines={1}>
+                {item.budget ? `💰 ${item.budget}` : 'Unspecified Pay'}
+              </Text>
+              <Text style={styles.applicantsVal}>
+                👥 {item.applicationsCount || 0} applied
+              </Text>
+            </View>
           </View>
-        ) : null}
-        <View style={styles.metaGrid}>
-          {item.role ? <View style={styles.metaChip}><Text style={styles.metaChipText}>🎭 {item.role}</Text></View> : null}
-          {item.gender ? <View style={styles.metaChip}><Text style={styles.metaChipText}>{item.gender}</Text></View> : null}
-          {item.language ? <View style={styles.metaChip}><Text style={styles.metaChipText}>🗣 {item.language}</Text></View> : null}
         </View>
-        {item.location ? <Text style={styles.infoText}>📍 {item.location}</Text> : null}
-        <View style={styles.directorRow}>
-          <Text style={styles.directorText}>🎥 {item.directorName || 'Director'}</Text>
-          <Text style={styles.applicantsText}>{item.applicationsCount || 0} applied</Text>
+
+        {/* Action Row */}
+        <View style={styles.cardActions}>
+          <TouchableOpacity onPress={() => toggleSave(item)} style={styles.saveActionBtn} activeOpacity={0.7}>
+            <Text style={styles.saveActionText}>{isSaved ? '❤️ Saved' : '🤍 Save'}</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.actionDivider} />
+
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('AuditionDetail', {audition: item, auditionId: item._id || item.id})} 
+            style={styles.applyActionBtn}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.applyActionText}>Apply Now →</Text>
+          </TouchableOpacity>
+
+          {(item.postedById === currentUser?.uid || item.directorId === currentUser?.uid || isAdmin) && (
+            <>
+              <View style={styles.actionDivider} />
+              <TouchableOpacity onPress={() => deleteAudition(item)} style={styles.deleteActionBtn} activeOpacity={0.7}>
+                <Text style={styles.deleteActionText}>🗑 Delete</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
-        {item.description ? <Text style={styles.descText} numberOfLines={2}>{item.description}</Text> : null}
-        {item.lastDate ? <Text style={styles.deadlineLabel}>Apply before {item.lastDate}</Text> : null}
-        <EngagementBar auditionId={item._id || item.id} likes={item.likes || 0} likedBy={item.likedBy || []} commentCount={0} views={item.views || 0} shareTitle={item.title || 'Audition'} />
-        <View style={styles.auditionBtnRow}>
-          <TouchableOpacity style={styles.contactBtn} onPress={() => navigation.navigate('AuditionDetail', {audition: item})}><Text style={styles.contactBtnText}>Contact</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.applyBtnFilled} onPress={() => navigation.navigate('AuditionDetail', {audition: item})}><Text style={styles.applyBtnFilledText}>Apply →</Text></TouchableOpacity>
-        </View>
-        {(item.postedById === currentUser?.uid || item.directorId === currentUser?.uid) && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteAudition(item)}><Text style={styles.deleteBtnText}>🗑 Delete Audition</Text></TouchableOpacity>
-        )}
       </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.root}>
-      <Header title="🎭 Browse Auditions" navigation={navigation} onBack={() => navigation.goBack()} />
-      <View style={styles.searchContainer}><Input value={searchText} onChangeText={setSearchText} placeholder="🔍 Search by title, city, language..." /></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} style={styles.filterScroll}>
-        {ROLES.map(role => <Chip key={role} label={role} selected={selectedRole === role} onPress={() => setSelectedRole(role)} />)}
-      </ScrollView>
+      <Header title="Browse Auditions" navigation={navigation} onBack={() => navigation.goBack()} />
+      <View style={styles.searchContainer}>
+        <Input value={searchText} onChangeText={setSearchText} placeholder="Search by title, location, director..." />
+      </View>
+      
+      <View style={styles.tabsWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          {ROLES.map(role => (
+            <TouchableOpacity 
+              key={role} 
+              onPress={() => setSelectedRole(role)}
+              style={[
+                styles.tabItem, 
+                selectedRole === role && styles.tabItemActive
+              ]}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.tabItemText,
+                selectedRole === role && styles.tabItemTextActive
+              ]}>
+                {role}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       {loading ? (
         <FlatList data={[1, 2, 3]} keyExtractor={i => String(i)} renderItem={() => <SkeletonCard />} contentContainerStyle={styles.listPadding} />
       ) : filtered.length === 0 ? (
         <EmptyState icon="🎭" title="No auditions found" subtitle={searchText || selectedRole !== 'All' ? 'Try changing your search or filter' : 'No auditions posted yet. Check back soon!'} actionLabel={isAdmin ? '+ Post an Audition' : undefined} onAction={isAdmin ? () => navigation.navigate('PostAudition') : undefined} />
       ) : (
-        <FlatList data={filtered} keyExtractor={item => item._id || item.id} renderItem={renderCard} contentContainerStyle={[styles.listPadding, {paddingBottom: insets.bottom + 80}]} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} progressBackgroundColor={Colors.background} />} />
+        <FlatList 
+          data={filtered} 
+          keyExtractor={item => item._id || item.id} 
+          renderItem={renderCard} 
+          contentContainerStyle={[styles.listPadding, {paddingBottom: insets.bottom + 80}]} 
+          showsVerticalScrollIndicator={false} 
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              tintColor={Colors.primary} 
+              colors={[Colors.primary]} 
+              progressBackgroundColor={Colors.background} 
+            />
+          } 
+        />
       )}
     </View>
   );
@@ -156,34 +236,161 @@ export default function BrowseAuditionsScreen({navigation}: any) {
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: Colors.background},
   searchContainer: {paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm},
-  filterScroll: {maxHeight: 50, marginBottom: Spacing.md},
-  filterRow: {paddingHorizontal: Spacing.lg, gap: Spacing.sm, alignItems: 'center'},
-  listPadding: {padding: Spacing.lg},
-  card: {backgroundColor: Colors.card, borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.borderLight, ...Shadows.md},
-  cardTopRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm},
-  saveBtn: {flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.primaryFaint, borderRadius: Radius.pill, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm},
-  saveBtnText: {color: Colors.textPrimary, ...Typography.label},
-  categoryRow: {marginBottom: Spacing.sm},
-  cardTitle: {color: Colors.textPrimary, fontSize: 18, fontWeight: 'bold', marginBottom: Spacing.sm},
-  metaGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.sm},
-  metaChip: {backgroundColor: Colors.cardElevated, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderWidth: 0.5, borderColor: Colors.border},
-  metaChipText: {color: Colors.textSecondary, ...Typography.caption},
-  infoText: {color: Colors.textSecondary, ...Typography.bodySm, marginBottom: Spacing.xs},
-  directorRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm},
-  directorText: {color: Colors.textSecondary, ...Typography.caption, marginBottom: 0},
-  applicantsText: {color: Colors.textSecondary, ...Typography.micro},
-  descText: {color: Colors.textSecondary, ...Typography.bodySm, lineHeight: 20, marginBottom: Spacing.sm},
-  deleteBtn: {backgroundColor: Colors.errorFaint, borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center', marginTop: Spacing.sm, borderWidth: 1, borderColor: Colors.errorBorder},
-  deleteBtnText: {color: Colors.error, fontWeight: 'bold', ...Typography.label},
-  budgetRow: {flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm},
-  budgetPill: {backgroundColor: Colors.warningFaint, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderWidth: 1, borderColor: Colors.warningBorder},
-  budgetPillText: {color: Colors.warning, ...Typography.captionBold},
-  positionsPill: {backgroundColor: Colors.successFaint, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderWidth: 1, borderColor: Colors.successBorder},
-  positionsPillText: {color: Colors.success, ...Typography.captionBold},
-  deadlineLabel: {color: Colors.textSecondary, ...Typography.caption, marginBottom: Spacing.sm},
-  auditionBtnRow: {flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md},
-  contactBtn: {flex: 1, borderRadius: Radius.sm, paddingVertical: Spacing.md, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.primary, backgroundColor: 'transparent'},
-  contactBtnText: {color: Colors.primary, fontWeight: '700', ...Typography.btn},
-  applyBtnFilled: {flex: 1, borderRadius: Radius.sm, paddingVertical: Spacing.md, alignItems: 'center', backgroundColor: Colors.primary},
-  applyBtnFilledText: {color: Colors.textPrimary, fontWeight: '700', ...Typography.btn},
+  tabsWrapper: {height: 48, marginBottom: Spacing.sm},
+  filterRow: {paddingHorizontal: Spacing.lg, gap: Spacing.xs, alignItems: 'center'},
+  tabItem: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  tabItemActive: {
+    backgroundColor: Colors.primaryFaint,
+    borderColor: Colors.primary,
+  },
+  tabItemText: {
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
+  },
+  tabItemTextActive: {
+    color: Colors.primary,
+  },
+  listPadding: {paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm},
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    overflow: 'hidden',
+    ...Shadows.sm,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+  },
+  posterThumbnail: {
+    width: 90,
+    height: 110,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+  },
+  posterPlaceholder: {
+    width: 90,
+    height: 110,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderEmoji: {
+    fontSize: 28,
+  },
+  infoCol: {
+    flex: 1,
+    marginLeft: Spacing.md,
+    justifyContent: 'space-between',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    color: Colors.textPrimary,
+    ...Typography.label,
+    fontSize: 16,
+    flex: 1,
+    marginRight: Spacing.xs,
+  },
+  featuredBadge: {
+    backgroundColor: Colors.primaryGlow,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+    borderRadius: Radius.xs,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 1,
+  },
+  featuredBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+  },
+  subtitle: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.xs,
+    alignItems: 'center',
+  },
+  metaItem: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+  },
+  budgetVal: {
+    ...Typography.captionBold,
+    color: Colors.primary,
+    flex: 1,
+    marginRight: Spacing.xs,
+  },
+  applicantsVal: {
+    ...Typography.micro,
+    color: Colors.textTertiary,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    backgroundColor: Colors.cardElevated,
+    height: 44,
+    alignItems: 'center',
+  },
+  saveActionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  saveActionText: {
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
+  },
+  actionDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: Colors.borderLight,
+  },
+  applyActionBtn: {
+    flex: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  applyActionText: {
+    ...Typography.captionBold,
+    color: Colors.primary,
+  },
+  deleteActionBtn: {
+    flex: 0.8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  deleteActionText: {
+    ...Typography.captionBold,
+    color: Colors.primary,
+  },
 });

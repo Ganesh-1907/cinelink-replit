@@ -15,6 +15,7 @@ import api from '../src/api/client';
 import {LiquidPress} from '../components/LiquidPress';
 import {ADMIN_UID} from '../src/api/config';
 import {useApp} from '../src/context/AppContext';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {
   Header,
@@ -46,6 +47,7 @@ const extractPhoneNumber = (text: string): string | null => {
 };
 
 export default function AuditionDetailScreen({route, navigation}: any) {
+  const insets = useSafeAreaInsets();
   const paramAudition = route?.params?.audition;
   const paramAuditionId = route?.params?.auditionId;
 
@@ -107,6 +109,15 @@ export default function AuditionDetailScreen({route, navigation}: any) {
       const res = await api.get<any>(`/applications/${audition.id}`);
       setApplicants(res.applications || []);
     } catch (e) { console.log(e); }
+  };
+
+  const updateStatus = async (appId: string, status: string) => {
+    try {
+      await api.put(`/applications/${appId}/status`, {status});
+      loadApplicants();
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not update status.');
+    }
   };
 
   const checkIfApplied = async () => {
@@ -317,14 +328,16 @@ export default function AuditionDetailScreen({route, navigation}: any) {
         navigation={navigation}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* POSTER */}
         {audition.posterUrl ? (
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() =>
               navigation.navigate('ImageViewer', {imageUrl: audition.posterUrl})
-            }>
+            }
+            style={styles.posterContainer}
+          >
             <Image source={{uri: audition.posterUrl}} style={styles.poster} />
             <View style={styles.tapHint}>
               <Text style={styles.tapHintText}>🔍 Tap for fullscreen</Text>
@@ -349,64 +362,72 @@ export default function AuditionDetailScreen({route, navigation}: any) {
               style={[styles.saveBtn, saved && styles.saveBtnActive]}
               onPress={toggleSave}>
               <Text style={styles.saveBtnText}>
-                {saved ? '💾 Saved' : '🔖 Save'}
+                {saved ? '❤️ Saved' : '🤍 Save'}
               </Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.title}>{audition.title}</Text>
 
-          {/* INFO GRID */}
-          <View style={styles.infoGrid}>
+          {/* MOCKUP SPECS ROW */}
+          <View style={styles.specsRow}>
+            <View style={styles.specBox}>
+              <Text style={styles.specLabel}>Age Range</Text>
+              <Text style={styles.specValue} numberOfLines={1}>{audition.ageRange ? `${audition.ageRange} yrs` : 'Any'}</Text>
+            </View>
+            <View style={styles.specBox}>
+              <Text style={styles.specLabel}>Gender</Text>
+              <Text style={styles.specValue} numberOfLines={1}>{audition.gender || 'Any'}</Text>
+            </View>
+            <View style={styles.specBox}>
+              <Text style={styles.specLabel}>Pay</Text>
+              <Text style={styles.specValue} numberOfLines={1}>{audition.budget || 'Paid'}</Text>
+            </View>
+            <View style={styles.specBox}>
+              <Text style={styles.specLabel}>Positions</Text>
+              <Text style={styles.specValue} numberOfLines={1}>{audition.positions || '1'}</Text>
+            </View>
+          </View>
+
+          {/* MORE DETAILED META INFO */}
+          <View style={styles.detailsList}>
             {audition.location ? (
-              <Card variant="default" padding={12} style={styles.infoCard}>
-                <Text style={styles.infoLabel}>📍 Location</Text>
-                <Text style={styles.infoValue}>{audition.location}</Text>
-              </Card>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailItemLabel}>📍 Location</Text>
+                <Text style={styles.detailItemValue}>{audition.location}</Text>
+              </View>
             ) : null}
-            {audition.gender ? (
-              <Card variant="default" padding={12} style={styles.infoCard}>
-                <Text style={styles.infoLabel}>👤 Gender</Text>
-                <Text style={styles.infoValue}>{audition.gender}</Text>
-              </Card>
+            {audition.role ? (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailItemLabel}>🎬 Role Category</Text>
+                <Text style={styles.detailItemValue}>{audition.role}</Text>
+              </View>
             ) : null}
-            {audition.ageRange ? (
-              <Card variant="default" padding={12} style={styles.infoCard}>
-                <Text style={styles.infoLabel}>🎂 Age Range</Text>
-                <Text style={styles.infoValue}>{audition.ageRange} yrs</Text>
-              </Card>
+            {audition.language ? (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailItemLabel}>🗣 Language</Text>
+                <Text style={styles.detailItemValue}>{audition.language}</Text>
+              </View>
             ) : null}
             {audition.lastDate ? (
-              <Card variant="default" padding={12} style={styles.infoCard}>
-                <Text style={styles.infoLabel}>📅 Last Date</Text>
-                <Text style={styles.infoValue}>{audition.lastDate}</Text>
-                <View style={{marginTop: Spacing.xs}}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailItemLabel}>📅 Deadline</Text>
+                <View style={styles.deadlineValRow}>
+                  <Text style={[styles.detailItemValue, {marginRight: Spacing.sm}]}>{audition.lastDate}</Text>
                   <Chip
                     label={audition.lastDate}
                     variant={deadlineChipVariant}
                     static
                   />
                 </View>
-              </Card>
-            ) : null}
-            {audition.role ? (
-              <Card variant="default" padding={12} style={styles.infoCard}>
-                <Text style={styles.infoLabel}>🎬 Role</Text>
-                <Text style={styles.infoValue}>{audition.role}</Text>
-              </Card>
-            ) : null}
-            {audition.language ? (
-              <Card variant="default" padding={12} style={styles.infoCard}>
-                <Text style={styles.infoLabel}>🗣 Language</Text>
-                <Text style={styles.infoValue}>{audition.language}</Text>
-              </Card>
+              </View>
             ) : null}
           </View>
 
-          {/* DESCRIPTION */}
+          {/* ABOUT THE ROLE */}
           {audition.description ? (
-            <>
-              <Text style={styles.sectionTitle}>About this Audition</Text>
+            <View style={styles.descSection}>
+              <Text style={styles.sectionTitle}>About the Role</Text>
               <Text style={styles.description}>
                 {phoneNumber
                   ? audition.description
@@ -415,8 +436,27 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                       .trim()
                   : audition.description}
               </Text>
-            </>
+            </View>
           ) : null}
+
+          {/* REQUIREMENTS SECTION */}
+          <View style={styles.requirementsSection}>
+            <Text style={styles.sectionTitle}>Requirements</Text>
+            <View style={styles.requirementItem}>
+              <Text style={styles.requirementCheck}>✓</Text>
+              <Text style={styles.requirementText}>Must be professional and committed to rehearsals</Text>
+            </View>
+            <View style={styles.requirementItem}>
+              <Text style={styles.requirementCheck}>✓</Text>
+              <Text style={styles.requirementText}>Portfolio and reels should be updated on profile</Text>
+            </View>
+            {audition.gender && audition.gender !== 'Any' ? (
+              <View style={styles.requirementItem}>
+                <Text style={styles.requirementCheck}>✓</Text>
+                <Text style={styles.requirementText}>Gender preference: {audition.gender}</Text>
+              </View>
+            ) : null}
+          </View>
 
           {/* CONTACT LINK */}
           {audition.contactLink ? (
@@ -453,10 +493,7 @@ export default function AuditionDetailScreen({route, navigation}: any) {
 
           {/* DIRECTOR CARD */}
           {directorProfile && (
-            <Card
-              variant="elevated"
-              padding={Spacing.lg}
-              style={styles.directorCard}>
+            <View style={styles.directorCard}>
               <Text style={styles.sectionTitle}>Director</Text>
               <TouchableOpacity
                 style={styles.directorRow}
@@ -535,12 +572,12 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                 variant="outline"
                 fullWidth
               />
-            </Card>
+            </View>
           )}
 
           {/* NOTE INPUT */}
           {showNoteInput && !applied && (
-            <Card variant="default" padding={Spacing.md} style={styles.noteBox}>
+            <View style={styles.noteBox}>
               <Text style={styles.noteLabel}>
                 Add a note to the director (optional)
               </Text>
@@ -562,51 +599,7 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                 maxLength={300}
               />
               <Text style={styles.noteCount}>{note.length}/300</Text>
-            </Card>
-          )}
-
-          {/* ACTION BUTTONS */}
-          <View style={styles.buttonRow}>
-            <LiquidPress
-              style={[
-                styles.applyBtn,
-                {flex: phoneNumber ? 0.55 : 1},
-                applied && styles.applyBtnDone,
-              ]}
-              onPress={applyNow}
-              disabled={applied || loading}>
-              {loading ? (
-                <ActivityIndicator color={Colors.textPrimary} />
-              ) : (
-                <Text style={styles.applyBtnText}>
-                  {applied
-                    ? '✅ Applied'
-                    : showNoteInput
-                    ? '🚀 Submit'
-                    : 'Apply Now →'}
-                </Text>
-              )}
-            </LiquidPress>
-            {phoneNumber && (
-              <TouchableOpacity
-                style={styles.whatsappBtn}
-                onPress={openWhatsApp}>
-                <Text style={styles.whatsappBtnText} numberOfLines={1}>
-                  📱 WhatsApp
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {showNoteInput && !applied && (
-            <TouchableOpacity
-              style={styles.skipBtn}
-              onPress={() => {
-                setNote('');
-                applyNow();
-              }}>
-              <Text style={styles.skipBtnText}>Skip note & apply directly</Text>
-            </TouchableOpacity>
+            </View>
           )}
 
           {/* APPLICATIONS SECTION — director/admin only */}
@@ -623,34 +616,57 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                 />
               ) : (
                 applicants.map((app: any) => (
-                  <TouchableOpacity
-                    key={app.id}
-                    style={styles.applicantCard}
-                    activeOpacity={0.7}
-                    onPress={() =>
-                      navigation.navigate('PublicProfile', {
-                        userId: app.applicantId,
-                      })
-                    }>
-                    <Avatar
-                      name={app.applicantName || app.applicantEmail || 'U'}
-                      size="sm"
-                    />
-                    <View style={styles.applicantInfo}>
-                      <Text style={styles.applicantName}>
-                        {app.applicantName || cleanName(app.applicantEmail)}
-                      </Text>
-                      <Text style={styles.applicantMeta}>
-                        {formatTime(app.appliedAt)} · {app.status || 'Pending'}
-                      </Text>
-                      {app.note ? (
-                        <Text style={styles.applicantNote} numberOfLines={2}>
-                          "{app.note}"
+                  <View key={app._id || app.id || app.applicantId} style={styles.applicantCard}>
+                    <TouchableOpacity
+                      style={styles.applicantMainRow}
+                      activeOpacity={0.7}
+                      onPress={() =>
+                        navigation.navigate('PublicProfile', {
+                          userId: app.applicantId,
+                        })
+                      }>
+                      <Avatar
+                        name={app.applicantName || app.applicantEmail || 'U'}
+                        size="sm"
+                        uri={app.userPhoto || app.applicantPhoto || app.photoUrl}
+                      />
+                      <View style={styles.applicantInfo}>
+                        <Text style={styles.applicantName}>
+                          {app.applicantName || cleanName(app.applicantEmail)}
                         </Text>
-                      ) : null}
-                    </View>
-                    <Text style={styles.applicantArrow}>›</Text>
-                  </TouchableOpacity>
+                        <Text style={styles.applicantMeta}>
+                          {formatTime(app.appliedAt)} · {app.status || 'Pending'}
+                        </Text>
+                        {app.note ? (
+                          <Text style={styles.applicantNote} numberOfLines={2}>
+                            "{app.note}"
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Text style={styles.applicantArrow}>›</Text>
+                    </TouchableOpacity>
+
+                    {/* STATUS ACTION BUTTONS FOR DIRECTOR/ADMIN */}
+                    {app.status === 'pending' && (
+                      <View style={styles.applicantActions}>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.selectBtn]}
+                          onPress={() => updateStatus(app._id || app.id, 'selected')}>
+                          <Text style={styles.selectBtnText}>✅ Select</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.shortlistBtn]}
+                          onPress={() => updateStatus(app._id || app.id, 'shortlisted')}>
+                          <Text style={styles.shortlistBtnText}>📋 Shortlist</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.rejectBtn]}
+                          onPress={() => updateStatus(app._id || app.id, 'rejected')}>
+                          <Text style={styles.rejectBtnText}>✕ Reject</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
                 ))
               )}
               <Text style={styles.applicantHint}>
@@ -742,6 +758,52 @@ export default function AuditionDetailScreen({route, navigation}: any) {
           </View>
         </View>
       </ScrollView>
+
+      {/* FLOATING ACTION BOTTOM FOOTER */}
+      <View style={[styles.floatingFooter, {paddingBottom: Math.max(insets.bottom, Spacing.md)}]}>
+        <View style={styles.footerButtonRow}>
+          <LiquidPress
+            style={[
+              styles.applyBtn,
+              {flex: phoneNumber ? 1.2 : 1},
+              applied && styles.applyBtnDone,
+            ]}
+            onPress={applyNow}
+            disabled={applied || loading}>
+            {loading ? (
+              <ActivityIndicator color={Colors.textInverse} />
+            ) : (
+              <Text style={[styles.applyBtnText, applied && styles.applyBtnTextDone]}>
+                {applied
+                  ? '✓ Applied'
+                  : showNoteInput
+                  ? '🚀 Submit Application'
+                  : 'Apply Now →'}
+              </Text>
+            )}
+          </LiquidPress>
+          {phoneNumber && (
+            <TouchableOpacity
+              style={styles.whatsappBtn}
+              onPress={openWhatsApp}>
+              <Text style={styles.whatsappBtnText} numberOfLines={1}>
+                📱 WhatsApp
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {showNoteInput && !applied && (
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={() => {
+              setNote('');
+              applyNow();
+            }}>
+            <Text style={styles.skipBtnText}>Skip note & apply directly</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -756,22 +818,28 @@ const styles = StyleSheet.create({
   },
   notFoundText: {color: Colors.textPrimary, ...Typography.body},
   container: {flex: 1, backgroundColor: Colors.background},
-  poster: {width: '100%', height: 250, resizeMode: 'cover'},
+  scrollContent: {paddingBottom: 150},
+  posterContainer: {width: '100%', aspectRatio: 16 / 9, overflow: 'hidden'},
+  poster: {width: '100%', height: '100%', resizeMode: 'cover'},
   tapHint: {
-    paddingVertical: Spacing.sm,
-    alignItems: 'center',
-    backgroundColor: Colors.card,
+    position: 'absolute',
+    bottom: Spacing.sm,
+    right: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    backgroundColor: Colors.overlay,
+    borderRadius: Radius.pill,
   },
-  tapHintText: {color: Colors.textSecondary, ...Typography.caption},
+  tapHintText: {color: '#FFFFFF', ...Typography.micro},
   posterPlaceholder: {
     width: '100%',
-    height: 150,
+    aspectRatio: 16 / 9,
     backgroundColor: Colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
   posterPlaceholderText: {fontSize: 50},
-  section: {padding: Spacing.xl, paddingBottom: Spacing['4xl']},
+  section: {padding: Spacing.lg},
   statusRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -781,56 +849,128 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.xs + 2,
     borderWidth: 1,
     borderColor: Colors.borderLight,
     marginLeft: 'auto',
   },
   saveBtnActive: {
-    backgroundColor: Colors.cardElevated,
+    backgroundColor: Colors.primaryGlow,
     borderColor: Colors.primary,
   },
-  saveBtnText: {color: Colors.textSecondary, ...Typography.captionBold},
+  saveBtnText: {color: Colors.textPrimary, ...Typography.captionBold},
   title: {
     color: Colors.textPrimary,
-    fontSize: 24,
+    ...Typography.h3,
     fontWeight: 'bold',
     marginBottom: Spacing.lg,
   },
-  infoGrid: {
+  specsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: Spacing.sm,
     marginBottom: Spacing.xl,
   },
-  infoCard: {width: '47%'},
-  infoLabel: {
-    color: Colors.textSecondary,
-    ...Typography.caption,
-    marginBottom: Spacing.xs,
-  },
-  infoValue: {color: Colors.textPrimary, ...Typography.body, fontWeight: '500'},
-  sectionTitle: {
-    color: Colors.primary,
-    ...Typography.h4,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
-  description: {
-    color: Colors.textSecondary,
-    ...Typography.bodyLg,
-    lineHeight: 24,
-    marginBottom: Spacing.xl,
-  },
-  linkBox: {
+  specBox: {
+    flex: 1,
     backgroundColor: Colors.card,
     borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    ...Shadows.sm,
+  },
+  specLabel: {
+    ...Typography.micro,
+    color: Colors.textTertiary,
+    textTransform: 'uppercase',
+    marginBottom: Spacing.xs,
+  },
+  specValue: {
+    ...Typography.captionBold,
+    color: Colors.textPrimary,
+    fontSize: 13,
+  },
+  detailsList: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
     padding: Spacing.md,
     marginBottom: Spacing.xl,
     borderWidth: 1,
     borderColor: Colors.borderLight,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  detailItemLabel: {
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
+  },
+  detailItemValue: {
+    ...Typography.caption,
+    color: Colors.textPrimary,
+    fontWeight: '500',
+  },
+  deadlineValRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  descSection: {
+    marginBottom: Spacing.xl,
+  },
+  sectionTitle: {
+    color: Colors.primary,
+    ...Typography.label,
+    fontSize: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
+  },
+  description: {
+    color: Colors.textSecondary,
+    ...Typography.bodySm,
+    lineHeight: 22,
+  },
+  requirementsSection: {
+    marginBottom: Spacing.xl,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    marginVertical: Spacing.xs,
+  },
+  requirementCheck: {
+    color: Colors.primary,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  requirementText: {
+    ...Typography.bodySm,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  linkBox: {
+    backgroundColor: Colors.primaryGlow,
+    borderColor: Colors.primaryMid,
+    borderWidth: 1,
+    borderRadius: Radius.card,
+    padding: Spacing.md,
+    marginBottom: Spacing.xl,
   },
   linkBoxText: {
     color: Colors.primary,
@@ -838,7 +978,15 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   linkBoxUrl: {color: Colors.textSecondary, ...Typography.caption},
-  directorCard: {marginBottom: Spacing.xl},
+  directorCard: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
+    padding: Spacing.lg,
+    marginBottom: Spacing.xl,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    ...Shadows.sm,
+  },
   directorRow: {
     flexDirection: 'row',
     gap: Spacing.md,
@@ -848,7 +996,7 @@ const styles = StyleSheet.create({
   directorName: {color: Colors.textPrimary, ...Typography.h4, marginBottom: 2},
   directorRole: {
     color: Colors.primary,
-    ...Typography.label,
+    ...Typography.labelSm,
     marginBottom: Spacing.xs,
   },
   directorBio: {
@@ -871,7 +1019,7 @@ const styles = StyleSheet.create({
   },
   portfolioTitle: {
     color: Colors.textSecondary,
-    ...Typography.label,
+    ...Typography.labelSm,
     marginBottom: Spacing.sm,
   },
   portfolioLink: {
@@ -879,7 +1027,14 @@ const styles = StyleSheet.create({
     ...Typography.label,
     marginBottom: Spacing.sm,
   },
-  noteBox: {marginBottom: Spacing.lg},
+  noteBox: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
   noteLabel: {
     color: Colors.primary,
     ...Typography.labelSm,
@@ -902,57 +1057,114 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: Spacing.xs,
   },
-  buttonRow: {
+  floatingFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.card,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    ...Shadows.lg,
+  },
+  footerButtonRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
     alignItems: 'center',
-    marginTop: Spacing.sm,
   },
   applyBtn: {
     backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    padding: Spacing.lg,
+    borderRadius: Radius.button,
+    paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderTopColor: Colors.primaryLight,
-    borderBottomColor: Colors.primaryDark,
-    borderLeftColor: Colors.primaryMid,
-    borderRightColor: Colors.primaryDark,
     ...Shadows.primary,
   },
   applyBtnDone: {
     backgroundColor: Colors.successFaint,
+    borderWidth: 1,
     borderColor: Colors.success,
   },
-  applyBtnText: {color: Colors.textPrimary, ...Typography.btn, fontSize: 15},
+  applyBtnText: {
+    color: Colors.textInverse,
+    ...Typography.btnLg,
+    fontWeight: 'bold',
+  },
+  applyBtnTextDone: {
+    color: Colors.success,
+  },
   whatsappBtn: {
     backgroundColor: '#25D366',
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
+    borderRadius: Radius.button,
+    paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 0.45,
+    flex: 0.8,
   },
-  whatsappBtnText: {color: Colors.textPrimary, ...Typography.btn},
-  skipBtn: {alignItems: 'center', marginTop: Spacing.md, padding: Spacing.sm},
+  whatsappBtnText: {color: '#FFFFFF', ...Typography.btnLg, fontWeight: 'bold'},
+  skipBtn: {alignItems: 'center', marginTop: Spacing.sm, paddingVertical: Spacing.xs},
   skipBtnText: {
     color: Colors.textSecondary,
     ...Typography.bodySm,
     textDecorationLine: 'underline',
   },
-  applicantsSection: {marginTop: Spacing.xxl},
+  applicantsSection: {marginTop: Spacing.xl, marginBottom: Spacing.lg},
   applicantCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
     backgroundColor: Colors.card,
-    borderRadius: Radius.md,
+    borderRadius: Radius.card,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.borderLight,
+  },
+  applicantMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  applicantActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    borderTopWidth: 0.5,
+    borderTopColor: Colors.borderLight,
+    paddingTop: Spacing.sm,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  selectBtn: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  selectBtnText: {
+    color: Colors.textInverse,
+    fontWeight: 'bold',
+    ...Typography.captionBold,
+  },
+  shortlistBtn: {
+    backgroundColor: 'transparent',
+    borderColor: Colors.primary,
+  },
+  shortlistBtnText: {
+    color: Colors.primary,
+    fontWeight: 'bold',
+    ...Typography.captionBold,
+  },
+  rejectBtn: {
+    backgroundColor: 'transparent',
+    borderColor: Colors.border,
+  },
+  rejectBtnText: {
+    color: Colors.textSecondary,
+    ...Typography.captionBold,
   },
   applicantInfo: {flex: 1},
   applicantName: {color: Colors.textPrimary, ...Typography.label},
@@ -975,7 +1187,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
     marginBottom: Spacing.sm,
   },
-  commentsSection: {marginTop: Spacing.xxl},
+  commentsSection: {marginTop: Spacing.lg},
   commentInputRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -1000,17 +1212,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.primary,
   },
   commentSendBtnDisabled: {opacity: 0.4},
   commentSendText: {
-    color: Colors.textPrimary,
+    color: Colors.textInverse,
     fontWeight: 'bold',
     ...Typography.btn,
   },
   commentCard: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.md,
+    borderRadius: Radius.card,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
     borderWidth: 1,
@@ -1032,13 +1243,13 @@ const styles = StyleSheet.create({
   },
   deleteCommentBtn: {padding: Spacing.xs},
   deleteCommentText: {
-    color: Colors.error,
+    color: Colors.primary, // Red changed to primary yellow/gold color
     ...Typography.body,
     fontWeight: 'bold',
   },
   commentText: {
     color: Colors.textSecondary,
-    ...Typography.body,
+    ...Typography.bodySm,
     lineHeight: 20,
   },
 });

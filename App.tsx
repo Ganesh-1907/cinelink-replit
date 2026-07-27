@@ -25,6 +25,7 @@ import SuggestedFollowsScreen from './screens/SuggestedFollowsScreen';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import MyProfileScreen from './screens/MyProfileScreen';
 import MovieDetails from './screens/MovieDetails';
 import PostAuditionScreen from './screens/PostAuditionScreen';
 import AuditionDetailScreen from './screens/AuditionDetailScreen';
@@ -47,10 +48,14 @@ import MyContestsScreen from './screens/MyContestsScreen';
 import PublicProfileScreen from './screens/PublicProfileScreen';
 import PaymentScreen from './screens/PaymentScreen';
 import SavedAuditionsScreen from './screens/SavedAuditionsScreen';
+import MyAuditionsScreen from './screens/MyAuditionsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import AIAssistantScreen from './screens/AIAssistantScreen';
-import QuickPostScreen from './screens/QuickPostScreen';
-import AnnouncementsScreen from './screens/AnnouncementsScreen';
+import MyQuickPostsScreen from './screens/MyQuickPostsScreen';
+import PostQuickPostScreen from './screens/PostQuickPostScreen';
+import MyAnnouncementsScreen from './screens/MyAnnouncementsScreen';
+import PostAnnouncementScreen from './screens/PostAnnouncementScreen';
+import AIScanAuditionScreen from './screens/AIScanAuditionScreen';
 import AdminReportsScreen from './screens/AdminReportsScreen';
 import CastingRequestScreen from './screens/CastingRequestScreen';
 import CreateProjectScreen from './screens/CreateProjectScreen';
@@ -108,17 +113,6 @@ function TabNavigator() {
               }}>
               <Text style={{fontSize: 20, color}}>🏠</Text>
             </View>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Contests"
-        component={BrowseContestsScreen}
-        options={{
-          title: 'Contests',
-          headerShown: false,
-          tabBarIcon: ({color}) => (
-            <Text style={{fontSize: 20, color}}>🏆</Text>
           ),
         }}
       />
@@ -181,6 +175,11 @@ function MainStack() {
       <Stack.Screen
         name="SuggestedFollows"
         component={SuggestedFollowsScreen}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="Contests"
+        component={BrowseContestsScreen}
         options={{headerShown: false}}
       />
       <Stack.Screen
@@ -279,9 +278,19 @@ function MainStack() {
         options={{title: 'Saved Auditions'}}
       />
       <Stack.Screen
+        name="MyAuditions"
+        component={MyAuditionsScreen}
+        options={{title: 'My Auditions'}}
+      />
+      <Stack.Screen
         name="Settings"
         component={SettingsScreen}
         options={{title: 'Settings'}}
+      />
+      <Stack.Screen
+        name="MyProfile"
+        component={MyProfileScreen}
+        options={{headerShown: false}}
       />
       <Stack.Screen
         name="AIAssistant"
@@ -290,13 +299,28 @@ function MainStack() {
       />
       <Stack.Screen
         name="QuickPost"
-        component={QuickPostScreen}
-        options={{title: '⚡ Quick Post'}}
+        component={MyQuickPostsScreen}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="PostQuickPost"
+        component={PostQuickPostScreen}
+        options={{headerShown: false}}
       />
       <Stack.Screen
         name="Announcements"
-        component={AnnouncementsScreen}
-        options={{title: '📢 Announcements'}}
+        component={MyAnnouncementsScreen}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="PostAnnouncement"
+        component={PostAnnouncementScreen}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
+        name="AIScanAudition"
+        component={AIScanAuditionScreen}
+        options={{headerShown: false}}
       />
       <Stack.Screen
         name="AdminReports"

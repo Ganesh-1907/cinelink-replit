@@ -17,7 +17,7 @@ import {Card, Button, Header} from '../components/ui';
 
 export default function SettingsScreen({navigation}: any) {
   const {isDark, toggleTheme} = useTheme();
-  const {signOut, refreshUserData, user} = useApp();
+  const {signOut, refreshUserData, user, isAdmin, isApprovedDirector} = useApp();
   const insets = useSafeAreaInsets();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -120,6 +120,43 @@ export default function SettingsScreen({navigation}: any) {
       <Header title="Settings" navigation={navigation} />
       <ScrollView style={styles.container}>
         <View style={[styles.section, {paddingBottom: insets.bottom + 40}]}>
+          {(isAdmin || isApprovedDirector) && (
+            <>
+              <Text style={styles.sectionTitle}>Dashboard & Tools</Text>
+              <View>
+                {(isApprovedDirector || isAdmin) && (
+                  <TouchableOpacity
+                    style={styles.accountActionRow}
+                    onPress={() => navigation.navigate('MyAuditions')}>
+                    <Text style={styles.settingIcon}>🎭</Text>
+                    <Text style={styles.settingText}>{isAdmin ? 'Auditions' : 'My Auditions'}</Text>
+                    <Text style={styles.settingArrow}>›</Text>
+                  </TouchableOpacity>
+                )}
+                {isAdmin && (
+                  <>
+                    <View style={styles.cardSeparator} />
+                    <TouchableOpacity
+                      style={styles.accountActionRow}
+                      onPress={() => navigation.navigate('QuickPost')}>
+                      <Text style={styles.settingIcon}>⚡</Text>
+                      <Text style={styles.settingText}>Quick Post</Text>
+                      <Text style={styles.settingArrow}>›</Text>
+                    </TouchableOpacity>
+                    <View style={styles.cardSeparator} />
+                    <TouchableOpacity
+                      style={styles.accountActionRow}
+                      onPress={() => navigation.navigate('Announcements')}>
+                      <Text style={styles.settingIcon}>📢</Text>
+                      <Text style={styles.settingText}>Announcements</Text>
+                      <Text style={styles.settingArrow}>›</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </>
+          )}
+
           <Text style={styles.sectionTitle}>Appearance</Text>
           <View>
             <TouchableOpacity style={styles.accountActionRow} onPress={toggleTheme}>
@@ -151,7 +188,7 @@ export default function SettingsScreen({navigation}: any) {
               </>
             ) : null}
             <View style={styles.cardSeparator} />
-            <TouchableOpacity style={styles.accountActionRow} onPress={() => navigation.navigate('Profile', {edit: true})}>
+            <TouchableOpacity style={styles.accountActionRow} onPress={() => navigation.navigate('MyProfile')}>
               <Text style={styles.settingIcon}>👤</Text>
               <Text style={styles.settingText}>Edit Profile</Text>
               <Text style={styles.settingArrow}>›</Text>

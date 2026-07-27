@@ -1,9 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {View, Text, StyleSheet, FlatList, TouchableOpacity} from 'react-native';
+import {View, Text, StyleSheet, FlatList, TouchableOpacity, Image} from 'react-native';
 import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Colors, Typography, Spacing, Radius} from '../src/theme';
-import {Header, Input, Card, Button, EmptyState, SkeletonCard, Badge, Chip} from '../components/ui';
+import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
+import {Header, Input, EmptyState, SkeletonCard} from '../components/ui';
 
 export default function BrowseContestsScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
@@ -34,39 +34,76 @@ export default function BrowseContestsScreen({navigation}: any) {
 
   const renderItem = ({item}: any) => {
     const days = getDaysLeft(item.deadline);
+    const hasPoster = !!item.posterUrl;
+
     return (
-      <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('ContestDetail', {contestId: item._id || item.id, contest: item})}>
-        <Card variant="elevated" padding={Spacing.lg} style={styles.cardSpacing}>
-          <View style={styles.bannerRow}>
-            <Text style={styles.bannerLabel}>🏆 Contest</Text>
-            {item.status === 'Active' || !item.status ? <Badge label="● Live" variant="success" /> : <Badge label="Ended" variant="error" />}
+      <TouchableOpacity 
+        activeOpacity={0.88} 
+        style={styles.card}
+        onPress={() => navigation.navigate('ContestDetail', {contestId: item._id || item.id, contest: item})}
+      >
+        <View style={styles.cardContent}>
+          {/* Left Side: Thumbnail */}
+          {hasPoster ? (
+            <Image source={{uri: item.posterUrl}} style={styles.posterThumbnail} resizeMode="cover" />
+          ) : (
+            <View style={styles.posterPlaceholder}>
+              <Text style={styles.placeholderEmoji}>🏆</Text>
+            </View>
+          )}
+
+          {/* Right Side: Information column */}
+          <View style={styles.infoCol}>
+            <View style={styles.bannerRow}>
+              <Text style={styles.bannerLabel}>{item.type ? `🎭 ${item.type}` : '🏆 Contest'}</Text>
+              {item.status === 'Active' || !item.status ? (
+                <View style={styles.liveBadge}>
+                  <Text style={styles.liveBadgeText}>Live</Text>
+                </View>
+              ) : (
+                <View style={[styles.liveBadge, {backgroundColor: Colors.errorFaint, borderColor: Colors.errorBorder}]}>
+                  <Text style={[styles.liveBadgeText, {color: Colors.error}]}>Ended</Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+
+            {item.prize ? (
+              <Text style={styles.prizeText} numberOfLines={1}>💰 Prize: {item.prize}</Text>
+            ) : null}
+
+            <View style={styles.metaRow}>
+              {item.entryFee !== undefined ? (
+                <Text style={styles.entryFeeVal}>
+                  {item.entryFee === 0 ? 'Free Entry' : `₹${item.entryFee} Entry`}
+                </Text>
+              ) : null}
+              {days ? <Text style={[styles.daysLeft, {color: days.color}]}>{days.label}</Text> : null}
+            </View>
           </View>
-          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-          {item.prize ? <View style={styles.prizeRow}><Text style={styles.prizeText}>💰 {item.prize}</Text></View> : null}
-          <View style={styles.chipRow}>
-            {item.type ? <Chip label={`🎭 ${item.type}`} static /> : null}
-            {item.entryFee !== undefined ? <Chip label={item.entryFee === 0 ? '✅ Free Entry' : `₹${item.entryFee} Entry`} variant={item.entryFee === 0 ? 'success' : 'default'} static /> : null}
-          </View>
-          {item.description ? <Text style={styles.description} numberOfLines={2}>{item.description}</Text> : null}
-          <View style={styles.metaRow}>
-            {item.deadline ? <Text style={styles.metaText}>⏰ {item.deadline}</Text> : null}
-            {days ? <Text style={[styles.daysLeft, {color: days.color}]}>{days.label}</Text> : null}
-          </View>
-          <Button label="Enter Contest" onPress={() => navigation.navigate('ContestDetail', {contestId: item._id || item.id, contest: item})} variant="primary" size="md" fullWidth />
-        </Card>
+        </View>
       </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.safe}>
-      <Header noBorder />
-      <View style={styles.searchWrap}><Input placeholder="Search contests..." value={search} onChangeText={setSearch} leftIcon="🔍" /></View>
+      <Header title="Browse Contests" navigation={navigation} onBack={() => navigation.goBack()} />
+      <View style={styles.searchWrap}>
+        <Input placeholder="Search contests..." value={search} onChangeText={setSearch} leftIcon="🔍" />
+      </View>
       {loading ? (
         <View style={styles.skeletonWrap}><SkeletonCard /><SkeletonCard /></View>
       ) : (
-        <FlatList data={filtered} keyExtractor={item => item._id || item.id} renderItem={renderItem} contentContainerStyle={[styles.list, {paddingBottom: insets.bottom + 24}]} showsVerticalScrollIndicator={false}
-          ListEmptyComponent={<EmptyState icon="🏆" title="No contests found" subtitle="Check back soon for exciting cinema contests" />} />
+        <FlatList 
+          data={filtered} 
+          keyExtractor={item => item._id || item.id} 
+          renderItem={renderItem} 
+          contentContainerStyle={[styles.list, {paddingBottom: insets.bottom + 80}]} 
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={<EmptyState icon="🏆" title="No contests found" subtitle="Check back soon for exciting cinema contests" />} 
+        />
       )}
     </View>
   );
@@ -75,17 +112,93 @@ export default function BrowseContestsScreen({navigation}: any) {
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: Colors.background},
   searchWrap: {paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm},
-  list: {padding: Spacing.lg, paddingBottom: Spacing.xxl},
+  list: {paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm},
   skeletonWrap: {padding: Spacing.lg},
-  cardSpacing: {marginBottom: Spacing.md},
-  bannerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm},
-  bannerLabel: {...Typography.captionBold, color: Colors.primary},
-  cardTitle: {...Typography.h3, marginBottom: Spacing.sm},
-  prizeRow: {backgroundColor: Colors.warningFaint, borderRadius: Radius.sm, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.warningBorder, alignSelf: 'flex-start'},
-  prizeText: {...Typography.label, color: Colors.warning},
-  chipRow: {flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm},
-  description: {...Typography.bodySm, color: Colors.textSecondary, lineHeight: 20},
-  metaRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md},
-  metaText: {...Typography.caption, color: Colors.textSecondary},
-  daysLeft: {...Typography.captionBold},
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    overflow: 'hidden',
+    ...Shadows.sm,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+  },
+  posterThumbnail: {
+    width: 90,
+    height: 110,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+  },
+  posterPlaceholder: {
+    width: 90,
+    height: 110,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderEmoji: {
+    fontSize: 28,
+  },
+  infoCol: {
+    flex: 1,
+    marginLeft: Spacing.md,
+    justifyContent: 'space-between',
+  },
+  bannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  bannerLabel: {
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  liveBadge: {
+    backgroundColor: Colors.successFaint,
+    borderWidth: 1,
+    borderColor: Colors.success,
+    borderRadius: Radius.xs,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 1,
+  },
+  liveBadgeText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: Colors.success,
+    textTransform: 'uppercase',
+  },
+  cardTitle: {
+    color: Colors.textPrimary,
+    ...Typography.label,
+    fontSize: 16,
+    lineHeight: 20,
+    marginBottom: Spacing.xs,
+  },
+  prizeText: {
+    ...Typography.captionBold,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+  },
+  entryFeeVal: {
+    ...Typography.micro,
+    color: Colors.textTertiary,
+    fontWeight: '600',
+  },
+  daysLeft: {
+    ...Typography.captionBold,
+    fontSize: 11,
+  },
 });

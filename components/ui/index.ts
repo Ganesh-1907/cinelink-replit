@@ -15,3 +15,5 @@ export {
   SkeletonText,
 } from './Skeleton';
 export {Divider} from './Divider';
+export {DatePickerModal} from './DatePickerModal';
+

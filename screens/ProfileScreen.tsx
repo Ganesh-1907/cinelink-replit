@@ -64,61 +64,16 @@ const availVariant = (status: string): 'success' | 'warning' | 'default' => {
 export default function ProfileScreen({navigation, route}: any) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>('');
-  const [phone, setPhone] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [bio, setBio] = useState<string>('');
   const [role, setRole] = useState<string>('Actor');
-  const [photo, setPhoto] = useState<PhotoAsset | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string>('');
-  const [introVideoLink, setIntroVideoLink] = useState<string>('');
-  const [portfolio1, setPortfolio1] = useState<string>('');
-  const [portfolio2, setPortfolio2] = useState<string>('');
-  const [portfolio3, setPortfolio3] = useState<string>('');
-  const [portfolioPhotos, setPortfolioPhotos] = useState<string[]>([]);
-  const [newPhotos, setNewPhotos] = useState<PhotoAsset[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [uploading, setUploading] = useState<boolean>(false);
-  const [saved, setSaved] = useState<boolean>(false);
   const [verificationStatus, setVerificationStatus] = useState<string>('');
   const [location, setLocation] = useState<string>('');
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [applicationsCount, setApplicationsCount] = useState(0);
 
-  // Gallery
-  const [portfolioMedia, setPortfolioMedia] = useState<string[]>([]);
-  const [mediaUploading, setMediaUploading] = useState(false);
-  const [galleryVisible, setGalleryVisible] = useState(false);
-  const [galleryIndex, setGalleryIndex] = useState(0);
-
-  // Portfolio v2
-  const [availabilityStatus, setAvailabilityStatus] = useState<string>('');
-  const [lookingFor, setLookingFor] = useState<string>('');
-  const [profileTags, setProfileTags] = useState<string[]>([]);
-  const [instagramLink, setInstagramLink] = useState<string>('');
-  const [youtubeLink, setYoutubeLink] = useState<string>('');
-  const [ageRange, setAgeRange] = useState<string>('');
-  const [height, setHeight] = useState<string>('');
-  const [bodyType, setBodyType] = useState<string>('');
-
-  const [isEditing, setIsEditing] = useState<boolean>(false);
   const {isAdmin, isApprovedDirector, user, signOut} = useApp();
-
   const scrollRef = useRef<ScrollView>(null);
-  const {tier: premiumTier, isVerified: premiumVerifiedReal} =
-    usePremiumStatus();
-
-  useEffect(() => {
-    if (route?.params?.edit) {
-      setIsEditing(true);
-      navigation.setParams({edit: undefined});
-    }
-  }, [route?.params?.edit, navigation]);
-
-  const toggleTag = (tag: string) =>
-    setProfileTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag],
-    );
 
   const loadProfile = React.useCallback(async () => {
     try {
@@ -126,27 +81,10 @@ export default function ProfileScreen({navigation, route}: any) {
       if (res?.user) {
         const data = res.user;
         setName(data?.fullName || data?.displayName || data?.name || '');
-        setPhone(data?.phone || '');
-        setEmail(data?.email || '');
-        setBio(data?.bio || '');
         setRole(data?.role || 'Actor');
         setPhotoUrl(data?.photoUrl || data?.photoURL || '');
-        setIntroVideoLink(data?.introVideoLink || '');
-        setPortfolio1(data?.portfolio1 || '');
-        setPortfolio2(data?.portfolio2 || '');
-        setPortfolio3(data?.portfolio3 || '');
-        setPortfolioPhotos(data?.portfolioPhotos || []);
         setVerificationStatus(data?.verificationStatus || '');
         setLocation(data?.location || '');
-        setAvailabilityStatus(data?.availabilityStatus || '');
-        setLookingFor(data?.lookingFor || '');
-        setProfileTags(data?.profileTags || []);
-        setInstagramLink(data?.instagramLink || '');
-        setYoutubeLink(data?.youtubeLink || '');
-        setAgeRange(data?.ageRange || '');
-        setHeight(data?.height || '');
-        setBodyType(data?.bodyType || '');
-        setPortfolioMedia(data?.portfolioMedia || []);
         setFollowersCount(data?.followerCount || 0);
         setFollowingCount(data?.followingCount || 0);
         setApplicationsCount(data?.applicationsCount || 0);
@@ -163,265 +101,6 @@ export default function ProfileScreen({navigation, route}: any) {
     }, [loadProfile]),
   );
 
-  const pickProfilePhoto = () => {
-    Alert.alert('Choose Photo', 'Select source', [
-      {
-        text: '📷 Camera',
-        onPress: () =>
-          launchCamera(
-            {mediaType: 'photo', quality: 0.8, saveToPhotos: false},
-            (response: ImagePickerResponse) => {
-              if (response.assets?.[0]) {
-                const asset = response.assets[0];
-                setPhoto({
-                  uri: asset.uri || '',
-                  type: asset.type,
-                  name: asset.fileName,
-                });
-              }
-            },
-          ),
-      },
-      {
-        text: '🖼 Gallery',
-        onPress: () =>
-          launchImageLibrary(
-            {mediaType: 'photo', quality: 0.8},
-            (response: ImagePickerResponse) => {
-              if (response.assets?.[0]) {
-                const asset = response.assets[0];
-                setPhoto({
-                  uri: asset.uri || '',
-                  type: asset.type,
-                  name: asset.fileName,
-                });
-              }
-            },
-          ),
-      },
-      {text: 'Cancel', style: 'cancel'},
-    ]);
-  };
-
-  const pickPortfolioPhoto = () => {
-    const totalPhotos = portfolioPhotos.length + newPhotos.length;
-    if (totalPhotos >= 5) {
-      Alert.alert('Limit Reached', 'You can only add up to 5 photos!');
-      return;
-    }
-    Alert.alert('Add Photo', 'Select source', [
-      {
-        text: '📷 Camera',
-        onPress: () =>
-          launchCamera(
-            {mediaType: 'photo', quality: 0.8, saveToPhotos: false},
-            (response: ImagePickerResponse) => {
-              if (response.assets?.[0]) {
-                const asset = response.assets[0];
-                setNewPhotos(prev => [
-                  ...prev,
-                  {
-                    uri: asset.uri || '',
-                    type: asset.type,
-                    name: asset.fileName,
-                  },
-                ]);
-              }
-            },
-          ),
-      },
-      {
-        text: '🖼 Gallery',
-        onPress: () =>
-          launchImageLibrary(
-            {mediaType: 'photo', quality: 0.8},
-            (response: ImagePickerResponse) => {
-              if (response.assets?.[0]) {
-                const asset = response.assets[0];
-                setNewPhotos(prev => [
-                  ...prev,
-                  {
-                    uri: asset.uri || '',
-                    type: asset.type,
-                    name: asset.fileName,
-                  },
-                ]);
-              }
-            },
-          ),
-      },
-      {text: 'Cancel', style: 'cancel'},
-    ]);
-  };
-
-  const removeNewPhoto = (index: number) => {
-    setNewPhotos(newPhotos.filter((_, i) => i !== index));
-  };
-
-  const removeExistingPhoto = (index: number) => {
-    setPortfolioPhotos(portfolioPhotos.filter((_, i) => i !== index));
-  };
-
-  const uploadToCloudinary = async (imageUri: string): Promise<string> => {
-    const result = await uploadImage(imageUri);
-    return result.secureUrl;
-  };
-
-  const saveProfile = async () => {
-    if (!name.trim()) {
-      Alert.alert('Missing Name', 'Please enter your full name!');
-      return;
-    }
-    setLoading(true);
-    try {
-      let finalPhotoUrl = photoUrl;
-      if (photo) {
-        setUploading(true);
-        finalPhotoUrl = await uploadToCloudinary(photo.uri);
-        setUploading(false);
-      }
-
-      let uploadedPhotos: string[] = [];
-      if (newPhotos.length > 0) {
-        setUploading(true);
-        uploadedPhotos = await Promise.all(
-          newPhotos.map(p => uploadToCloudinary(p.uri)),
-        );
-        setUploading(false);
-      }
-
-      const allPortfolioPhotos = [...portfolioPhotos, ...uploadedPhotos];
-      const trimmedName = name.trim();
-
-      const profileData = {
-        fullName: trimmedName,
-        phone,
-        bio,
-        role,
-        location,
-        photoUrl: finalPhotoUrl,
-        photoURL: finalPhotoUrl,
-        introVideoLink,
-        portfolio1,
-        portfolio2,
-        portfolio3,
-        portfolioPhotos: allPortfolioPhotos,
-        verificationStatus,
-        availabilityStatus,
-        lookingFor,
-        profileTags,
-        instagramLink,
-        youtubeLink,
-        ageRange,
-        height,
-        bodyType,
-      };
-
-      await api.put('/users/profile', profileData);
-
-      setName(trimmedName);
-      setPhotoUrl(finalPhotoUrl);
-      setPortfolioPhotos(allPortfolioPhotos);
-      setNewPhotos([]);
-      setPhoto(null);
-      setSaved(true);
-
-      Alert.alert('✅ Success', 'Profile saved successfully!');
-      setIsEditing(false);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (e) {
-      console.error('Error saving profile:', e);
-      Alert.alert('Error', 'Failed to save profile!');
-    } finally {
-      setLoading(false);
-      setUploading(false);
-    }
-  };
-
-  const applyForVerification = async () => {
-    if (verificationStatus === 'verified') {
-      Alert.alert('✅ Already Verified!', 'Your profile is already verified.');
-      return;
-    }
-    if (verificationStatus === 'pending') {
-      Alert.alert('⏳ Already Applied!', 'Your verification is under review.');
-      return;
-    }
-    if (!name || !bio || !phone) {
-      Alert.alert(
-        'Incomplete Profile',
-        'Please fill your name, phone and bio first!',
-      );
-      return;
-    }
-    try {
-      await api.post('/verification', {fullName: name});
-      setVerificationStatus('pending');
-      Alert.alert(
-        'Applied! 🎉',
-        'Your verification request has been submitted!',
-      );
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // ── Gallery helpers ──────────────────────────────────────
-  const savePortfolioMedia = async (media: string[]) => {
-    try {
-      await api.put('/users/profile', {portfolioMedia: media});
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
-  const pickPortfolioMedia = () => {
-    if (portfolioMedia.length >= 20) {
-      Alert.alert(
-        'Limit Reached',
-        'Portfolio gallery is limited to 20 images.',
-      );
-      return;
-    }
-    launchImageLibrary(
-      {mediaType: 'photo', quality: 0.8, selectionLimit: 1},
-      async response => {
-        if (!response.assets?.[0]?.uri) {
-          return;
-        }
-        setMediaUploading(true);
-        try {
-          const url = await uploadToCloudinary(response.assets[0].uri);
-          const updated = [...portfolioMedia, url];
-          setPortfolioMedia(updated);
-          await savePortfolioMedia(updated);
-        } catch {
-          Alert.alert(
-            'Upload Failed',
-            'Could not upload image. Please try again.',
-          );
-        } finally {
-          setMediaUploading(false);
-        }
-      },
-    );
-  };
-
-  const removeMediaItem = (index: number) => {
-    Alert.alert('Remove Photo', 'Remove this photo from your gallery?', [
-      {text: 'Cancel', style: 'cancel'},
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          const updated = portfolioMedia.filter((_, i) => i !== index);
-          setPortfolioMedia(updated);
-          await savePortfolioMedia(updated);
-        },
-      },
-    ]);
-  };
-
   const handleShare = async () => {
     const shareName = name || user?.email?.split('@')[0] || 'my profile';
     try {
@@ -434,16 +113,8 @@ export default function ProfileScreen({navigation, route}: any) {
     } catch (_) {}
   };
 
-  const handleItemPress = () => {
-    setIsEditing(true);
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({y: 120, animated: true});
-    }, 100);
-  };
-
-  const totalPhotos = portfolioPhotos.length + newPhotos.length;
   const displayName = name || user?.email?.split('@')[0] || 'Me';
-  const avatarUri = photo ? photo.uri : photoUrl || null;
+  const avatarUri = photoUrl || null;
 
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
@@ -451,74 +122,14 @@ export default function ProfileScreen({navigation, route}: any) {
         barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
         backgroundColor={Colors.background}
       />
-      {isEditing && (
-        <Header
-          title="Edit Profile"
-          left={
-            <TouchableOpacity
-              onPress={() => setIsEditing(false)}
-              style={styles.headerBtn}>
-              <Text style={styles.headerBtnTextCancel}>✕</Text>
-            </TouchableOpacity>
-          }
-          right={
-            <TouchableOpacity onPress={saveProfile} style={styles.headerBtn}>
-              <Text style={styles.headerBtnTextSave}>✓</Text>
-            </TouchableOpacity>
-          }
-        />
-      )}
+
       <ScrollView
         ref={scrollRef}
         style={[styles.scroll, {backgroundColor: Colors.background}]}
-        contentContainerStyle={!isEditing ? {paddingTop: insets.top + Spacing.sm} : undefined}
+        contentContainerStyle={{paddingTop: insets.top + Spacing.sm}}
         showsVerticalScrollIndicator={false}>
         {/* ── PROFILE HEADER (AVATAR & INFO CENTERED) ── */}
-        {isEditing ? (
-          <View style={styles.avatarSection}>
-            <TouchableOpacity
-              onPress={pickProfilePhoto}
-              style={styles.avatarWrapper}>
-              <Avatar
-                uri={avatarUri}
-                name={name || user?.email}
-                size="xl"
-                ring
-              />
-              <View style={styles.editBadge}>
-                <Text style={styles.editBadgeText}>Edit</Text>
-              </View>
-            </TouchableOpacity>
-
-            {uploading && (
-              <View style={styles.uploadingRow}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.uploadingText}>Uploading...</Text>
-              </View>
-            )}
-
-            {verificationStatus === 'verified' && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedBadgeText}>✅ Verified</Text>
-              </View>
-            )}
-
-            {name ? (
-              <View style={styles.nameRow}>
-                <Text style={styles.profileName}>{name}</Text>
-                <PremiumBadge
-                  tier={premiumTier}
-                  verifiedReal={premiumVerifiedReal}
-                  size="large"
-                />
-              </View>
-            ) : null}
-            <Text style={styles.email}>
-              {email || user?.email || user?.phoneNumber || ''}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.centeredHeader}>
+        <View style={styles.centeredHeader}>
             {/* Centered Avatar with overlapping Verified Badge */}
             <View style={styles.centeredAvatarContainer}>
               <Avatar
@@ -553,9 +164,9 @@ export default function ProfileScreen({navigation, route}: any) {
             {/* Action Row */}
             <View style={styles.profileActionRow}>
               <TouchableOpacity
-                onPress={() => setIsEditing(true)}
+                onPress={() => navigation.navigate('MyProfile')}
                 style={styles.profileEditBtn}>
-                <Text style={styles.profileEditBtnText}>Edit Profile</Text>
+                <Text style={styles.profileEditBtnText}>My Profile</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -603,7 +214,6 @@ export default function ProfileScreen({navigation, route}: any) {
               </TouchableOpacity>
             </View>
           </View>
-        )}
 
         {/* ✅ PROFILE COMPLETION CARD
         <View style={styles.completionWrapper}>
@@ -621,563 +231,6 @@ export default function ProfileScreen({navigation, route}: any) {
         </View>
         */}
 
-        {isEditing ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Basic Info</Text>
-
-            <Text style={styles.label}>I am a:</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.roleRow}
-              contentContainerStyle={{
-                gap: Spacing.sm,
-                paddingRight: Spacing.sm,
-              }}>
-              {[
-                'Actor',
-                'Director',
-                'Writer',
-                'Editor',
-                'DOP',
-                'Producer',
-                'Creator',
-              ].map(r => (
-                <Chip
-                  key={r}
-                  label={r}
-                  selected={role === r}
-                  onPress={() => setRole(r)}
-                />
-              ))}
-            </ScrollView>
-
-            <Input
-              label="Location"
-              placeholder="e.g. Mumbai, Delhi, Hyderabad"
-              value={location}
-              onChangeText={setLocation}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Input
-              label="Full Name"
-              placeholder="Your full name"
-              value={name}
-              onChangeText={setName}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Input
-              label="Phone Number"
-              placeholder="Your phone number"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Input
-              label="Bio"
-              placeholder="Tell us about yourself..."
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              numberOfLines={4}
-              style={styles.bioInput}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Text style={styles.sectionTitle}>Portfolio Photos</Text>
-            <Text style={styles.hint}>
-              Add up to 5 photos ({totalPhotos}/5)
-            </Text>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.photoRow}>
-              {portfolioPhotos.map((url, index) => (
-                <View key={index} style={styles.photoBox}>
-                  <Image source={{uri: url}} style={styles.portfolioPhoto} />
-                  <TouchableOpacity
-                    style={styles.removeBtn}
-                    onPress={() => removeExistingPhoto(index)}>
-                    <Text style={styles.removeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {newPhotos.map((p, index) => (
-                <View key={`new-${index}`} style={styles.photoBox}>
-                  <Image source={{uri: p.uri}} style={styles.portfolioPhoto} />
-                  <TouchableOpacity
-                    style={styles.removeBtn}
-                    onPress={() => removeNewPhoto(index)}>
-                    <Text style={styles.removeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {totalPhotos < 5 && (
-                <TouchableOpacity
-                  style={styles.addPhotoBtn}
-                  onPress={pickPortfolioPhoto}>
-                  <Text style={styles.addPhotoBtnIcon}>+</Text>
-                  <Text style={styles.addPhotoBtnText}>Add Photo</Text>
-                </TouchableOpacity>
-              )}
-            </ScrollView>
-
-            {/* ── PORTFOLIO GALLERY ── */}
-            <Text style={styles.sectionTitle}>Portfolio Gallery</Text>
-            <Text style={styles.hint}>
-              {portfolioMedia.length}/20 · Tap to view · Long-press to remove
-            </Text>
-            <View style={styles.mediaGrid}>
-              {portfolioMedia.map((url, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={styles.mediaCell}
-                  onPress={() => {
-                    setGalleryIndex(i);
-                    setGalleryVisible(true);
-                  }}
-                  onLongPress={() => removeMediaItem(i)}
-                  activeOpacity={0.85}>
-                  <Image
-                    source={{uri: url}}
-                    style={styles.mediaCellImg}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ))}
-              {portfolioMedia.length < 20 && (
-                <TouchableOpacity
-                  style={[styles.mediaCell, styles.mediaCellAdd]}
-                  onPress={pickPortfolioMedia}
-                  disabled={mediaUploading}
-                  activeOpacity={0.7}>
-                  {mediaUploading ? (
-                    <ActivityIndicator color={Colors.primary} size="small" />
-                  ) : (
-                    <>
-                      <Text style={styles.mediaCellPlus}>+</Text>
-                      <Text style={styles.mediaCellAddText}>Add</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <Input
-              label="Intro Video"
-              placeholder="Paste intro video link"
-              value={introVideoLink}
-              onChangeText={setIntroVideoLink}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Text style={styles.sectionTitle}>Portfolio / Previous Works</Text>
-            <Input
-              placeholder="Work 1 link"
-              value={portfolio1}
-              onChangeText={setPortfolio1}
-              containerStyle={styles.inputSpacing}
-            />
-            <Input
-              placeholder="Work 2 link"
-              value={portfolio2}
-              onChangeText={setPortfolio2}
-              containerStyle={styles.inputSpacing}
-            />
-            <Input
-              placeholder="Work 3 link"
-              value={portfolio3}
-              onChangeText={setPortfolio3}
-              containerStyle={styles.inputSpacing}
-            />
-
-            {/* ── CASTING PROFILE ── */}
-            <Text style={styles.sectionTitle}>Casting Profile</Text>
-
-            <Text style={styles.label}>Availability</Text>
-            <View style={styles.chipRow}>
-              {(['Available Now', 'Booked', 'Not Looking'] as const).map(
-                status => (
-                  <Chip
-                    key={status}
-                    label={`${
-                      status === 'Available Now'
-                        ? '🟢'
-                        : status === 'Booked'
-                        ? '🟡'
-                        : '🔴'
-                    } ${status}`}
-                    selected={availabilityStatus === status}
-                    variant={availVariant(status)}
-                    onPress={() =>
-                      setAvailabilityStatus(prev =>
-                        prev === status ? '' : status,
-                      )
-                    }
-                  />
-                ),
-              )}
-            </View>
-
-            <Input
-              label="Looking For"
-              placeholder="e.g. Lead roles in short films, OTT projects"
-              value={lookingFor}
-              onChangeText={setLookingFor}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Text style={styles.label}>Profile Type Tags</Text>
-            <View style={styles.tagGrid}>
-              {ROLE_TAGS.map(tag => (
-                <Chip
-                  key={tag}
-                  label={tag}
-                  selected={profileTags.includes(tag)}
-                  onPress={() => toggleTag(tag)}
-                />
-              ))}
-            </View>
-
-            <Input
-              label="Instagram Profile URL"
-              placeholder="https://instagram.com/yourhandle"
-              value={instagramLink}
-              onChangeText={setInstagramLink}
-              autoCapitalize="none"
-              keyboardType="url"
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Input
-              label="YouTube Channel URL"
-              placeholder="https://youtube.com/@yourchannel"
-              value={youtubeLink}
-              onChangeText={setYoutubeLink}
-              autoCapitalize="none"
-              keyboardType="url"
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Input
-              label="Age Range"
-              placeholder="e.g. 22–28"
-              value={ageRange}
-              onChangeText={setAgeRange}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Input
-              label="Height"
-              placeholder={'e.g. 5\'10" / 178 cm'}
-              value={height}
-              onChangeText={setHeight}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <Input
-              label="Body Type"
-              placeholder="e.g. Athletic, Slim, Average"
-              value={bodyType}
-              onChangeText={setBodyType}
-              containerStyle={styles.inputSpacing}
-            />
-
-            <TouchableOpacity
-              style={[
-                styles.verifyBtn,
-                verificationStatus === 'verified' && styles.verifyBtnDone,
-                verificationStatus === 'pending' && styles.verifyBtnPending,
-              ]}
-              onPress={applyForVerification}>
-              <Text style={styles.verifyBtnText}>
-                {verificationStatus === 'pending'
-                  ? '⏳ Verification Pending'
-                  : verificationStatus === 'verified'
-                  ? '✅ Verified'
-                  : '🔰 Apply for Verification'}
-              </Text>
-            </TouchableOpacity>
-
-            <Button
-              label={saved ? '✅ Profile Saved!' : 'Save Profile'}
-              onPress={saveProfile}
-              loading={loading}
-              fullWidth
-              size="lg"
-              variant="primary"
-              style={styles.saveBtn}
-            />
-
-            <Button
-              label="Cancel"
-              onPress={() => setIsEditing(false)}
-              fullWidth
-              size="lg"
-              variant="outline"
-              style={styles.cancelBtn}
-            />
-          </View>
-        ) : (
-          <View style={styles.section}>
-            {/* ── BIO SECTION ── */}
-            {bio && bio.trim() ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>About Me</Text>
-                <Text style={styles.viewBioText}>{bio}</Text>
-              </View>
-            ) : null}
-
-            {/* ── BASIC DETAILS ── */}
-            {phone ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>Basic Details</Text>
-                <View style={styles.detailItemRow}>
-                  <Text style={styles.detailLabel}>📱 Phone</Text>
-                  <Text style={styles.detailValue}>{phone}</Text>
-                </View>
-              </View>
-            ) : null}
-
-            {/* ── CASTING PROFILE ── */}
-            {availabilityStatus ||
-            lookingFor ||
-            profileTags.length > 0 ||
-            instagramLink ||
-            youtubeLink ||
-            ageRange ||
-            height ||
-            bodyType ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>
-                  Casting & Physical Stats
-                </Text>
-
-                {availabilityStatus ? (
-                  <View style={styles.availabilityViewRow}>
-                    <Text style={styles.detailLabel}>Status</Text>
-                    <Chip
-                      label={`${
-                        availabilityStatus === 'Available Now'
-                          ? '🟢'
-                          : availabilityStatus === 'Booked'
-                          ? '🟡'
-                          : '🔴'
-                      } ${availabilityStatus}`}
-                      selected={true}
-                      variant={availVariant(availabilityStatus)}
-                    />
-                  </View>
-                ) : null}
-
-                {lookingFor ? (
-                  <View style={styles.lookingForBox}>
-                    <Text style={styles.detailLabel}>Looking For</Text>
-                    <Text style={styles.lookingForText}>{lookingFor}</Text>
-                  </View>
-                ) : null}
-
-                {/* Physical stats grid */}
-                {ageRange || height || bodyType ? (
-                  <View style={styles.statsGrid}>
-                    {ageRange ? (
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridCellTitle}>Age Range</Text>
-                        <Text style={styles.gridCellValue}>{ageRange}</Text>
-                      </View>
-                    ) : null}
-                    {height ? (
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridCellTitle}>Height</Text>
-                        <Text style={styles.gridCellValue}>{height}</Text>
-                      </View>
-                    ) : null}
-                    {bodyType ? (
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridCellTitle}>Body Type</Text>
-                        <Text style={styles.gridCellValue}>{bodyType}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                ) : null}
-
-                {/* Profile Type Tags */}
-                {profileTags.length > 0 ? (
-                  <View style={styles.tagsViewSection}>
-                    <Text style={styles.detailLabel}>Profile Tags</Text>
-                    <View style={styles.tagGrid}>
-                      {profileTags.map(tag => (
-                        <Chip key={tag} label={tag} selected={true} />
-                      ))}
-                    </View>
-                  </View>
-                ) : null}
-
-                {/* Social links */}
-                {instagramLink || youtubeLink ? (
-                  <View style={styles.socialRow}>
-                    {instagramLink ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          Linking.openURL(instagramLink).catch(() =>
-                            Alert.alert(
-                              'Error',
-                              'Could not open Instagram link',
-                            ),
-                          )
-                        }
-                        style={styles.socialBtn}>
-                        <Text style={styles.socialBtnText}>📸 Instagram</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                    {youtubeLink ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          Linking.openURL(youtubeLink).catch(() =>
-                            Alert.alert('Error', 'Could not open YouTube link'),
-                          )
-                        }
-                        style={styles.socialBtn}>
-                        <Text style={styles.socialBtnText}>🎥 YouTube</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            {/* ── PORTFOLIO PHOTOS ── */}
-            {portfolioPhotos.length > 0 ? (
-              <View style={styles.viewSectionContainer}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.viewSectionTitle}>Featured Photos</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (portfolioPhotos.length > 0) {
-                        setGalleryIndex(0);
-                        setGalleryVisible(true);
-                      }
-                    }}>
-                    <Text style={styles.viewAllText}>View all</Text>
-                  </TouchableOpacity>
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.photoRow}>
-                  {portfolioPhotos.map((url, index) => (
-                    <View key={index} style={styles.photoBox}>
-                      <Image
-                        source={{uri: url}}
-                        style={styles.portfolioPhoto}
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-
-            {/* ── PORTFOLIO GALLERY ── */}
-            {portfolioMedia.length > 0 ? (
-              <View style={styles.viewSectionContainer}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.viewSectionTitle}>Portfolio Gallery</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setGalleryIndex(0);
-                      setGalleryVisible(true);
-                    }}>
-                    <Text style={styles.viewAllText}>View all</Text>
-                  </TouchableOpacity>
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.photoRow}>
-                  {portfolioMedia.map((url, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={styles.photoBox}
-                      onPress={() => {
-                        setGalleryIndex(i);
-                        setGalleryVisible(true);
-                      }}
-                      activeOpacity={0.85}>
-                      <Image
-                        source={{uri: url}}
-                        style={styles.portfolioPhoto}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-
-            {/* ── VIDEO & LINKS ── */}
-            {introVideoLink || portfolio1 || portfolio2 || portfolio3 ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>Videos & Work Links</Text>
-
-                {introVideoLink ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(introVideoLink).catch(() =>
-                        Alert.alert('Error', 'Could not open video link'),
-                      )
-                    }
-                    style={styles.videoLinkBtn}>
-                    <Text style={styles.videoLinkBtnText}>
-                      🎬 Watch Intro Video
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-
-                {portfolio1 ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(portfolio1).catch(() =>
-                        Alert.alert('Error', 'Could not open link'),
-                      )
-                    }
-                    style={styles.workLinkBtn}>
-                    <Text style={styles.workLinkBtnText}>
-                      🔗 Previous Work 1
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-                {portfolio2 ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(portfolio2).catch(() =>
-                        Alert.alert('Error', 'Could not open link'),
-                      )
-                    }
-                    style={styles.workLinkBtn}>
-                    <Text style={styles.workLinkBtnText}>
-                      🔗 Previous Work 2
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-                {portfolio3 ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(portfolio3).catch(() =>
-                        Alert.alert('Error', 'Could not open link'),
-                      )
-                    }
-                    style={styles.workLinkBtn}>
-                    <Text style={styles.workLinkBtnText}>
-                      🔗 Previous Work 3
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            ) : null}
 
             {/* ── MENU ── */}
             <View
@@ -1186,36 +239,68 @@ export default function ProfileScreen({navigation, route}: any) {
               {/* App Settings Section */}
               <Text style={styles.sectionHeader}>App Settings</Text>
               {[
-                {
-                  icon: '🎬',
-                  label: 'My Applications',
-                  desc: 'Track your audition and job applications',
-                  screen: 'MyApplications',
-                },
-                {
-                  icon: '🎥',
-                  label: 'My Films',
-                  desc: 'Manage your uploaded short films',
-                  screen: 'MyFilms',
-                },
-                {
-                  icon: '🏆',
-                  label: 'My Contests',
-                  desc: 'View your contest participations',
-                  screen: 'MyContests',
-                },
-                {
-                  icon: '💾',
-                  label: 'Saved Auditions',
-                  desc: 'Your bookmarked casting calls',
-                  screen: 'SavedAuditions',
-                },
-                {
-                  icon: '🎓',
-                  label: 'Industry Guide',
-                  desc: 'Learn and grow in the industry',
-                  screen: 'IndustryGuide',
-                },
+                ...(!isAdmin
+                  ? [
+                      {
+                        icon: '🎬',
+                        label: 'My Applications',
+                        desc: 'Track your audition and job applications',
+                        screen: 'MyApplications',
+                      },
+                    ]
+                  : []),
+                ...(isApprovedDirector || isAdmin
+                  ? [
+                      {
+                        icon: '🎥',
+                        label: isAdmin ? 'Films' : 'My Films',
+                        desc: isAdmin ? 'Manage uploaded short films' : 'Manage your uploaded short films',
+                        screen: 'MyFilms',
+                      },
+                      {
+                        icon: '🏆',
+                        label: isAdmin ? 'Contests' : 'My Contests',
+                        desc: isAdmin ? 'Manage all contests' : 'View your contest participations',
+                        screen: 'MyContests',
+                      },
+                    ]
+                  : []),
+                ...(!isAdmin
+                  ? [
+                      {
+                        icon: '💾',
+                        label: 'Saved Auditions',
+                        desc: 'Your bookmarked casting calls',
+                        screen: 'SavedAuditions',
+                      },
+                    ]
+                  : []),
+                ...(isApprovedDirector || isAdmin
+                  ? [
+                      {
+                        icon: '🎭',
+                        label: isAdmin ? 'Auditions' : 'My Auditions',
+                        desc: isAdmin ? 'Manage all auditions' : 'Manage your posted auditions',
+                        screen: 'MyAuditions',
+                      },
+                    ]
+                  : []),
+                ...(isAdmin
+                  ? [
+                      {
+                        icon: '⚡',
+                        label: 'Quick Post',
+                        desc: 'Publish a quick text or media update',
+                        screen: 'QuickPost',
+                      },
+                      {
+                        icon: '📢',
+                        label: 'Announcements',
+                        desc: 'Publish system announcements',
+                        screen: 'Announcements',
+                      },
+                    ]
+                  : []),
                 {
                   icon: '⚙️',
                   label: 'Settings',
@@ -1246,7 +331,7 @@ export default function ProfileScreen({navigation, route}: any) {
                   </Text>
 
                   {/* Become Casting Director */}
-                  {!isApprovedDirector && (
+                  {!isApprovedDirector && !isAdmin && (
                     <TouchableOpacity
                       style={styles.menuRow}
                       onPress={() => navigation.navigate('CastingRequest')}>
@@ -1261,65 +346,31 @@ export default function ProfileScreen({navigation, route}: any) {
                     </TouchableOpacity>
                   )}
 
-                  {/* Post Audition */}
-                  {(isApprovedDirector || isAdmin) && (
-                    <TouchableOpacity
-                      style={styles.menuRow}
-                      onPress={() => navigation.navigate('PostAudition')}>
-                      <View style={styles.menuIconContainer}>
-                        <Text style={styles.menuEmoji}>📋</Text>
-                      </View>
-                      <View style={styles.menuTextContainer}>
-                        <Text style={styles.menuLabel}>Post Audition</Text>
-                        <Text style={styles.menuDesc}>Create a new casting call</Text>
-                      </View>
-                      <Text style={styles.menuArrow}>›</Text>
-                    </TouchableOpacity>
-                  )}
+                  {/* Industry Guide */}
+                  <TouchableOpacity
+                    style={styles.menuRow}
+                    onPress={() => navigation.navigate('IndustryGuide')}>
+                    <View style={styles.menuIconContainer}>
+                      <Text style={styles.menuEmoji}>📚</Text>
+                    </View>
+                    <View style={styles.menuTextContainer}>
+                      <Text style={styles.menuLabel}>Industry Guide</Text>
+                      <Text style={styles.menuDesc}>Learn how to grow in the industry</Text>
+                    </View>
+                    <Text style={styles.menuArrow}>›</Text>
+                  </TouchableOpacity>
 
-                  {/* Dashboard */}
-                  {(isApprovedDirector || isAdmin) && (
-                    <TouchableOpacity
-                      style={styles.menuRow}
-                      onPress={() => navigation.navigate('DirectorDashboard')}>
-                      <View style={styles.menuIconContainer}>
-                        <Text style={styles.menuEmoji}>📊</Text>
-                      </View>
-                      <View style={styles.menuTextContainer}>
-                        <Text style={styles.menuLabel}>Dashboard</Text>
-                        <Text style={styles.menuDesc}>View applicant analytics</Text>
-                      </View>
-                      <Text style={styles.menuArrow}>›</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Announcements */}
+                  {/* AI Assistant */}
                   {isAdmin && (
                     <TouchableOpacity
                       style={styles.menuRow}
-                      onPress={() => navigation.navigate('Announcements')}>
+                      onPress={() => navigation.navigate('AIAssistant')}>
                       <View style={styles.menuIconContainer}>
-                        <Text style={styles.menuEmoji}>📢</Text>
+                        <Text style={styles.menuEmoji}>🤖</Text>
                       </View>
                       <View style={styles.menuTextContainer}>
-                        <Text style={styles.menuLabel}>Announcements</Text>
-                        <Text style={styles.menuDesc}>Publish system announcements</Text>
-                      </View>
-                      <Text style={styles.menuArrow}>›</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Post Contest */}
-                  {isAdmin && (
-                    <TouchableOpacity
-                      style={styles.menuRow}
-                      onPress={() => navigation.navigate('PostContest')}>
-                      <View style={styles.menuIconContainer}>
-                        <Text style={styles.menuEmoji}>🏆</Text>
-                      </View>
-                      <View style={styles.menuTextContainer}>
-                        <Text style={styles.menuLabel}>Post Contest</Text>
-                        <Text style={styles.menuDesc}>Create a new talent contest</Text>
+                        <Text style={styles.menuLabel}>AI Assistant</Text>
+                        <Text style={styles.menuDesc}>Chat with the CineLink AI assistant</Text>
                       </View>
                       <Text style={styles.menuArrow}>›</Text>
                     </TouchableOpacity>
@@ -1359,18 +410,7 @@ export default function ProfileScreen({navigation, route}: any) {
                 <Text style={styles.logoutBtnText}>Logout</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        )}
       </ScrollView>
-      <ImageViewing
-        images={portfolioMedia.map(url => ({uri: url}))}
-        imageIndex={galleryIndex}
-        visible={galleryVisible}
-        onRequestClose={() => setGalleryVisible(false)}
-        swipeToCloseEnabled
-        doubleTapToZoomEnabled
-        backgroundColor="black"
-      />
     </View>
   );
 }

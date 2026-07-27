@@ -83,8 +83,10 @@ export default function BrowseUpdatesScreen({navigation}: any) {
     return (
       <View style={styles.card}>
         <View style={styles.header}>
-          <View style={styles.adminBadge}>
-            <Text style={styles.adminBadgeText}>🛡️ CineLink Official</Text>
+          <View style={[styles.adminBadge, item.postType === 'announcement' && styles.announcementBadge]}>
+            <Text style={[styles.adminBadgeText, item.postType === 'announcement' && styles.announcementBadgeText]}>
+              {item.postType === 'announcement' ? '📢 Announcement' : '🛡️ CineLink Official'}
+            </Text>
           </View>
           <Text style={styles.timeText}>{formatTime(item.createdAt)}</Text>
         </View>
@@ -168,6 +170,12 @@ const styles = StyleSheet.create({
   adminBadgeText: {
     color: Colors.primary,
     ...Typography.captionBold,
+  },
+  announcementBadge: {
+    backgroundColor: Colors.errorFaint,
+  },
+  announcementBadgeText: {
+    color: Colors.error,
   },
   timeText: {
     color: Colors.textSecondary,

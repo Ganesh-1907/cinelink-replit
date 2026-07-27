@@ -9,14 +9,15 @@ import {
   Image,
   Alert,
   Modal,
+  SafeAreaView,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
 import api from '../src/api/client';
 import {uploadImage} from '../src/services/uploadService';
 import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
-import {Header, Button, Input, Chip} from '../components/ui';
+import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {Header, Button, Input, Chip, DatePickerModal} from '../components/ui';
 
 const ROLES = [
   'Hero',
@@ -35,8 +36,10 @@ const CATEGORIES = [
   'TV / OTT',
 ];
 
-export default function PostAuditionScreen({navigation}: any) {
+export default function PostAuditionScreen({navigation, route}: any) {
   const insets = useSafeAreaInsets();
+  const editingAudition = route?.params?.audition;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -58,9 +61,9 @@ export default function PostAuditionScreen({navigation}: any) {
   const [category, setCategory] = useState('Movies');
   const [budget, setBudget] = useState('');
   const [positions, setPositions] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const {isAdmin, isApprovedDirector, user} = useApp();
-  const isAdminUser = isAdmin;
   const directorName =
     user?.displayName || user?.email?.split('@')[0] || 'Director';
   const pendingUploadRef = React.useRef<Promise<string> | null>(null);
@@ -68,6 +71,29 @@ export default function PostAuditionScreen({navigation}: any) {
   useEffect(() => {
     checkAccess();
   }, []);
+
+  useEffect(() => {
+    if (editingAudition) {
+      setTitle(editingAudition.title || '');
+      setDescription(editingAudition.description || '');
+      setLocation(editingAudition.location || '');
+      setRole(editingAudition.role || '');
+      setAgeMin(editingAudition.ageMin ? String(editingAudition.ageMin) : '');
+      setAgeMax(editingAudition.ageMax ? String(editingAudition.ageMax) : '');
+      setGender(editingAudition.gender || 'Any');
+      setLastDate(editingAudition.lastDate || '');
+      setLanguage(editingAudition.lang || editingAudition.language || '');
+      setContactLink(editingAudition.contactLink || '');
+      setPosterUrl(editingAudition.posterUrl || '');
+      setCategory(editingAudition.category || 'Movies');
+      setBudget(editingAudition.budget || '');
+      setPositions(editingAudition.positions || '');
+      setAgreedToGuidelines(true);
+      if (editingAudition.posterUrl) {
+        setPoster({uri: editingAudition.posterUrl});
+      }
+    }
+  }, [editingAudition]);
 
   const checkAccess = async () => {
     try {
@@ -77,7 +103,33 @@ export default function PostAuditionScreen({navigation}: any) {
         return;
       }
       const profile = await api.get<any>('/users/profile');
-      setHasAccess(profile?.user?.isApprovedDirector === true);
+      const isDirector = profile?.user?.isApprovedDirector === true;
+      if (!isDirector) {
+        setHasAccess(false);
+        setAccessChecked(true);
+        return;
+      }
+
+      if (editingAudition) {
+        setHasAccess(true);
+        setAccessChecked(true);
+        return;
+      }
+
+      const audRes = await api.get<{auditions: any[]}>('/auditions');
+      const userAuditions = (audRes.auditions || []).filter(
+        (a: any) => (a.postedById || a.directorId) === user?.uid
+      );
+      if (userAuditions.length >= 1) {
+        Alert.alert(
+          'Limit Reached',
+          'Directors can only post one audition. Please edit your existing audition or contact admin to upgrade.',
+          [{text: 'OK', onPress: () => navigation.goBack()}]
+        );
+        setHasAccess(false);
+      } else {
+        setHasAccess(true);
+      }
     } catch (e) {
       console.log(e);
       setHasAccess(false);
@@ -89,6 +141,7 @@ export default function PostAuditionScreen({navigation}: any) {
   const pickPoster = () => {
     if (poster) {
       Alert.alert('🖼️ Poster Options', 'What would you like to do?', [
+        {text: '🔍 View Fullscreen', onPress: () => setShowFullscreen(true)},
         {text: '🔄 Replace Photo', onPress: () => openGallery()},
         {
           text: '🗑️ Remove Photo',
@@ -152,9 +205,16 @@ export default function PostAuditionScreen({navigation}: any) {
         return;
       }
     }
+    if (!resolvedPosterUrl) {
+      Alert.alert(
+        'Poster Required',
+        'Please select and upload a poster/banner image for the audition.',
+      );
+      return;
+    }
     setLoading(true);
     try {
-      await api.post('/auditions', {
+      const payload = {
         title: title.trim(),
         description: description.trim(),
         location: location.trim(),
@@ -170,11 +230,19 @@ export default function PostAuditionScreen({navigation}: any) {
         budget: budget.trim(),
         positions: positions.trim(),
         directorName,
-      });
+      };
 
-      Alert.alert('Success! 🎬', 'Your audition is now live!', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      if (editingAudition) {
+        await api.put(`/auditions/${editingAudition._id || editingAudition.id}`, payload);
+        Alert.alert('Success! 🎬', 'Your audition changes have been saved!', [
+          {text: 'OK', onPress: () => navigation.goBack()},
+        ]);
+      } else {
+        await api.post('/auditions', payload);
+        Alert.alert('Success! 🎬', 'Your audition is now live!', [
+          {text: 'OK', onPress: () => navigation.goBack()},
+        ]);
+      }
     } catch (e: any) {
       Alert.alert('Error', e.message);
     } finally {
@@ -193,7 +261,7 @@ export default function PostAuditionScreen({navigation}: any) {
 
   if (!hasAccess) {
     return (
-      <View style={[styles.root, {backgroundColor: Colors.background}]}>
+      <SafeAreaView style={[styles.root, {backgroundColor: Colors.background}]}>
         <Header
           title="Post Audition"
           navigation={navigation}
@@ -232,14 +300,14 @@ export default function PostAuditionScreen({navigation}: any) {
             fullWidth
           />
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.root, {backgroundColor: Colors.background}]}>
+    <SafeAreaView style={[styles.root, {backgroundColor: Colors.background}]}>
       <Header
-        title="Post Audition"
+        title={editingAudition ? "Edit Audition" : "Post Audition"}
         navigation={navigation}
         onBack={() => navigation.goBack()}
       />
@@ -265,7 +333,11 @@ export default function PostAuditionScreen({navigation}: any) {
         </TouchableOpacity>
       </Modal>
 
-      <ScrollView style={[styles.container, {backgroundColor: Colors.background}]} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        style={[styles.container, {backgroundColor: Colors.background}]} 
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{paddingBottom: insets.bottom + Spacing['5xl']}}>
+        
         {/* ACCESS BADGE */}
         <View style={styles.accessBadge}>
           <Text style={styles.accessBadgeText}>
@@ -275,119 +347,157 @@ export default function PostAuditionScreen({navigation}: any) {
           </Text>
         </View>
 
-        <View style={[styles.section, {paddingBottom: insets.bottom + 40}]}>
-          {/* POSTER PICKER */}
+        <View style={styles.body}>
+          
+          {/* Header Step Timeline Section */}
+          <View style={styles.formHeader}>
+            <View style={styles.stepIndicatorContainer}>
+              <View style={styles.stepDotActive} />
+              <Text style={styles.stepText}>AUDITION DETAILS</Text>
+            </View>
+            <Text style={styles.formTitle}>{editingAudition ? "Edit Audition Project" : "Post a New Audition"}</Text>
+            <Text style={styles.formSubtitle}>
+              Fill in the role details, location, age criteria, and guidelines to find the perfect cast.
+            </Text>
+          </View>
+
+          {/* Section 1: Audition Poster */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Audition Poster / Banner *</Text>
+            <Text style={styles.sectionSubtitle}>Add a clear landscape banner for the audition listing</Text>
+          </View>
+
           <TouchableOpacity
             style={styles.posterPicker}
-            onPress={() => {
-              if (poster) {
-                setShowFullscreen(true);
-              } else {
-                openGallery();
-              }
-            }}
-            activeOpacity={0.9}>
+            onPress={pickPoster}
+            activeOpacity={0.85}>
             {poster?.uri ? (
               <>
                 <Image source={{uri: poster.uri}} style={styles.posterImage} />
-                <TouchableOpacity
-                  style={styles.editPosterBtn}
-                  onPress={pickPoster}>
-                  <Text style={styles.editPosterText}>✏️ Edit</Text>
-                </TouchableOpacity>
+                <View style={styles.posterOverlay}>
+                  <Text style={{fontSize: 22}}>📷</Text>
+                  <Text style={styles.posterOverlayText}>Change Poster</Text>
+                </View>
                 {uploading && (
-                  <View style={styles.uploadingOverlay}>
-                    <ActivityIndicator color={Colors.textPrimary} />
-                    <Text style={styles.uploadingText}>Uploading...</Text>
+                  <View style={styles.overlay}>
+                    <ActivityIndicator color={Colors.primary} />
+                    <Text style={styles.overlayText}>Uploading poster...</Text>
                   </View>
                 )}
                 {posterUrl && !uploading && (
-                  <View style={styles.uploadedBadge}>
-                    <Text style={styles.uploadedText}>✅ Uploaded</Text>
+                  <View style={styles.doneBadge}>
+                    <Text style={styles.doneBadgeText}>✅ Uploaded</Text>
                   </View>
                 )}
               </>
             ) : (
-              <View style={styles.posterPlaceholder}>
-                <Text style={styles.posterIcon}>🎭</Text>
-                <Text style={styles.posterText}>Tap to add poster</Text>
-                <Text style={styles.posterSub}>
-                  Optional — portrait format recommended
+              <View style={styles.posterEmpty}>
+                <Text style={styles.posterIcon}>📤</Text>
+                <Text style={styles.posterEmptyText}>Upload Poster</Text>
+                <Text style={styles.posterEmptySub}>
+                  Recommended: 16:9 banner format (Max 5MB)
                 </Text>
               </View>
             )}
           </TouchableOpacity>
 
-          {/* FORM FIELDS */}
+          {/* Section 2: Project Details */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Project Details</Text>
+            <Text style={styles.sectionSubtitle}>Provide titles, requirements, and location information</Text>
+          </View>
+
           <Input
-            label="Audition Title *"
+            label="Audition Title"
+            required
             value={title}
             onChangeText={setTitle}
             placeholder="e.g. Hero Role — Telugu Action Film"
-            required
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
           <Input
-            label="Description *"
+            label="Description"
+            required
             value={description}
             onChangeText={setDescription}
             placeholder="Describe the role, storyline, requirements..."
             multiline
-            required
+            numberOfLines={4}
+            style={styles.multilineInput}
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
           <Input
-            label="Location *"
+            label="Location"
+            required
             value={location}
             onChangeText={setLocation}
             placeholder="e.g. Hyderabad, Telangana"
-            required
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
-          <Text style={styles.label}>Role Type</Text>
+          {/* Section 3: Role & Category */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Role Type</Text>
+            <Text style={styles.sectionSubtitle}>Select the primary type of role you are casting</Text>
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}>
+            style={styles.chipScroll}
+            contentContainerStyle={{paddingRight: Spacing.md}}>
             {ROLES.map(r => (
               <Chip
                 key={r}
                 label={r}
                 selected={role === r}
                 onPress={() => setRole(r)}
+                style={{marginRight: Spacing.sm}}
               />
             ))}
           </ScrollView>
 
-          <Text style={styles.label}>Category / Medium</Text>
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Category / Medium</Text>
+            <Text style={styles.sectionSubtitle}>What medium is this project being produced for?</Text>
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}>
+            style={styles.chipScroll}
+            contentContainerStyle={{paddingRight: Spacing.md}}>
             {CATEGORIES.map(c => (
               <Chip
                 key={c}
                 label={c}
                 selected={category === c}
                 onPress={() => setCategory(c)}
+                style={{marginRight: Spacing.sm}}
               />
             ))}
           </ScrollView>
 
-          <Text style={styles.label}>Gender</Text>
-          <View style={styles.genderRow}>
+          {/* Section 4: Specifications */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Specifications</Text>
+            <Text style={styles.sectionSubtitle}>Define target gender, age range, and language details</Text>
+          </View>
+
+          <Text style={styles.fieldLabel}>GENDER</Text>
+          <View style={styles.toggleRow}>
             {['Male', 'Female', 'Any'].map(g => (
               <TouchableOpacity
                 key={g}
                 style={[
-                  styles.genderBtn,
-                  gender === g && styles.genderBtnActive,
+                  styles.toggleBtn,
+                  gender === g && styles.toggleBtnActive,
                 ]}
                 onPress={() => setGender(g)}>
                 <Text
                   style={[
-                    styles.genderBtnText,
-                    gender === g && styles.genderBtnTextActive,
+                    styles.toggleBtnText,
+                    gender === g && styles.toggleBtnTextActive,
                   ]}>
                   {g}
                 </Text>
@@ -395,18 +505,22 @@ export default function PostAuditionScreen({navigation}: any) {
             ))}
           </View>
 
-          <Text style={styles.label}>Age Range</Text>
+          <Text style={styles.fieldLabel}>AGE RANGE</Text>
           <View style={styles.ageRow}>
             <Input
               value={ageMin}
               onChangeText={setAgeMin}
               placeholder="Min age"
+              keyboardType="numeric"
+              containerStyle={{flex: 1}}
             />
             <Text style={styles.ageTo}>to</Text>
             <Input
               value={ageMax}
               onChangeText={setAgeMax}
               placeholder="Max age"
+              keyboardType="numeric"
+              containerStyle={{flex: 1}}
             />
           </View>
 
@@ -415,6 +529,7 @@ export default function PostAuditionScreen({navigation}: any) {
             value={language}
             onChangeText={setLanguage}
             placeholder="e.g. Telugu, Hindi, Tamil"
+            containerStyle={{marginBottom: Spacing.md, marginTop: Spacing.md}}
           />
 
           <Input
@@ -422,6 +537,7 @@ export default function PostAuditionScreen({navigation}: any) {
             value={budget}
             onChangeText={setBudget}
             placeholder="e.g. ₹5,000/day or Negotiable"
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
           <Input
@@ -429,14 +545,20 @@ export default function PostAuditionScreen({navigation}: any) {
             value={positions}
             onChangeText={setPositions}
             placeholder="e.g. 2 Males, 1 Female"
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
-          <Input
-            label="Last Date to Apply"
-            value={lastDate}
-            onChangeText={setLastDate}
-            placeholder="e.g. June 30, 2026"
-          />
+          <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7} style={{marginBottom: Spacing.md}}>
+            <View pointerEvents="none">
+              <Input
+                label="Last Date to Apply"
+                required
+                value={lastDate}
+                placeholder="Select deadline date..."
+                editable={false}
+              />
+            </View>
+          </TouchableOpacity>
 
           <Input
             label="Contact / Apply Link"
@@ -444,34 +566,27 @@ export default function PostAuditionScreen({navigation}: any) {
             onChangeText={setContactLink}
             placeholder="WhatsApp / Google Form / Instagram link"
             hint="Actors will be redirected here when they tap Apply"
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
-          {/* GUIDELINES */}
+          {/* Section 5: Guidelines & Agreement */}
           <View style={styles.guidelineBox}>
             <Text style={styles.guidelineTitle}>⚠️ Posting Guidelines</Text>
-            <Text style={styles.guidelineItem}>
-              ✅ Only post real, genuine auditions
-            </Text>
-            <Text style={styles.guidelineItem}>
-              ✅ Contact link must be working
-            </Text>
-            <Text style={styles.guidelineItem}>
-              ✅ Role and location must be accurate
-            </Text>
-            <Text style={styles.guidelineItem}>
-              ❌ No money collection from actors
-            </Text>
-            <Text style={styles.guidelineItem}>
-              ❌ No fake or expired auditions
-            </Text>
-            <Text style={styles.guidelineItem}>❌ No duplicate posts</Text>
+            <View style={styles.guidelineList}>
+              <Text style={styles.guidelineItem}>✅ Only post real, genuine auditions</Text>
+              <Text style={styles.guidelineItem}>✅ Contact link must be working</Text>
+              <Text style={styles.guidelineItem}>✅ Role and location must be accurate</Text>
+              <Text style={styles.guidelineItem}>❌ No money collection from actors</Text>
+              <Text style={styles.guidelineItem}>❌ No fake or expired auditions</Text>
+            </View>
             <Text style={styles.guidelineWarning}>
-              Violation = immediate access revocation and permanent ban
+              Violation results in immediate access revocation and a permanent ban.
             </Text>
           </View>
 
           {/* AGREEMENT */}
           <TouchableOpacity
+            activeOpacity={0.8}
             style={styles.checkboxRow}
             onPress={() => setAgreedToGuidelines(!agreedToGuidelines)}>
             <View
@@ -482,29 +597,38 @@ export default function PostAuditionScreen({navigation}: any) {
               {agreedToGuidelines && <Text style={styles.checkmark}>✓</Text>}
             </View>
             <Text style={styles.checkboxLabel}>
-              I confirm this is a genuine audition and I agree to CineLink
-              posting guidelines
+              I confirm this is a genuine audition and I agree to CineLink posting guidelines
             </Text>
           </TouchableOpacity>
 
-          <Button
-            label="🎭 Post Audition"
-            onPress={postAudition}
-            variant="primary"
-            size="lg"
-            fullWidth
-            loading={loading}
-            disabled={loading || uploading || !agreedToGuidelines}
-          />
+          <View style={styles.submitContainer}>
+            <Button
+              label={editingAudition ? "Save Changes" : "Publish Audition"}
+              onPress={postAudition}
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+              disabled={loading || uploading || !agreedToGuidelines}
+            />
+          </View>
         </View>
       </ScrollView>
-    </View>
+
+      <DatePickerModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onSelectDate={setLastDate}
+        currentValue={lastDate}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: Colors.background},
   container: {flex: 1, backgroundColor: Colors.background},
+  body: {padding: Spacing.screenH},
   centerBox: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -570,9 +694,9 @@ const styles = StyleSheet.create({
 
   accessBadge: {
     backgroundColor: Colors.successFaint,
-    marginHorizontal: Spacing.xl,
-    marginTop: Spacing.sm,
-    borderRadius: Radius.sm,
+    marginHorizontal: Spacing.screenH,
+    marginTop: Spacing.md,
+    borderRadius: Radius.md,
     padding: Spacing.sm,
     alignItems: 'center',
     borderWidth: 1,
@@ -584,131 +708,234 @@ const styles = StyleSheet.create({
     ...Typography.label,
   },
 
-  section: {padding: Spacing.xl},
-
+  formHeader: {
+    marginBottom: Spacing.lg,
+  },
+  stepIndicatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  stepDotActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  stepText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.primary,
+    letterSpacing: 1.2,
+    fontWeight: '600',
+  },
+  formTitle: {
+    fontSize: 22,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    marginBottom: Spacing.xs,
+  },
+  formSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  sectionHeaderContainer: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  sectionLabel: {
+    fontSize: 15,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textTertiary,
+    marginTop: 2,
+  },
   posterPicker: {
     width: '100%',
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     overflow: 'hidden',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.lg,
     borderWidth: 1.5,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
     borderStyle: 'dashed',
+    backgroundColor: Colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   posterImage: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    aspectRatio: 16 / 9,
     resizeMode: 'cover',
-    backgroundColor: Colors.card,
   },
-  posterPlaceholder: {
-    height: 180,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  posterIcon: {fontSize: 40},
-  posterText: {color: Colors.textSecondary, ...Typography.label},
-  posterSub: {color: Colors.textSecondary, ...Typography.caption},
-  uploadingOverlay: {
+  posterOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.overlay,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  posterOverlayText: {
+    color: '#FAFAFA',
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+  },
+  posterEmpty: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  posterIcon: {
+    fontSize: 28,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+  },
+  posterEmptyText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+  },
+  posterEmptySub: {
+    color: Colors.textTertiary,
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  uploadingText: {color: Colors.textPrimary, ...Typography.bodySm},
-  uploadedBadge: {
+  overlayText: {
+    color: '#FAFAFA',
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+  },
+  doneBadge: {
     position: 'absolute',
     bottom: Spacing.sm,
     right: Spacing.sm,
     backgroundColor: 'rgba(0,0,0,0.65)',
     borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
   },
-  uploadedText: {color: Colors.success, ...Typography.captionBold},
-  editPosterBtn: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    zIndex: 10,
+  doneBadgeText: {color: Colors.success, fontSize: 12, fontWeight: 'bold'},
+  multilineInput: {
+    minHeight: 110,
+    height: 110,
+    textAlignVertical: 'top',
+    paddingTop: Spacing.sm,
   },
-  editPosterText: {color: Colors.textPrimary, ...Typography.captionBold},
-
-  label: {
+  chipScroll: {
+    marginBottom: Spacing.md,
+    flexDirection: 'row',
+  },
+  fieldLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
     color: Colors.primary,
-    ...Typography.labelSm,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.lg,
+    letterSpacing: 0.8,
+    marginBottom: Spacing.xs,
+    textTransform: 'uppercase',
   },
-  chipScroll: {marginBottom: Spacing.sm},
-
-  genderRow: {flexDirection: 'row', gap: Spacing.sm},
-  genderBtn: {
+  toggleRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  toggleBtn: {
     flex: 1,
-    backgroundColor: Colors.card,
-    borderRadius: Radius.sm,
-    paddingVertical: Spacing.md,
+    height: 48,
+    justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
   },
-  genderBtnActive: {
-    backgroundColor: Colors.primary,
+  toggleBtnActive: {
     borderColor: Colors.primary,
+    borderWidth: 1.5,
   },
-  genderBtnText: {
+  toggleBtnText: {
     color: Colors.textSecondary,
-    ...Typography.bodySm,
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
     fontWeight: '500',
   },
-  genderBtnTextActive: {color: Colors.textPrimary, fontWeight: 'bold'},
-
-  ageRow: {flexDirection: 'row', alignItems: 'center', gap: Spacing.sm},
-  ageTo: {color: Colors.textSecondary, ...Typography.body},
-
+  toggleBtnTextActive: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  ageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  ageTo: {
+    color: Colors.textSecondary,
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    marginHorizontal: Spacing.xs,
+  },
   guidelineBox: {
-    backgroundColor: Colors.errorFaint,
-    borderRadius: Radius.lg,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
     padding: Spacing.lg,
-    marginTop: Spacing.xxl,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.errorBorder,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.error,
   },
   guidelineTitle: {
     color: Colors.error,
-    ...Typography.label,
+    fontFamily: 'Poppins-SemiBold',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: Spacing.sm,
+  },
+  guidelineList: {
+    gap: Spacing.xs,
     marginBottom: Spacing.sm,
   },
   guidelineItem: {
     color: Colors.textSecondary,
-    ...Typography.bodySm,
-    lineHeight: 26,
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    lineHeight: 18,
   },
   guidelineWarning: {
     color: Colors.error,
-    ...Typography.captionBold,
-    marginTop: Spacing.sm,
-    textAlign: 'center',
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    marginTop: Spacing.xs,
   },
-
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.sm,
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.sm,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
   },
   checkbox: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     borderRadius: Radius.xs,
     borderWidth: 2,
     borderColor: Colors.primary,
@@ -717,11 +944,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkboxChecked: {backgroundColor: Colors.primary},
-  checkmark: {color: Colors.textPrimary, fontSize: 14, fontWeight: 'bold'},
+  checkmark: {color: Colors.textInverse, fontSize: 12, fontWeight: 'bold'},
   checkboxLabel: {
     color: Colors.textSecondary,
-    ...Typography.caption,
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
     flex: 1,
-    lineHeight: 18,
+    lineHeight: 16,
+  },
+  submitContainer: {
+    marginTop: Spacing.sm,
   },
 });

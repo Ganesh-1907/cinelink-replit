@@ -10,7 +10,6 @@ interface LiquidNavProps {
 
 const tabs = [
   {key: 'Home', icon: '🏠', label: 'Home'},
-  {key: 'Contests', icon: '🏆', label: 'Contests'},
   {key: 'Crew', icon: '🎥', label: 'Crew'},
   {key: 'Discover', icon: '✨', label: 'Discover'},
   {key: 'Profile', icon: '👤', label: 'Profile'},

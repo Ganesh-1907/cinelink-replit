@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,18 @@ import {
   ScrollView,
   Alert,
   SafeAreaView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import api from '../src/api/client';
 import {parseDeadline} from '../utils/contestUtils';
 import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
-import {Header, Input, Button, Card, Chip} from '../components/ui';
+import {Header, Input, Button, Card, Chip, DatePickerModal} from '../components/ui';
+import {launchImageLibrary} from 'react-native-image-picker';
+import {uploadImage} from '../src/services/uploadService';
 
 const CONTEST_TYPES = [
   'Short Film',
@@ -23,8 +28,10 @@ const CONTEST_TYPES = [
   'Documentary',
 ];
 
-export default function PostContestScreen({navigation}: any) {
+export default function PostContestScreen({navigation, route}: any) {
   const insets = useSafeAreaInsets();
+  const editingContest = route?.params?.contest;
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [prize, setPrize] = useState('');
@@ -33,11 +40,85 @@ export default function PostContestScreen({navigation}: any) {
   const [type, setType] = useState('Short Film');
   const [entryFee, setEntryFee] = useState('0');
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const [poster, setPoster] = useState<any>(null);
+  const [posterUrl, setPosterUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const pendingUploadRef = useRef<any>(null);
 
   const {isAdmin, user} = useApp();
 
-  const creatorName =
-    user?.displayName || user?.email?.split('@')[0] || 'Creator';
+  React.useEffect(() => {
+    if (!isAdmin) {
+      Alert.alert('Access Denied', 'Only admins can create contests.', [
+        {text: 'Go Back', onPress: () => navigation.goBack()}
+      ]);
+    }
+  }, [isAdmin, navigation]);
+
+  React.useEffect(() => {
+    if (editingContest) {
+      setTitle(editingContest.title || '');
+      setDescription(editingContest.description || '');
+      setPrize(editingContest.prize || '');
+      setDeadline(editingContest.deadline || '');
+      setRules(editingContest.rules || '');
+      setType(editingContest.type || 'Short Film');
+      setEntryFee(String(editingContest.entryFee || 0));
+      setPosterUrl(editingContest.posterUrl || '');
+      if (editingContest.posterUrl) {
+        setPoster({uri: editingContest.posterUrl});
+      }
+    }
+  }, [editingContest]);
+
+  const pickPoster = () => {
+    if (poster) {
+      Alert.alert('🖼️ Poster Options', 'What would you like to do?', [
+        {
+          text: 'Remove Poster',
+          style: 'destructive',
+          onPress: () => {
+            setPoster(null);
+            setPosterUrl('');
+          },
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: openGallery,
+        },
+        {text: 'Cancel', style: 'cancel'},
+      ]);
+    } else {
+      openGallery();
+    }
+  };
+
+  const openGallery = async () => {
+    const result = await launchImageLibrary({mediaType: 'photo', quality: 0.8});
+    if (result.assets?.[0]) {
+      setPoster(result.assets[0]);
+      pendingUploadRef.current = uploadPoster(result.assets[0].uri!);
+    }
+  };
+
+  const uploadPoster = async (uri: string): Promise<string> => {
+    setUploading(true);
+    try {
+      const result = await uploadImage(uri);
+      setPosterUrl(result.secureUrl);
+      return result.secureUrl;
+    } catch (e) {
+      Alert.alert('Upload failed', 'Could not upload poster.');
+      setPoster(null);
+      setPosterUrl('');
+      return '';
+    } finally {
+      setUploading(false);
+      pendingUploadRef.current = null;
+    }
+  };
 
   const postContest = async () => {
     if (!isAdmin) {
@@ -58,17 +139,37 @@ export default function PostContestScreen({navigation}: any) {
 
     setLoading(true);
     try {
-      await api.post('/contests', {
+      let resolvedPosterUrl = posterUrl;
+      if (pendingUploadRef.current) {
+        resolvedPosterUrl = await pendingUploadRef.current;
+        if (!resolvedPosterUrl) {
+          setLoading(false);
+          return;
+        }
+      }
+
+      const payload = {
         title: title.trim(),
         description: description.trim(),
         prize: prize.trim(),
         deadline: deadline.trim(),
         entryFee: parseInt(entryFee) || 0,
-      });
+        rules: rules.trim(),
+        type: type,
+        posterUrl: resolvedPosterUrl,
+      };
 
-      Alert.alert('Success! 🏆', 'Your contest is now live!', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      if (editingContest) {
+        await api.put(`/contests/${editingContest._id || editingContest.id}`, payload);
+        Alert.alert('Success! 🏆', 'Your contest changes have been saved!', [
+          {text: 'OK', onPress: () => navigation.goBack()},
+        ]);
+      } else {
+        await api.post('/contests', payload);
+        Alert.alert('Success! 🏆', 'Your contest is now live!', [
+          {text: 'OK', onPress: () => navigation.goBack()},
+        ]);
+      }
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Something went wrong. Try again!');
@@ -78,75 +179,167 @@ export default function PostContestScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={[styles.safe, {backgroundColor: Colors.background}]}>
-      <Header title="Create Contest" navigation={navigation} />
-      <ScrollView style={[styles.container, {backgroundColor: Colors.background}]} keyboardShouldPersistTaps="handled">
-        <View style={[styles.section, {paddingBottom: insets.bottom + 40}]}>
-          {/* TITLE */}
+      <Header title={editingContest ? "Edit Contest" : "Create Contest"} navigation={navigation} />
+      <ScrollView 
+        style={[styles.container, {backgroundColor: Colors.background}]} 
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{paddingBottom: insets.bottom + Spacing['5xl']}}>
+        
+        <View style={styles.body}>
+          
+          {/* Header Step Timeline Section */}
+          <View style={styles.formHeader}>
+            <View style={styles.stepIndicatorContainer}>
+              <View style={styles.stepDotActive} />
+              <Text style={styles.stepText}>CONTEST DETAILS</Text>
+            </View>
+            <Text style={styles.formTitle}>{editingContest ? "Edit Contest Event" : "Create a New Contest"}</Text>
+            <Text style={styles.formSubtitle}>
+              Setup the entry requirements, prizes, deadline, and voting details to launch your contest.
+            </Text>
+          </View>
+
+          {/* Section 1: Contest Poster */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Contest Poster / Banner</Text>
+            <Text style={styles.sectionSubtitle}>Add a high-quality landscape image for contest header</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.posterPicker}
+            onPress={pickPoster}
+            activeOpacity={0.85}>
+            {poster?.uri ? (
+              <>
+                <Image source={{uri: poster.uri}} style={styles.posterImage} />
+                <View style={styles.posterOverlay}>
+                  <Text style={{fontSize: 22}}>📷</Text>
+                  <Text style={styles.posterOverlayText}>Change Poster</Text>
+                </View>
+                {uploading && (
+                  <View style={styles.overlay}>
+                    <ActivityIndicator color={Colors.primary} />
+                    <Text style={styles.overlayText}>Uploading poster...</Text>
+                  </View>
+                )}
+                {posterUrl && !uploading && (
+                  <View style={styles.doneBadge}>
+                    <Text style={styles.doneBadgeText}>✅ Uploaded</Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.posterEmpty}>
+                <Text style={styles.posterIcon}>📤</Text>
+                <Text style={styles.posterEmptyText}>Upload Poster</Text>
+                <Text style={styles.posterEmptySub}>
+                  Recommended: 16:9 landscape aspect ratio (Max 5MB)
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Section 2: Event Info */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Event Info</Text>
+            <Text style={styles.sectionSubtitle}>Define contest title, type, and details</Text>
+          </View>
+
           <Input
-            label="Contest Title *"
+            label="Contest Title"
+            required
             placeholder="e.g. Best Drama Short 2026"
             value={title}
             onChangeText={setTitle}
-            required
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
-          {/* TYPE */}
-          <Text style={styles.label}>Contest Type</Text>
+          <Text style={styles.fieldLabel}>Contest Type</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}>
+            style={styles.chipScroll}
+            contentContainerStyle={{paddingRight: Spacing.md}}>
             {CONTEST_TYPES.map(t => (
               <Chip
                 key={t}
                 label={t}
                 selected={type === t}
                 onPress={() => setType(t)}
-                style={styles.chipItem}
+                style={{marginRight: Spacing.sm}}
               />
             ))}
           </ScrollView>
 
-          {/* DESCRIPTION */}
           <Input
             label="Description"
             placeholder="What is this contest about? Who can participate?"
             value={description}
             onChangeText={setDescription}
             multiline
+            numberOfLines={4}
+            style={styles.multilineInput}
+            containerStyle={{marginBottom: Spacing.md, marginTop: Spacing.md}}
           />
 
-          {/* PRIZE */}
+          {/* Section 3: Rules & Rewards */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Rules & Rewards</Text>
+            <Text style={styles.sectionSubtitle}>Specify prize details and criteria</Text>
+          </View>
+
           <Input
-            label="Prize *"
+            label="Prize"
+            required
             placeholder="e.g. ₹10,000 + Certificate + Trophy"
             value={prize}
             onChangeText={setPrize}
-            required
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
-          {/* DEADLINE */}
           <Input
-            label="Deadline *"
-            placeholder="e.g. 2026-07-30"
-            value={deadline}
-            onChangeText={setDeadline}
-            required
-            hint={
-              deadline.length > 0 && deadline.length < 10
-                ? '⚠️ Use format YYYY-MM-DD e.g. 2026-07-30'
-                : deadline.length === 10
-                ? `✅ Deadline: ${deadline}`
-                : undefined
-            }
+            label="Rules & Guidelines"
+            placeholder="Contest rules, submission format, eligibility criteria..."
+            value={rules}
+            onChangeText={setRules}
+            multiline
+            numberOfLines={4}
+            style={styles.multilineInput}
+            containerStyle={{marginBottom: Spacing.md}}
           />
 
-          {/* ENTRY FEE */}
+          {/* Section 4: Timeline & Fees */}
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionLabel}>Timeline & Fees</Text>
+            <Text style={styles.sectionSubtitle}>Set the deadline date and participation charges</Text>
+          </View>
+
+          <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7} style={{marginBottom: Spacing.md}}>
+            <View pointerEvents="none">
+              <Input
+                label="Deadline"
+                required
+                placeholder="Select deadline date..."
+                value={deadline}
+                editable={false}
+                hint={
+                  deadline.length > 0 && deadline.length < 10
+                    ? '⚠️ Use format YYYY-MM-DD'
+                    : deadline.length === 10
+                    ? `✅ Deadline: ${deadline}`
+                    : undefined
+                }
+              />
+            </View>
+          </TouchableOpacity>
+
           <Input
             label="Entry Fee (₹) — 0 for Free"
             placeholder="0"
             value={entryFee}
             onChangeText={setEntryFee}
+            keyboardType="numeric"
+            containerStyle={{marginBottom: Spacing.xs}}
           />
 
           <View
@@ -165,19 +358,9 @@ export default function PostContestScreen({navigation}: any) {
             </Text>
           </View>
 
-          {/* RULES */}
-          <Input
-            label="Rules & Guidelines"
-            placeholder="Contest rules, submission format, eligibility criteria..."
-            value={rules}
-            onChangeText={setRules}
-            multiline
-          />
-
-          {/* VOTING INFO */}
+          {/* Section 5: Winner Selection */}
           <Card
-            variant="outlined"
-            padding={Spacing.lg}
+            variant="elevated"
             style={styles.votingCard}>
             <Text style={styles.votingTitle}>🏆 Winner Selection Method</Text>
             <View style={styles.votingRow}>
@@ -195,19 +378,27 @@ export default function PostContestScreen({navigation}: any) {
             </View>
           </Card>
 
-          {/* SUBMIT */}
-          <Button
-            label="🏆 Create Contest"
-            onPress={postContest}
-            loading={loading}
-            disabled={loading}
-            variant="primary"
-            size="lg"
-            fullWidth
-            style={styles.postBtn}
-          />
+          {/* SUBMIT BUTTON */}
+          <View style={styles.submitContainer}>
+            <Button
+              label={editingContest ? "Save Changes" : "Create Contest"}
+              onPress={postContest}
+              loading={loading}
+              disabled={loading}
+              variant="primary"
+              size="lg"
+              fullWidth
+            />
+          </View>
         </View>
       </ScrollView>
+
+      <DatePickerModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onSelectDate={setDeadline}
+        currentValue={deadline}
+      />
     </SafeAreaView>
   );
 }
@@ -215,21 +406,158 @@ export default function PostContestScreen({navigation}: any) {
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: Colors.background},
   container: {flex: 1, backgroundColor: Colors.background},
-  section: {padding: Spacing.xl, paddingBottom: Spacing['5xl']},
-  label: {
-    ...Typography.labelSm,
-    color: Colors.primary,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.lg,
+  body: {padding: Spacing.screenH},
+  formHeader: {
+    marginBottom: Spacing.lg,
   },
-  chipScroll: {flexDirection: 'row', marginBottom: Spacing.xs},
-  chipItem: {marginRight: Spacing.sm},
+  stepIndicatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  stepDotActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  stepText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.primary,
+    letterSpacing: 1.2,
+    fontWeight: '600',
+  },
+  formTitle: {
+    fontSize: 22,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    marginBottom: Spacing.xs,
+  },
+  formSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  sectionHeaderContainer: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  sectionLabel: {
+    fontSize: 15,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textTertiary,
+    marginTop: 2,
+  },
+  fieldLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 11,
+    color: Colors.primary,
+    letterSpacing: 0.8,
+    marginBottom: Spacing.xs,
+    textTransform: 'uppercase',
+  },
+  posterPicker: {
+    width: '100%',
+    borderRadius: Radius.card,
+    overflow: 'hidden',
+    marginBottom: Spacing.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+    backgroundColor: Colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  posterImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    resizeMode: 'cover',
+  },
+  posterOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  posterOverlayText: {
+    color: '#FAFAFA',
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+  },
+  posterEmpty: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  posterIcon: {
+    fontSize: 28,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+  },
+  posterEmptyText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+  },
+  posterEmptySub: {
+    color: Colors.textTertiary,
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  overlayText: {
+    color: '#FAFAFA',
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+  },
+  doneBadge: {
+    position: 'absolute',
+    bottom: Spacing.sm,
+    right: Spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  doneBadgeText: {color: Colors.success, fontSize: 12, fontWeight: 'bold'},
+  multilineInput: {
+    minHeight: 110,
+    height: 110,
+    textAlignVertical: 'top',
+    paddingTop: Spacing.sm,
+  },
+  chipScroll: {
+    marginBottom: Spacing.md,
+    flexDirection: 'row',
+  },
   feeInfo: {
     backgroundColor: Colors.successFaint,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.md,
     padding: Spacing.md,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.sm,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.successBorder,
   },
@@ -241,10 +569,18 @@ const styles = StyleSheet.create({
     ...Typography.bodySm,
     color: Colors.success,
   },
-  votingCard: {marginTop: Spacing.xl},
+  votingCard: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
+    padding: Spacing.lg,
+  },
   votingTitle: {
-    ...Typography.label,
+    fontSize: 15,
+    fontFamily: 'Poppins-SemiBold',
     color: Colors.primary,
+    fontWeight: '600',
     marginBottom: Spacing.md,
     textAlign: 'center',
   },
@@ -256,21 +592,28 @@ const styles = StyleSheet.create({
   },
   votingItem: {alignItems: 'center'},
   votingPercent: {
-    ...Typography.h1,
+    fontSize: 28,
+    fontFamily: 'Poppins-SemiBold',
     color: Colors.textPrimary,
   },
   votingLabel: {
-    ...Typography.label,
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
     color: Colors.primary,
     marginTop: Spacing.xs,
   },
   votingDesc: {
-    ...Typography.micro,
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textTertiary,
     marginTop: Spacing.xs,
   },
   votingPlus: {
-    ...Typography.h2,
+    fontSize: 24,
+    fontFamily: 'Poppins-SemiBold',
     color: Colors.primary,
   },
-  postBtn: {marginTop: Spacing.xxl},
+  submitContainer: {
+    marginTop: Spacing.sm,
+  },
 });
