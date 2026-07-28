@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -34,10 +34,17 @@ GoogleSignin.configure({
 
 type AuthMode = 'options' | 'login' | 'signup' | 'forgot';
 
-const cinemaSeatsImg = require('../assets/auth/cinema_seats.png');
-const directorsChairImg = require('../assets/auth/directors_chair.png');
-const retroCameraImg = require('../assets/auth/retro_camera.png');
-const cinemaProjectorImg = require('../assets/auth/cinema_projector.png');
+const cinemaSeatsImg = require('../assets/auth/cinema_seats.jpg');
+const directorsChairImg = require('../assets/auth/directors_chair.jpg');
+const retroCameraImg = require('../assets/auth/retro_camera.jpg');
+const cinemaProjectorImg = require('../assets/auth/cinema_projector.jpg');
+const filmRollImg = require('../assets/auth/film_roll.jpg');
+const filmRollImgLight = require('../assets/auth/film_roll_light.jpg');
+
+const cinemaSeatsImgLight = require('../assets/auth/cinema_seats_light.jpg');
+const directorsChairImgLight = require('../assets/auth/directors_chair_light.jpg');
+const retroCameraImgLight = require('../assets/auth/retro_camera_light.jpg');
+const cinemaProjectorImgLight = require('../assets/auth/cinema_projector_light.jpg');
 
 // ─── SVG VECTOR ICONS ────────────────────────────────────────────────────────
 const UserIcon = ({color}: {color: string}) => (
@@ -121,10 +128,17 @@ const AuthInput = ({
   );
 };
 
-export default function AuthScreen({navigation}: any) {
+export default function AuthScreen({navigation, route}: any) {
   const insets = useSafeAreaInsets();
   const {isDark} = useTheme();
   const [authMode, setAuthMode] = useState<AuthMode>('options');
+
+  useEffect(() => {
+    if (route?.params?.mode) {
+      setAuthMode(route.params.mode);
+      navigation.setParams({ mode: undefined });
+    }
+  }, [route?.params?.mode]);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -141,7 +155,7 @@ export default function AuthScreen({navigation}: any) {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      await GoogleSignin.hasPlayServices();
+      await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
       await GoogleSignin.signIn();
       const {idToken} = await GoogleSignin.getTokens();
       if (!idToken) {
@@ -231,20 +245,7 @@ export default function AuthScreen({navigation}: any) {
     }
   };
 
-  const bgImage = (() => {
-    switch (authMode) {
-      case 'options':
-        return cinemaProjectorImg;
-      case 'login':
-        return cinemaSeatsImg;
-      case 'signup':
-        return cinemaProjectorImg;
-      case 'forgot':
-        return retroCameraImg;
-      default:
-        return cinemaProjectorImg;
-    }
-  })();
+  const bgImage = isDark ? cinemaSeatsImg : cinemaSeatsImgLight;
 
   const renderHeader = () => {
     if (authMode === 'options') return null;
@@ -273,8 +274,8 @@ export default function AuthScreen({navigation}: any) {
           style={[
             styles.bgImage,
             {
-              opacity: isDark ? 0.32 : 0.14,
-              tintColor: isDark ? undefined : Colors.primary,
+              opacity: isDark ? 0.75 : 0.85,
+              tintColor: undefined,
             }
           ]}
           resizeMode="cover"
@@ -292,7 +293,11 @@ export default function AuthScreen({navigation}: any) {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: insets.top + (authMode === 'options' ? 24 : 40),
+            paddingTop: insets.top + (
+              authMode === 'options'
+                ? 24
+                : (authMode === 'login' ? 40 : 110)
+            ),
             paddingBottom: insets.bottom + 16,
           },
         ]}
@@ -302,12 +307,8 @@ export default function AuthScreen({navigation}: any) {
         {/* ── OPTIONS MODE (Screen 3) ── */}
         {authMode === 'options' && (
           <View style={styles.optionsContent}>
+            <View style={{ height: 90 }} />
             <View style={styles.logoSection}>
-              <Image
-                source={require('../assets/auth/cinelink_logo_emblem.png')}
-                style={styles.appLogoEmblem}
-                resizeMode="contain"
-              />
               <Text style={styles.appName}>CineLink</Text>
               <Text style={styles.tagline}>Connect. Create. Cast.</Text>
             </View>
@@ -349,6 +350,12 @@ export default function AuthScreen({navigation}: any) {
                 </View>
               </TouchableOpacity>
 
+              <View style={styles.optionsDividerWrapper}>
+                <View style={styles.optionsDividerLine} />
+                <Text style={styles.optionsDividerText}>or</Text>
+                <View style={styles.optionsDividerLine} />
+              </View>
+
               <TouchableOpacity
                 style={styles.largeOptionBtn}
                 onPress={() => navigation.navigate('PhoneLogin')}
@@ -362,12 +369,6 @@ export default function AuthScreen({navigation}: any) {
                   <Text style={styles.largeOptionSubtitle}>Login using OTP</Text>
                 </View>
               </TouchableOpacity>
-
-              <View style={styles.optionsDividerWrapper}>
-                <View style={styles.optionsDividerLine} />
-                <Text style={styles.optionsDividerText}>or</Text>
-                <View style={styles.optionsDividerLine} />
-              </View>
 
               <TouchableOpacity
                 style={styles.largeOptionBtn}
@@ -385,7 +386,7 @@ export default function AuthScreen({navigation}: any) {
             </View>
 
             <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('signup')}>
-              <Text style={styles.bottomLinkText}>
+              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
                 New to CineLink? <Text style={styles.bottomLinkHighlight}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
@@ -396,11 +397,7 @@ export default function AuthScreen({navigation}: any) {
         {authMode === 'login' && (
           <View style={styles.formContent}>
             <View style={styles.logoSection}>
-              <Image
-                source={require('../assets/auth/cinelink_logo_emblem.png')}
-                style={styles.appLogoEmblem}
-                resizeMode="contain"
-              />
+              <View style={{ height: 84, marginBottom: 8 }} />
               <Text style={styles.appName}>CineLink</Text>
               <Text style={styles.tagline}>Connect. Create. Cast.</Text>
             </View>
@@ -495,7 +492,7 @@ export default function AuthScreen({navigation}: any) {
             </View>
 
             <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('signup')}>
-              <Text style={styles.bottomLinkText}>
+              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
                 Don't have an account? <Text style={styles.bottomLinkHighlight}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
@@ -645,7 +642,7 @@ export default function AuthScreen({navigation}: any) {
             </View>
 
             <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('login')}>
-              <Text style={styles.bottomLinkText}>
+              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
                 Already have an account? <Text style={styles.bottomLinkHighlight}>Sign In</Text>
               </Text>
             </TouchableOpacity>
@@ -684,7 +681,7 @@ export default function AuthScreen({navigation}: any) {
             </View>
 
             <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('login')}>
-              <Text style={styles.bottomLinkText}>
+              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
                 Remember your password? <Text style={styles.bottomLinkHighlight}>Sign In</Text>
               </Text>
             </TouchableOpacity>
@@ -727,7 +724,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '35%',
+    height: '45%',
     alignItems: 'center',
     justifyContent: 'flex-end',
     zIndex: -1,
@@ -754,12 +751,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
     marginTop: 4,
+    textAlign: 'center',
   },
   tagline: {
     fontSize: 11,
     color: Colors.textSecondary,
     marginTop: 2,
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
 
   // ─── WELCOME TEXT
@@ -827,7 +826,7 @@ const styles = StyleSheet.create({
   optionsDividerWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 14,
+    marginVertical: 8,
     width: '100%',
   },
   optionsDividerLine: {
@@ -948,11 +947,11 @@ const styles = StyleSheet.create({
   },
   bottomLinkText: {
     fontSize: 14,
-    color: '#A1A1AA',
+    color: Colors.textSecondary,
   },
   bottomLinkHighlight: {
     color: Colors.primary,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 
   // ─── COMPACT INPUT COMPONENT STYLES

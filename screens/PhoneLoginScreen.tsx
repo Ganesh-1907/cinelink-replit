@@ -35,7 +35,8 @@ GoogleSignin.configure({
 });
 
 const RESEND_COUNTDOWN = 60;
-const filmRollImg = require('../assets/auth/film_roll.png');
+const cinemaSeatsImg = require('../assets/auth/cinema_seats.jpg');
+const cinemaSeatsImgLight = require('../assets/auth/cinema_seats_light.jpg');
 
 // ─── SVG VECTOR ICONS ────────────────────────────────────────────────────────
 const MailIcon = ({color}: {color: string}) => (
@@ -175,7 +176,7 @@ export default function PhoneLoginScreen({navigation}: any) {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      await GoogleSignin.hasPlayServices();
+      await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
       await GoogleSignin.signIn();
       const {idToken} = await GoogleSignin.getTokens();
       if (!idToken) {
@@ -217,12 +218,12 @@ export default function PhoneLoginScreen({navigation}: any) {
         {/* BACKGROUND IMAGE (Fixed at bottom) */}
         <View style={styles.bgImageContainer} pointerEvents="none">
           <Image
-            source={filmRollImg}
+            source={isDark ? cinemaSeatsImg : cinemaSeatsImgLight}
             style={[
               styles.bgImage,
               {
-                opacity: isDark ? 0.32 : 0.14,
-                tintColor: isDark ? undefined : Colors.primary,
+                opacity: isDark ? 0.75 : 0.85,
+                tintColor: undefined,
               }
             ]}
             resizeMode="cover"
@@ -249,7 +250,7 @@ export default function PhoneLoginScreen({navigation}: any) {
           contentContainerStyle={[
             styles.scroll,
             {
-              paddingTop: insets.top + 40,
+              paddingTop: insets.top + 110,
               paddingBottom: insets.bottom + 16,
             },
           ]}
@@ -350,7 +351,7 @@ export default function PhoneLoginScreen({navigation}: any) {
 
                   <TouchableOpacity
                     style={[styles.socialBtn, { backgroundColor: '#111113', borderColor: '#2E2E32' }]}
-                    onPress={() => navigation.navigate('Auth')}
+                    onPress={() => navigation.navigate('Auth', { mode: 'login' })}
                     activeOpacity={0.8}
                   >
                     <View style={styles.socialBtnContent}>
@@ -486,7 +487,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '35%',
+    height: '45%',
     alignItems: 'center',
     justifyContent: 'flex-end',
     zIndex: -1,

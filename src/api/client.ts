@@ -3,7 +3,7 @@ import {DEV_API_URL} from './config';
 
 const API_BASE_URL = __DEV__
   ? DEV_API_URL
-  : 'https://cinelink-api.onrender.com/api';
+  : 'https://cinelink-backend-kgfz.onrender.com/api';
 
 interface ApiResponse<T = any> {
   success?: boolean;
