@@ -100,6 +100,8 @@ export default function CreateProjectScreen({navigation}: any) {
         type,
         description: description.trim(),
         rolesNeeded: selectedRoles,
+        location: location.trim(),
+        language,
       });
 
       Alert.alert(

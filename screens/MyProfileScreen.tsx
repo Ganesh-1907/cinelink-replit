@@ -68,6 +68,7 @@ export default function MyProfileScreen({navigation, route}: any) {
   const [email, setEmail] = useState<string>('');
   const [bio, setBio] = useState<string>('');
   const [role, setRole] = useState<string>('Actor');
+  const [originalRole, setOriginalRole] = useState<string>('Actor');
   const [photo, setPhoto] = useState<PhotoAsset | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [introVideoLink, setIntroVideoLink] = useState<string>('');
@@ -130,6 +131,7 @@ export default function MyProfileScreen({navigation, route}: any) {
         setEmail(data?.email || '');
         setBio(data?.bio || '');
         setRole(data?.role || 'Actor');
+        setOriginalRole(data?.role || 'Actor');
         setPhotoUrl(data?.photoUrl || data?.photoURL || '');
         setIntroVideoLink(data?.introVideoLink || '');
         setPortfolio1(data?.portfolio1 || '');
@@ -297,11 +299,16 @@ export default function MyProfileScreen({navigation, route}: any) {
       const allPortfolioPhotos = [...portfolioPhotos, ...uploadedPhotos];
       const trimmedName = name.trim();
 
+      const userOriginalRoleLower = (originalRole || '').toLowerCase();
+      const roleToSend = (userOriginalRoleLower === 'admin' || userOriginalRoleLower === 'director')
+        ? originalRole
+        : role;
+
       const profileData = {
         fullName: trimmedName,
         phone,
         bio,
-        role,
+        role: roleToSend,
         location,
         photoUrl: finalPhotoUrl,
         photoURL: finalPhotoUrl,
@@ -324,6 +331,8 @@ export default function MyProfileScreen({navigation, route}: any) {
       await api.put('/users/profile', profileData);
 
       setName(trimmedName);
+      setRole(roleToSend);
+      setOriginalRole(roleToSend);
       setPhotoUrl(finalPhotoUrl);
       setPortfolioPhotos(allPortfolioPhotos);
       setNewPhotos([]);
@@ -635,31 +644,38 @@ export default function MyProfileScreen({navigation, route}: any) {
             <Text style={styles.sectionTitle}>Basic Info</Text>
 
             <Text style={styles.label}>I am a:</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.roleRow}
-              contentContainerStyle={{
-                gap: Spacing.sm,
-                paddingRight: Spacing.sm,
-              }}>
-              {[
-                'Actor',
-                'Director',
-                'Writer',
-                'Editor',
-                'DOP',
-                'Producer',
-                'Creator',
-              ].map(r => (
-                <Chip
-                  key={r}
-                  label={r}
-                  selected={role === r}
-                  onPress={() => setRole(r)}
-                />
-              ))}
-            </ScrollView>
+            {((originalRole || '').toLowerCase() === 'admin' || (originalRole || '').toLowerCase() === 'director') ? (
+              <View style={{ backgroundColor: '#1E1E24', padding: 12, borderRadius: 8, marginBottom: Spacing.sm, borderWidth: 1, borderColor: '#2E2E32' }}>
+                <Text style={{ color: '#F5C451', fontWeight: '600', fontSize: 14 }}>
+                  {originalRole} (System Managed Role)
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.roleRow}
+                contentContainerStyle={{
+                  gap: Spacing.sm,
+                  paddingRight: Spacing.sm,
+                }}>
+                {[
+                  'Actor',
+                  'Writer',
+                  'Editor',
+                  'DOP',
+                  'Producer',
+                  'Creator',
+                ].map(r => (
+                  <Chip
+                    key={r}
+                    label={r}
+                    selected={role === r}
+                    onPress={() => setRole(r)}
+                  />
+                ))}
+              </ScrollView>
+            )}
 
             <Input
               label="Location"

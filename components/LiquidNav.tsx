@@ -10,6 +10,7 @@ interface LiquidNavProps {
 
 const tabs = [
   {key: 'Home', icon: '🏠', label: 'Home'},
+  {key: 'Auditions', icon: '🎭', label: 'Auditions'},
   {key: 'Crew', icon: '🎥', label: 'Crew'},
   {key: 'Discover', icon: '✨', label: 'Discover'},
   {key: 'Profile', icon: '👤', label: 'Profile'},
@@ -27,7 +28,7 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
             style={[styles.tab, isActive && styles.activeTab]}
             onPress={() => navigation.navigate(tab.key)}
             activeOpacity={0.7}>
-            <Text style={{fontSize: 22}}>{tab.icon}</Text>
+            <Text style={{fontSize: 19}}>{tab.icon}</Text>
             <Text
               style={[
                 styles.label,

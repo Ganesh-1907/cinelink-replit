@@ -52,62 +52,78 @@ export const lightColors: ColorPalette = {
 // Mutable Colors singleton
 export const Colors: ColorPalette = {...darkColors};
 
-// Monkey-patch StyleSheet.create to make cached stylesheets responsive to theme changes.
+// Monkey-patch StyleSheet.create to make cached stylesheets responsive to theme changes
+// by returning distinct style object references for light and dark modes.
 StyleSheet.create = ((stylesObj: any) => {
-  const result: any = {};
+  const originalStyles = { ...stylesObj };
+  const resolvedCache: Record<'light' | 'dark', Record<string, any>> = {
+    light: {},
+    dark: {}
+  };
 
-  for (const styleKey of Object.keys(stylesObj)) {
-    const styleVal = stylesObj[styleKey];
-    if (styleVal && typeof styleVal === 'object') {
-      const propertyThemeMap: Record<string, string> = {};
-      
-      for (const propKey of Object.keys(styleVal)) {
-        const val = styleVal[propKey];
-        if (typeof val === 'string') {
-          // Find key in darkColors
-          const darkKey = Object.keys(darkColors).find(k => (darkColors as any)[k] === val);
-          if (darkKey) {
-            propertyThemeMap[propKey] = darkKey;
-            continue;
-          }
-          // Find key in lightColors
-          const lightKey = Object.keys(lightColors).find(k => (lightColors as any)[k] === val);
-          if (lightKey) {
-            propertyThemeMap[propKey] = lightKey;
-            continue;
-          }
-        }
-      }
-
-      const styleValCopy = { ...styleVal };
-      result[styleKey] = new Proxy(styleValCopy, {
-        get(target, prop) {
-          if (typeof prop === 'string' && propertyThemeMap[prop]) {
-            return (Colors as any)[propertyThemeMap[prop]];
-          }
-          return Reflect.get(target, prop);
-        },
-        ownKeys(target) {
-          return Reflect.ownKeys(target);
-        },
-        getOwnPropertyDescriptor(target, prop) {
-          const desc = Reflect.getOwnPropertyDescriptor(target, prop);
-          if (desc && typeof prop === 'string' && propertyThemeMap[prop]) {
-            if (desc.get) {
-              desc.get = () => (Colors as any)[propertyThemeMap[prop]];
-            } else {
-              desc.value = (Colors as any)[propertyThemeMap[prop]];
-            }
-          }
-          return desc;
-        }
-      });
-    } else {
-      result[styleKey] = styleVal;
+  const getResolvedStyle = (styleKey: string, mode: 'light' | 'dark') => {
+    if (resolvedCache[mode][styleKey]) {
+      return resolvedCache[mode][styleKey];
     }
-  }
 
-  return result;
+    const styleVal = originalStyles[styleKey];
+    if (!styleVal || typeof styleVal !== 'object') {
+      return styleVal;
+    }
+
+    const palette = mode === 'light' ? lightColors : darkColors;
+    const resolvedStyle: any = {};
+    for (const propKey of Object.keys(styleVal)) {
+      const val = styleVal[propKey];
+      if (typeof val === 'string') {
+        const darkKey = Object.keys(darkColors).find(k => (darkColors as any)[k] === val);
+        const lightKey = Object.keys(lightColors).find(k => (lightColors as any)[k] === val);
+        if (darkKey) {
+          resolvedStyle[propKey] = (palette as any)[darkKey];
+        } else if (lightKey) {
+          resolvedStyle[propKey] = (palette as any)[lightKey];
+        } else {
+          resolvedStyle[propKey] = val;
+        }
+      } else {
+        resolvedStyle[propKey] = val;
+      }
+    }
+
+    resolvedCache[mode][styleKey] = resolvedStyle;
+    return resolvedStyle;
+  };
+
+  return new Proxy({}, {
+    get(target, styleKey) {
+      if (typeof styleKey !== 'string') {
+        return undefined;
+      }
+      if (!(styleKey in originalStyles)) {
+        return undefined;
+      }
+      const currentMode = Colors.background === '#F8F8F6' ? 'light' : 'dark';
+      return getResolvedStyle(styleKey, currentMode);
+    },
+    has(target, styleKey) {
+      return typeof styleKey === 'string' && styleKey in originalStyles;
+    },
+    ownKeys() {
+      return Reflect.ownKeys(originalStyles);
+    },
+    getOwnPropertyDescriptor(target, styleKey) {
+      if (typeof styleKey !== 'string') {
+        return undefined;
+      }
+      const currentMode = Colors.background === '#F8F8F6' ? 'light' : 'dark';
+      return {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: getResolvedStyle(styleKey, currentMode)
+      };
+    }
+  });
 }) as any;
 
 // Mutable Typography (rebuilds when applyColors is called)

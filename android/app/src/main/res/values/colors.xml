@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bootsplash_background">#0A1428</color>
+    <color name="bootsplash_background">#09090b</color>
+    <color name="colorPrimary">#F5C451</color>
+    <color name="colorPrimaryDark">#09090b</color>
+    <color name="colorAccent">#F5C451</color>
 </resources>

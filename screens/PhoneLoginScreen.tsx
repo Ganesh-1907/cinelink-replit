@@ -250,7 +250,7 @@ export default function PhoneLoginScreen({navigation}: any) {
           contentContainerStyle={[
             styles.scroll,
             {
-              paddingTop: insets.top + 110,
+              paddingTop: insets.top + 150,
               paddingBottom: insets.bottom + 16,
             },
           ]}

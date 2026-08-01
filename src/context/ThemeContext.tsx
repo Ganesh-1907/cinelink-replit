@@ -81,17 +81,10 @@ export function ThemeProvider({children}: {children: ReactNode}) {
     setMode(nextMode);
   }, [systemScheme]);
 
-  // Key changes on every toggle to force full tree remount
-  // This makes all StyleSheet.create() calls re-run with new Colors
-  const [themeKey, setThemeKey] = useState('dark');
-  useEffect(() => {
-    setThemeKey(`${mode}_${Date.now()}`);
-  }, [mode]);
-
   if (!ready) return null;
 
   return (
-    <ThemeContext.Provider value={{mode, isDark: mode === 'dark', toggleTheme, resetToSystemTheme, themeKey}} key={themeKey}>
+    <ThemeContext.Provider value={{mode, isDark: mode === 'dark', toggleTheme, resetToSystemTheme, themeKey: mode}}>
       {children}
     </ThemeContext.Provider>
   );

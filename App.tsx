@@ -22,6 +22,7 @@ import {enableOfflinePersistence} from './src/services/offlineService';
 import {trackScreenView} from './src/services/analyticsService';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SuggestedFollowsScreen from './screens/SuggestedFollowsScreen';
+import ProfileFillScreen from './screens/ProfileFillScreen';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -113,6 +114,17 @@ function TabNavigator() {
               }}>
               <Text style={{fontSize: 20, color}}>🏠</Text>
             </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Auditions"
+        component={BrowseAuditionsScreen}
+        options={{
+          title: 'Auditions',
+          headerShown: false,
+          tabBarIcon: ({color}) => (
+            <Text style={{fontSize: 20, color}}>🎭</Text>
           ),
         }}
       />
@@ -416,6 +428,7 @@ function AuthStack() {
 function AppContent(): JSX.Element {
   const {isDark} = useTheme();
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [showProfileFill, setShowProfileFill] = useState(false);
   const [showSuggestedFollows, setShowSuggestedFollows] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -436,10 +449,25 @@ function AppContent(): JSX.Element {
   const {user: contextUser, loading: authLoading} = useApp();
   useEffect(() => {
     if (contextUser) {
-      AsyncStorage.getItem('suggested_follows_done').then(val => {
-        setShowSuggestedFollows(val !== 'true');
-      });
+      (async () => {
+        const firstTimeFlow = await AsyncStorage.getItem('first_time_flow');
+        if (firstTimeFlow === 'true') {
+          const profileDone = await AsyncStorage.getItem('profile_fill_done');
+          if (profileDone !== 'true') {
+            setShowProfileFill(true);
+            setShowSuggestedFollows(false);
+          } else {
+            setShowProfileFill(false);
+            const followsDone = await AsyncStorage.getItem('suggested_follows_done');
+            setShowSuggestedFollows(followsDone !== 'true');
+          }
+        } else {
+          setShowProfileFill(false);
+          setShowSuggestedFollows(false);
+        }
+      })();
     } else {
+      setShowProfileFill(false);
       setShowSuggestedFollows(false);
     }
   }, [contextUser]);
@@ -562,6 +590,26 @@ function AppContent(): JSX.Element {
     );
   }
 
+  // ── Profile Fill ──────────────────────────────────────────
+  if (contextUser && showProfileFill) {
+    return (
+      <ErrorBoundary>
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={Colors.background}
+        />
+        <ProfileFillScreen
+          onComplete={async () => {
+            await AsyncStorage.setItem('profile_fill_done', 'true');
+            setShowProfileFill(false);
+            const followsDone = await AsyncStorage.getItem('suggested_follows_done');
+            setShowSuggestedFollows(followsDone !== 'true');
+          }}
+        />
+      </ErrorBoundary>
+    );
+  }
+
   // ── Suggested Follows ─────────────────────────────────────
   if (contextUser && showSuggestedFollows) {
     return (
@@ -574,9 +622,14 @@ function AppContent(): JSX.Element {
           navigation={{
             replace: async () => {
               await AsyncStorage.setItem('suggested_follows_done', 'true');
+              await AsyncStorage.setItem('first_time_flow', 'false');
               setShowSuggestedFollows(false);
             },
-            goBack: () => setShowSuggestedFollows(false),
+            goBack: async () => {
+              await AsyncStorage.setItem('suggested_follows_done', 'true');
+              await AsyncStorage.setItem('first_time_flow', 'false');
+              setShowSuggestedFollows(false);
+            },
           }}
           route={{params: {}}}
         />
