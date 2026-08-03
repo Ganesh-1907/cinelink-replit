@@ -57,11 +57,8 @@ export default function ProjectDetailScreen({route, navigation}: any) {
   const handleOpenChat = async () => {
     try {
       const res = await api.post<any>(`/chat/project-chat/${projectId}`);
-      if (res.chatId) {
-        navigation.navigate('ChatScreen', {
-          chatId: res.chatId,
-          title: project.title || 'Project Chat'
-        });
+      if (res.chat) {
+        navigation.navigate('ChatScreen', { chat: res.chat });
       }
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not access the project chat room.');

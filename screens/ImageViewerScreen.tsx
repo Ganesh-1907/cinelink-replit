@@ -16,9 +16,15 @@ import {Colors, Spacing, Radius, HitSlop} from '../src/theme';
 const {width, height} = Dimensions.get('window');
 
 export default function ImageViewerScreen({route, navigation}: any) {
-  const {imageUrl} = route.params;
+  const imageUrl = route.params?.imageUrl || '';
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
+
+  // Go back if no valid URL — empty string makes Image crash
+  if (!imageUrl) {
+    navigation.goBack();
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.container}>

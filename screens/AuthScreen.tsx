@@ -9,7 +9,6 @@ import {
   Platform,
   Alert,
   Image,
-  Dimensions,
   ActivityIndicator,
   TextInput,
 } from 'react-native';
@@ -25,7 +24,7 @@ import {authService} from '../src/services/AuthService';
 import {useApp} from '../src/context/AppContext';
 import {useTheme} from '../src/context/ThemeContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
+import {Colors, Spacing} from '../src/theme';
 
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -36,65 +35,93 @@ GoogleSignin.configure({
 type AuthMode = 'options' | 'login' | 'signup' | 'forgot';
 
 const cinemaSeatsImg = require('../assets/auth/cinema_seats.jpg');
-const directorsChairImg = require('../assets/auth/directors_chair.jpg');
-const retroCameraImg = require('../assets/auth/retro_camera.jpg');
-const cinemaProjectorImg = require('../assets/auth/cinema_projector.jpg');
-const filmRollImg = require('../assets/auth/film_roll.jpg');
-const filmRollImgLight = require('../assets/auth/film_roll_light.jpg');
-
 const cinemaSeatsImgLight = require('../assets/auth/cinema_seats_light.jpg');
-const directorsChairImgLight = require('../assets/auth/directors_chair_light.jpg');
-const retroCameraImgLight = require('../assets/auth/retro_camera_light.jpg');
-const cinemaProjectorImgLight = require('../assets/auth/cinema_projector_light.jpg');
 
 // ─── SVG VECTOR ICONS ────────────────────────────────────────────────────────
 const UserIcon = ({color}: {color: string}) => (
-  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <Svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round">
     <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
     <Circle cx="12" cy="7" r="4" />
   </Svg>
 );
 
 const MailIcon = ({color}: {color: string}) => (
-  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <Svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round">
     <Path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
     <Polyline points="22,6 12,13 2,6" />
   </Svg>
 );
 
 const LockIcon = ({color}: {color: string}) => (
-  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <Svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round">
     <Rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
     <Path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </Svg>
 );
 
 const PhoneIcon = ({color}: {color: string}) => (
-  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <Svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round">
     <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
   </Svg>
 );
 
-const FilmReelIcon = () => (
-  <Svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="10" fill={Colors.primary} />
-    <Circle cx="12" cy="12" r="3" fill={Colors.background} />
-    <Circle cx="12" cy="6.5" r="1.8" fill={Colors.background} />
-    <Circle cx="12" cy="17.5" r="1.8" fill={Colors.background} />
-    <Circle cx="6.5" cy="12" r="1.8" fill={Colors.background} />
-    <Circle cx="17.5" cy="12" r="1.8" fill={Colors.background} />
-  </Svg>
-);
-
 const EyeIcon = ({color}: {color: string}) => (
-  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <Svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round">
     <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
     <Circle cx="12" cy="12" r="3" />
   </Svg>
 );
 
 const EyeOffIcon = ({color}: {color: string}) => (
-  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <Svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round">
     <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
     <Line x1="1" y1="1" x2="23" y2="23" />
   </Svg>
@@ -137,9 +164,9 @@ export default function AuthScreen({navigation, route}: any) {
   useEffect(() => {
     if (route?.params?.mode) {
       setAuthMode(route.params.mode);
-      navigation.setParams({ mode: undefined });
+      navigation.setParams({mode: undefined});
     }
-  }, [route?.params?.mode]);
+  }, [route?.params?.mode, navigation]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -148,10 +175,14 @@ export default function AuthScreen({navigation, route}: any) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [signupStep, setSignupStep] = useState<'initial' | 'otp' | 'password'>('initial');
+  const [signupStep, setSignupStep] = useState<'initial' | 'otp' | 'password'>(
+    'initial',
+  );
   const [signupOtp, setSignupOtp] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
-  const [forgotStep, setForgotStep] = useState<'initial' | 'otp' | 'password'>('initial');
+  const [forgotStep, setForgotStep] = useState<'initial' | 'otp' | 'password'>(
+    'initial',
+  );
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
@@ -183,7 +214,8 @@ export default function AuthScreen({navigation, route}: any) {
       try {
         const profileRes = await api.get<{user: any}>('/users/profile');
         const pUser = profileRes.user;
-        const hasEmptyProfile = !pUser.location && !pUser.bio && !pUser.photoUrl;
+        const hasEmptyProfile =
+          !pUser.location && !pUser.bio && !pUser.photoUrl;
         if (hasEmptyProfile) {
           await AsyncStorage.setItem('first_time_flow', 'true');
           await AsyncStorage.setItem('profile_fill_done', 'false');
@@ -230,7 +262,8 @@ export default function AuthScreen({navigation, route}: any) {
       try {
         const profileRes = await api.get<{user: any}>('/users/profile');
         const pUser = profileRes.user;
-        const hasEmptyProfile = !pUser.location && !pUser.bio && !pUser.photoUrl;
+        const hasEmptyProfile =
+          !pUser.location && !pUser.bio && !pUser.photoUrl;
         if (hasEmptyProfile) {
           await AsyncStorage.setItem('first_time_flow', 'true');
           await AsyncStorage.setItem('profile_fill_done', 'false');
@@ -255,20 +288,34 @@ export default function AuthScreen({navigation, route}: any) {
 
   const handleSendSignupOtp = async () => {
     if (!name.trim() || !email.trim()) {
-      Alert.alert('Missing Fields', 'Please enter your Full Name and Email Address.');
+      Alert.alert(
+        'Missing Fields',
+        'Please enter your Full Name and Email Address.',
+      );
       return;
     }
     if (!agreed) {
-      Alert.alert('Terms & Conditions', 'Please agree to the Terms & Conditions and Privacy Policy to continue.');
+      Alert.alert(
+        'Terms & Conditions',
+        'Please agree to the Terms & Conditions and Privacy Policy to continue.',
+      );
       return;
     }
     setOtpLoading(true);
     try {
-      await api.post('/auth/send-signup-otp', { email: email.trim() });
-      Alert.alert('Verification Sent', 'An OTP verification code has been sent to your email.');
+      await api.post('/auth/send-signup-otp', {email: email.trim()});
+      Alert.alert(
+        'Verification Sent',
+        'An OTP verification code has been sent to your email.',
+      );
       setSignupStep('otp');
     } catch (e: any) {
-      Alert.alert('Verification Failed', e.response?.data?.error || e.message || 'Could not send verification code.');
+      Alert.alert(
+        'Verification Failed',
+        e.response?.data?.error ||
+          e.message ||
+          'Could not send verification code.',
+      );
     } finally {
       setOtpLoading(false);
     }
@@ -281,11 +328,17 @@ export default function AuthScreen({navigation, route}: any) {
     }
     setOtpLoading(true);
     try {
-      await api.post('/auth/verify-signup-otp', { email: email.trim(), otp: signupOtp.trim() });
+      await api.post('/auth/verify-signup-otp', {
+        email: email.trim(),
+        otp: signupOtp.trim(),
+      });
       Alert.alert('Verified', 'Your email has been verified successfully!');
       setSignupStep('password');
     } catch (e: any) {
-      Alert.alert('Verification Failed', e.response?.data?.error || e.message || 'Invalid or expired OTP.');
+      Alert.alert(
+        'Verification Failed',
+        e.response?.data?.error || e.message || 'Invalid or expired OTP.',
+      );
     } finally {
       setOtpLoading(false);
     }
@@ -308,7 +361,12 @@ export default function AuthScreen({navigation, route}: any) {
       await AsyncStorage.setItem('suggested_follows_done', 'false');
       await refreshUserData();
     } catch (e: any) {
-      Alert.alert('Signup Failed', e.response?.data?.error || e.message || 'Could not create account. Please try again.');
+      Alert.alert(
+        'Signup Failed',
+        e.response?.data?.error ||
+          e.message ||
+          'Could not create account. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -321,11 +379,18 @@ export default function AuthScreen({navigation, route}: any) {
     }
     setResetLoading(true);
     try {
-      await api.post('/auth/send-reset-otp', {email: email.trim().toLowerCase()});
+      await api.post('/auth/send-reset-otp', {
+        email: email.trim().toLowerCase(),
+      });
       Alert.alert('OTP Sent!', 'OTP sent to your registered email');
       setForgotStep('otp');
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || e.message || 'Could not send verification code.');
+      Alert.alert(
+        'Error',
+        e.response?.data?.error ||
+          e.message ||
+          'Could not send verification code.',
+      );
     } finally {
       setResetLoading(false);
     }
@@ -344,7 +409,10 @@ export default function AuthScreen({navigation, route}: any) {
       });
       setForgotStep('password');
     } catch (e: any) {
-      Alert.alert('Verification Failed', e.response?.data?.error || e.message || 'Invalid or expired OTP.');
+      Alert.alert(
+        'Verification Failed',
+        e.response?.data?.error || e.message || 'Invalid or expired OTP.',
+      );
     } finally {
       setResetLoading(false);
     }
@@ -352,7 +420,10 @@ export default function AuthScreen({navigation, route}: any) {
 
   const handleUpdatePassword = async () => {
     if (!forgotNewPassword.trim() || forgotNewPassword.trim().length < 6) {
-      Alert.alert('Invalid Password', 'Password must be at least 6 characters.');
+      Alert.alert(
+        'Invalid Password',
+        'Password must be at least 6 characters.',
+      );
       return;
     }
     if (forgotNewPassword.trim() !== forgotConfirmPassword.trim()) {
@@ -369,7 +440,10 @@ export default function AuthScreen({navigation, route}: any) {
       Alert.alert('Success', 'Password updated successfully! Please sign in.');
       setAuthMode('login');
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.error || e.message || 'Could not reset password.');
+      Alert.alert(
+        'Error',
+        e.response?.data?.error || e.message || 'Could not reset password.',
+      );
     } finally {
       setResetLoading(false);
     }
@@ -378,7 +452,9 @@ export default function AuthScreen({navigation, route}: any) {
   const bgImage = isDark ? cinemaSeatsImg : cinemaSeatsImgLight;
 
   const renderHeader = () => {
-    if (authMode === 'options') return null;
+    if (authMode === 'options') {
+      return null;
+    }
     return (
       <View style={[styles.topHeader, {top: insets.top || 16}]}>
         <TouchableOpacity
@@ -404,8 +480,7 @@ export default function AuthScreen({navigation, route}: any) {
             }
           }}
           style={styles.backArrowButton}
-          activeOpacity={0.8}
-        >
+          activeOpacity={0.8}>
           <Text style={styles.backArrowText}>←</Text>
         </TouchableOpacity>
       </View>
@@ -416,25 +491,21 @@ export default function AuthScreen({navigation, route}: any) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      
       {/* ── BACKGROUND ILLUSTRATION (Fixed at bottom) ── */}
       <View style={styles.bgImageContainer} pointerEvents="none">
         <Image
           source={bgImage}
           style={[
             styles.bgImage,
-            {
-              opacity: isDark ? 0.75 : 0.85,
-              tintColor: undefined,
-            }
+            isDark ? styles.bgImageDark : styles.bgImageLight,
           ]}
           resizeMode="cover"
         />
         {/* simulated gradient fade-out at the top of the image container to blend into app background */}
-        <View style={{position: 'absolute', top: 0, left: 0, right: 0, height: 15, backgroundColor: Colors.background}} />
-        <View style={{position: 'absolute', top: 15, left: 0, right: 0, height: 15, backgroundColor: Colors.background, opacity: 0.75}} />
-        <View style={{position: 'absolute', top: 30, left: 0, right: 0, height: 15, backgroundColor: Colors.background, opacity: 0.5}} />
-        <View style={{position: 'absolute', top: 45, left: 0, right: 0, height: 15, backgroundColor: Colors.background, opacity: 0.25}} />
+        <View style={[styles.fadeBarBase, styles.fadeBar1]} />
+        <View style={[styles.fadeBarBase, styles.fadeBar2]} />
+        <View style={[styles.fadeBarBase, styles.fadeBar3]} />
+        <View style={[styles.fadeBarBase, styles.fadeBar4]} />
       </View>
 
       {renderHeader()}
@@ -443,13 +514,14 @@ export default function AuthScreen({navigation, route}: any) {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: insets.top + (authMode === 'forgot' ? 220 : authMode === 'signup' ? 120 : 70),
+            paddingTop:
+              insets.top +
+              (authMode === 'forgot' ? 220 : authMode === 'signup' ? 120 : 70),
             paddingBottom: insets.bottom + 16,
           },
         ]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         {/* ── OPTIONS MODE (Screen 3) ── */}
         {authMode === 'options' && (
           <View style={styles.optionsContent}>
@@ -467,8 +539,7 @@ export default function AuthScreen({navigation, route}: any) {
               <TouchableOpacity
                 style={styles.largeOptionBtn}
                 onPress={handleGoogleSignIn}
-                activeOpacity={0.85}
-              >
+                activeOpacity={0.85}>
                 <View style={styles.largeOptionIconWrapper}>
                   <Svg width="20" height="20" viewBox="0 0 24 24">
                     <Path
@@ -490,8 +561,12 @@ export default function AuthScreen({navigation, route}: any) {
                   </Svg>
                 </View>
                 <View style={styles.largeOptionTextWrapper}>
-                  <Text style={styles.largeOptionTitle}>Continue with Google</Text>
-                  <Text style={styles.largeOptionSubtitle}>Quick and secure</Text>
+                  <Text style={styles.largeOptionTitle}>
+                    Continue with Google
+                  </Text>
+                  <Text style={styles.largeOptionSubtitle}>
+                    Quick and secure
+                  </Text>
                 </View>
               </TouchableOpacity>
 
@@ -504,35 +579,50 @@ export default function AuthScreen({navigation, route}: any) {
               <TouchableOpacity
                 style={styles.largeOptionBtn}
                 onPress={() => navigation.navigate('PhoneLogin')}
-                activeOpacity={0.85}
-              >
+                activeOpacity={0.85}>
                 <View style={styles.largeOptionIconWrapper}>
                   <PhoneIcon color={Colors.primary} />
                 </View>
                 <View style={styles.largeOptionTextWrapper}>
-                  <Text style={styles.largeOptionTitle}>Continue with Mobile</Text>
-                  <Text style={styles.largeOptionSubtitle}>Login using OTP</Text>
+                  <Text style={styles.largeOptionTitle}>
+                    Continue with Mobile
+                  </Text>
+                  <Text style={styles.largeOptionSubtitle}>
+                    Login using OTP
+                  </Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.largeOptionBtn}
                 onPress={() => setAuthMode('login')}
-                activeOpacity={0.85}
-              >
+                activeOpacity={0.85}>
                 <View style={styles.largeOptionIconWrapper}>
                   <MailIcon color={Colors.primary} />
                 </View>
                 <View style={styles.largeOptionTextWrapper}>
-                  <Text style={styles.largeOptionTitle}>Continue with Email</Text>
-                  <Text style={styles.largeOptionSubtitle}>Login with email & password</Text>
+                  <Text style={styles.largeOptionTitle}>
+                    Continue with Email
+                  </Text>
+                  <Text style={styles.largeOptionSubtitle}>
+                    Login with email & password
+                  </Text>
                 </View>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('signup')}>
-              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
-                New to CineLink? <Text style={styles.bottomLinkHighlight}>Sign Up</Text>
+            <TouchableOpacity
+              style={styles.bottomLinkRow}
+              onPress={() => setAuthMode('signup')}>
+              <Text
+                style={[
+                  styles.bottomLinkText,
+                  isDark
+                    ? styles.bottomLinkTextDark
+                    : styles.bottomLinkTextLight,
+                ]}>
+                New to CineLink?{' '}
+                <Text style={styles.bottomLinkHighlight}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -568,17 +658,24 @@ export default function AuthScreen({navigation, route}: any) {
                   secureTextEntry={!showPassword}
                   leftIcon={<LockIcon color={Colors.textTertiary} />}
                   rightIcon={
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                      {showPassword ? <EyeOffIcon color={Colors.textTertiary} /> : <EyeIcon color={Colors.textTertiary} />}
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeBtn}>
+                      {showPassword ? (
+                        <EyeOffIcon color={Colors.textTertiary} />
+                      ) : (
+                        <EyeIcon color={Colors.textTertiary} />
+                      )}
                     </TouchableOpacity>
                   }
                 />
                 <TouchableOpacity
                   onPress={() => setAuthMode('forgot')}
                   style={styles.forgotBtnInline}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.forgotBtnTextInline}>Forgot Password?</Text>
+                  activeOpacity={0.8}>
+                  <Text style={styles.forgotBtnTextInline}>
+                    Forgot Password?
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -586,8 +683,7 @@ export default function AuthScreen({navigation, route}: any) {
                 style={styles.submitBtn}
                 onPress={handleEmailLogin}
                 disabled={loading}
-                activeOpacity={0.85}
-              >
+                activeOpacity={0.85}>
                 {loading ? (
                   <ActivityIndicator size="small" color="#09090B" />
                 ) : (
@@ -602,16 +698,19 @@ export default function AuthScreen({navigation, route}: any) {
               </View>
 
               <TouchableOpacity
-                style={[styles.googleBtn, { backgroundColor: '#FFFFFF', borderColor: '#E6E6E6' }]}
+                style={styles.googleBtn}
                 onPress={handleGoogleSignIn}
                 disabled={googleLoading}
-                activeOpacity={0.85}
-              >
+                activeOpacity={0.85}>
                 {googleLoading ? (
                   <ActivityIndicator size="small" color="#09090B" />
                 ) : (
                   <View style={styles.googleBtnContent}>
-                    <Svg width="18" height="18" viewBox="0 0 24 24" style={styles.googleBtnIcon}>
+                    <Svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      style={styles.googleBtnIcon}>
                       <Path
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                         fill="#4285F4"
@@ -629,15 +728,26 @@ export default function AuthScreen({navigation, route}: any) {
                         fill="#EA4335"
                       />
                     </Svg>
-                    <Text style={[styles.googleBtnText, { color: '#09090B' }]}>Continue with Google</Text>
+                    <Text style={styles.googleBtnText}>
+                      Continue with Google
+                    </Text>
                   </View>
                 )}
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('signup')}>
-              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
-                Don't have an account? <Text style={styles.bottomLinkHighlight}>Sign Up</Text>
+            <TouchableOpacity
+              style={styles.bottomLinkRow}
+              onPress={() => setAuthMode('signup')}>
+              <Text
+                style={[
+                  styles.bottomLinkText,
+                  isDark
+                    ? styles.bottomLinkTextDark
+                    : styles.bottomLinkTextLight,
+                ]}>
+                Don't have an account?{' '}
+                <Text style={styles.bottomLinkHighlight}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -649,9 +759,12 @@ export default function AuthScreen({navigation, route}: any) {
             <View style={styles.welcomeSection}>
               <Text style={styles.title}>Create your account</Text>
               <Text style={styles.subtitle}>
-                {signupStep === 'initial' && 'Join CineLink and explore opportunities'}
-                {signupStep === 'otp' && 'Enter the verification code sent to your email'}
-                {signupStep === 'password' && 'Choose a strong password to secure your account'}
+                {signupStep === 'initial' &&
+                  'Join CineLink and explore opportunities'}
+                {signupStep === 'otp' &&
+                  'Enter the verification code sent to your email'}
+                {signupStep === 'password' &&
+                  'Choose a strong password to secure your account'}
               </Text>
             </View>
 
@@ -677,11 +790,22 @@ export default function AuthScreen({navigation, route}: any) {
                   <TouchableOpacity
                     style={styles.checkboxWrapper}
                     onPress={() => setAgreed(!agreed)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+                    activeOpacity={0.8}>
+                    <View
+                      style={[
+                        styles.checkbox,
+                        agreed && styles.checkboxChecked,
+                      ]}>
                       {agreed && (
-                        <Svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#09090B" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                        <Svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#09090B"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round">
                           <Polyline points="20,6 9,17 4,12" />
                         </Svg>
                       )}
@@ -690,15 +814,13 @@ export default function AuthScreen({navigation, route}: any) {
                       I agree to the{' '}
                       <Text
                         style={styles.checkboxHighlight}
-                        onPress={() => navigation.navigate('Terms')}
-                      >
+                        onPress={() => navigation.navigate('Terms')}>
                         Terms & Conditions
                       </Text>{' '}
                       and{' '}
                       <Text
                         style={styles.checkboxHighlight}
-                        onPress={() => navigation.navigate('PrivacyPolicy')}
-                      >
+                        onPress={() => navigation.navigate('PrivacyPolicy')}>
                         Privacy Policy
                       </Text>
                     </Text>
@@ -708,12 +830,13 @@ export default function AuthScreen({navigation, route}: any) {
                     style={styles.submitBtn}
                     onPress={handleSendSignupOtp}
                     disabled={otpLoading}
-                    activeOpacity={0.85}
-                  >
+                    activeOpacity={0.85}>
                     {otpLoading ? (
                       <ActivityIndicator size="small" color="#09090B" />
                     ) : (
-                      <Text style={styles.submitBtnText}>Send Verification Code</Text>
+                      <Text style={styles.submitBtnText}>
+                        Send Verification Code
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </>
@@ -733,8 +856,7 @@ export default function AuthScreen({navigation, route}: any) {
                     style={styles.submitBtn}
                     onPress={handleVerifySignupOtp}
                     disabled={otpLoading}
-                    activeOpacity={0.85}
-                  >
+                    activeOpacity={0.85}>
                     {otpLoading ? (
                       <ActivityIndicator size="small" color="#09090B" />
                     ) : (
@@ -753,8 +875,14 @@ export default function AuthScreen({navigation, route}: any) {
                     secureTextEntry={!showPassword}
                     leftIcon={<LockIcon color={Colors.textTertiary} />}
                     rightIcon={
-                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                        {showPassword ? <EyeOffIcon color={Colors.textTertiary} /> : <EyeIcon color={Colors.textTertiary} />}
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeBtn}>
+                        {showPassword ? (
+                          <EyeOffIcon color={Colors.textTertiary} />
+                        ) : (
+                          <EyeIcon color={Colors.textTertiary} />
+                        )}
                       </TouchableOpacity>
                     }
                   />
@@ -763,8 +891,7 @@ export default function AuthScreen({navigation, route}: any) {
                     style={styles.submitBtn}
                     onPress={handleEmailSignup}
                     disabled={loading}
-                    activeOpacity={0.85}
-                  >
+                    activeOpacity={0.85}>
                     {loading ? (
                       <ActivityIndicator size="small" color="#09090B" />
                     ) : (
@@ -778,21 +905,26 @@ export default function AuthScreen({navigation, route}: any) {
                 <>
                   <View style={styles.optionsDividerWrapper}>
                     <View style={styles.optionsDividerLine} />
-                    <Text style={styles.optionsDividerText}>or continue with</Text>
+                    <Text style={styles.optionsDividerText}>
+                      or continue with
+                    </Text>
                     <View style={styles.optionsDividerLine} />
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.googleBtn, { backgroundColor: '#FFFFFF', borderColor: '#E6E6E6' }]}
+                    style={styles.googleBtn}
                     onPress={handleGoogleSignIn}
                     disabled={googleLoading}
-                    activeOpacity={0.85}
-                  >
+                    activeOpacity={0.85}>
                     {googleLoading ? (
                       <ActivityIndicator size="small" color="#09090B" />
                     ) : (
                       <View style={styles.googleBtnContent}>
-                        <Svg width="18" height="18" viewBox="0 0 24 24" style={styles.googleBtnIcon}>
+                        <Svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          style={styles.googleBtnIcon}>
                           <Path
                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                             fill="#4285F4"
@@ -810,7 +942,9 @@ export default function AuthScreen({navigation, route}: any) {
                             fill="#EA4335"
                           />
                         </Svg>
-                        <Text style={[styles.googleBtnText, { color: '#09090B' }]}>Continue with Google</Text>
+                        <Text style={styles.googleBtnText}>
+                          Continue with Google
+                        </Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -818,9 +952,18 @@ export default function AuthScreen({navigation, route}: any) {
               )}
             </View>
 
-            <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('login')}>
-              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
-                Already have an account? <Text style={styles.bottomLinkHighlight}>Sign In</Text>
+            <TouchableOpacity
+              style={styles.bottomLinkRow}
+              onPress={() => setAuthMode('login')}>
+              <Text
+                style={[
+                  styles.bottomLinkText,
+                  isDark
+                    ? styles.bottomLinkTextDark
+                    : styles.bottomLinkTextLight,
+                ]}>
+                Already have an account?{' '}
+                <Text style={styles.bottomLinkHighlight}>Sign In</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -832,9 +975,12 @@ export default function AuthScreen({navigation, route}: any) {
             <View style={styles.welcomeSection}>
               <Text style={styles.title}>Forgot Password?</Text>
               <Text style={styles.subtitle}>
-                {forgotStep === 'initial' && 'Enter your email to verify your identity'}
-                {forgotStep === 'otp' && 'Enter the verification code sent to your email'}
-                {forgotStep === 'password' && 'Choose a strong password to secure your account'}
+                {forgotStep === 'initial' &&
+                  'Enter your email to verify your identity'}
+                {forgotStep === 'otp' &&
+                  'Enter the verification code sent to your email'}
+                {forgotStep === 'password' &&
+                  'Choose a strong password to secure your account'}
               </Text>
             </View>
 
@@ -853,12 +999,13 @@ export default function AuthScreen({navigation, route}: any) {
                     style={styles.submitBtn}
                     onPress={handleSendResetOtp}
                     disabled={resetLoading}
-                    activeOpacity={0.85}
-                  >
+                    activeOpacity={0.85}>
                     {resetLoading ? (
                       <ActivityIndicator size="small" color="#09090B" />
                     ) : (
-                      <Text style={styles.submitBtnText}>Send Verification Code</Text>
+                      <Text style={styles.submitBtnText}>
+                        Send Verification Code
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </>
@@ -879,8 +1026,7 @@ export default function AuthScreen({navigation, route}: any) {
                     style={styles.submitBtn}
                     onPress={handleVerifyResetOtp}
                     disabled={resetLoading}
-                    activeOpacity={0.85}
-                  >
+                    activeOpacity={0.85}>
                     {resetLoading ? (
                       <ActivityIndicator size="small" color="#09090B" />
                     ) : (
@@ -901,17 +1047,23 @@ export default function AuthScreen({navigation, route}: any) {
                       leftIcon={<LockIcon color={Colors.textTertiary} />}
                       rightIcon={
                         <TouchableOpacity
-                          onPress={() => setShowForgotPassword(!showForgotPassword)}
+                          onPress={() =>
+                            setShowForgotPassword(!showForgotPassword)
+                          }
                           style={styles.eyeBtn}
-                          activeOpacity={0.7}
-                        >
-                          {showForgotPassword ? <EyeOffIcon color={Colors.textTertiary} /> : <EyeIcon color={Colors.textTertiary} />}
+                          activeOpacity={0.7}>
+                          {showForgotPassword ? (
+                            <EyeOffIcon color={Colors.textTertiary} />
+                          ) : (
+                            <EyeIcon color={Colors.textTertiary} />
+                          )}
                         </TouchableOpacity>
                       }
                     />
                   </View>
 
-                  <View style={[styles.passwordFieldContainer, { marginTop: 12 }]}>
+                  <View
+                    style={[styles.passwordFieldContainer, styles.marginField]}>
                     <AuthInput
                       placeholder="Confirm New Password"
                       value={forgotConfirmPassword}
@@ -925,21 +1077,31 @@ export default function AuthScreen({navigation, route}: any) {
                     style={styles.submitBtn}
                     onPress={handleUpdatePassword}
                     disabled={resetLoading}
-                    activeOpacity={0.85}
-                  >
+                    activeOpacity={0.85}>
                     {resetLoading ? (
                       <ActivityIndicator size="small" color="#09090B" />
                     ) : (
-                      <Text style={styles.submitBtnText}>Update Password & Sign In</Text>
+                      <Text style={styles.submitBtnText}>
+                        Update Password & Sign In
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </>
               )}
             </View>
 
-            <TouchableOpacity style={styles.bottomLinkRow} onPress={() => setAuthMode('login')}>
-              <Text style={[styles.bottomLinkText, { color: isDark ? '#FAFAFA' : '#18181B' }]}>
-                Remember your password? <Text style={styles.bottomLinkHighlight}>Sign In</Text>
+            <TouchableOpacity
+              style={styles.bottomLinkRow}
+              onPress={() => setAuthMode('login')}>
+              <Text
+                style={[
+                  styles.bottomLinkText,
+                  isDark
+                    ? styles.bottomLinkTextDark
+                    : styles.bottomLinkTextLight,
+                ]}>
+                Remember your password?{' '}
+                <Text style={styles.bottomLinkHighlight}>Sign In</Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -953,6 +1115,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  marginField: {
+    marginTop: 12,
+  },
+  bgImageDark: {
+    opacity: 0.75,
+  },
+  bgImageLight: {
+    opacity: 0.85,
+  },
+  fadeBarBase: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 15,
+    backgroundColor: Colors.background,
+  },
+  fadeBar1: {
+    top: 0,
+  },
+  fadeBar2: {
+    top: 15,
+    opacity: 0.75,
+  },
+  fadeBar3: {
+    top: 30,
+    opacity: 0.5,
+  },
+  fadeBar4: {
+    top: 45,
+    opacity: 0.25,
+  },
+  bottomLinkTextDark: {
+    color: '#FAFAFA',
+  },
+  bottomLinkTextLight: {
+    color: '#18181B',
   },
   topHeader: {
     position: 'absolute',

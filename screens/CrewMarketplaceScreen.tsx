@@ -67,11 +67,8 @@ export default function CrewMarketplaceScreen({navigation}: any) {
     }
     try {
       const res = await api.post<any>('/chat/start', {otherUserId: creatorId});
-      if (res.chatId) {
-        navigation.navigate('ChatScreen', {
-          chatId: res.chatId,
-          title: name
-        });
+      if (res.chat) {
+        navigation.navigate('ChatScreen', { chat: res.chat });
       }
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not start chat room.');

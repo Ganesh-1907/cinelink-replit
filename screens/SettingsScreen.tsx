@@ -190,7 +190,7 @@ export default function SettingsScreen({navigation}: any) {
             <View style={styles.cardSeparator} />
             <TouchableOpacity style={styles.accountActionRow} onPress={() => navigation.navigate('MyProfile')}>
               <Text style={styles.settingIcon}>👤</Text>
-              <Text style={styles.settingText}>Edit Profile</Text>
+              <Text style={styles.settingText}>My Profile</Text>
               <Text style={styles.settingArrow}>›</Text>
             </TouchableOpacity>
           </View>

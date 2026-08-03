@@ -97,12 +97,16 @@ export default function MyProfileScreen({navigation, route}: any) {
   const [lookingFor, setLookingFor] = useState<string>('');
   const [profileTags, setProfileTags] = useState<string[]>([]);
   const [instagramLink, setInstagramLink] = useState<string>('');
+  const [facebookLink, setFacebookLink] = useState<string>('');
   const [youtubeLink, setYoutubeLink] = useState<string>('');
   const [ageRange, setAgeRange] = useState<string>('');
   const [height, setHeight] = useState<string>('');
   const [bodyType, setBodyType] = useState<string>('');
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'grid' | 'details'>('grid');
+  const [featuredGalleryVisible, setFeaturedGalleryVisible] = useState<boolean>(false);
+  const [featuredGalleryIndex, setFeaturedGalleryIndex] = useState<number>(0);
   const {isAdmin, isApprovedDirector, user, signOut} = useApp();
 
   const scrollRef = useRef<ScrollView>(null);
@@ -144,6 +148,7 @@ export default function MyProfileScreen({navigation, route}: any) {
         setLookingFor(data?.lookingFor || '');
         setProfileTags(data?.profileTags || []);
         setInstagramLink(data?.instagramLink || '');
+        setFacebookLink(data?.facebookLink || '');
         setYoutubeLink(data?.youtubeLink || '');
         setAgeRange(data?.ageRange || '');
         setHeight(data?.height || '');
@@ -211,6 +216,7 @@ export default function MyProfileScreen({navigation, route}: any) {
       Alert.alert('Limit Reached', 'You can only add up to 5 photos!');
       return;
     }
+    const maxSelect = 5 - totalPhotos;
     Alert.alert('Add Photo', 'Select source', [
       {
         text: '📷 Camera',
@@ -236,18 +242,15 @@ export default function MyProfileScreen({navigation, route}: any) {
         text: '🖼 Gallery',
         onPress: () =>
           launchImageLibrary(
-            {mediaType: 'photo', quality: 0.8},
+            {mediaType: 'photo', quality: 0.8, selectionLimit: maxSelect},
             (response: ImagePickerResponse) => {
-              if (response.assets?.[0]) {
-                const asset = response.assets[0];
-                setNewPhotos(prev => [
-                  ...prev,
-                  {
-                    uri: asset.uri || '',
-                    type: asset.type,
-                    name: asset.fileName,
-                  },
-                ]);
+              if (response.assets && response.assets.length > 0) {
+                const selected = response.assets.map(asset => ({
+                  uri: asset.uri || '',
+                  type: asset.type,
+                  name: asset.fileName,
+                }));
+                setNewPhotos(prev => [...prev, ...selected]);
               }
             },
           ),
@@ -290,9 +293,10 @@ export default function MyProfileScreen({navigation, route}: any) {
       let uploadedPhotos: string[] = [];
       if (newPhotos.length > 0) {
         setUploading(true);
-        uploadedPhotos = await Promise.all(
-          newPhotos.map(p => uploadToCloudinary(p.uri)),
-        );
+        for (let i = 0; i < newPhotos.length; i++) {
+          const pUrl = await uploadToCloudinary(newPhotos[i].uri);
+          uploadedPhotos.push(pUrl);
+        }
         setUploading(false);
       }
 
@@ -300,9 +304,11 @@ export default function MyProfileScreen({navigation, route}: any) {
       const trimmedName = name.trim();
 
       const userOriginalRoleLower = (originalRole || '').toLowerCase();
-      const roleToSend = (userOriginalRoleLower === 'admin' || userOriginalRoleLower === 'director')
-        ? originalRole
-        : role;
+      const roleToSend =
+        userOriginalRoleLower === 'admin' ||
+        userOriginalRoleLower === 'director'
+          ? originalRole
+          : role;
 
       const profileData = {
         fullName: trimmedName,
@@ -322,6 +328,7 @@ export default function MyProfileScreen({navigation, route}: any) {
         lookingFor,
         profileTags,
         instagramLink,
+        facebookLink,
         youtubeLink,
         ageRange,
         height,
@@ -389,7 +396,8 @@ export default function MyProfileScreen({navigation, route}: any) {
   };
 
   const pickPortfolioMedia = () => {
-    if (portfolioMedia.length >= 20) {
+    const remaining = 20 - portfolioMedia.length;
+    if (remaining <= 0) {
       Alert.alert(
         'Limit Reached',
         'Portfolio gallery is limited to 20 images.',
@@ -397,21 +405,47 @@ export default function MyProfileScreen({navigation, route}: any) {
       return;
     }
     launchImageLibrary(
-      {mediaType: 'photo', quality: 0.8, selectionLimit: 1},
+      {mediaType: 'photo', quality: 0.8, selectionLimit: remaining},
       async response => {
-        if (!response.assets?.[0]?.uri) {
+        const assets = response.assets || [];
+        if (assets.length === 0) {
           return;
         }
         setMediaUploading(true);
         try {
-          const url = await uploadToCloudinary(response.assets[0].uri);
-          const updated = [...portfolioMedia, url];
-          setPortfolioMedia(updated);
-          await savePortfolioMedia(updated);
+          const uploadedUrls: string[] = [];
+          let failCount = 0;
+          for (let i = 0; i < assets.length; i++) {
+            const asset = assets[i];
+            if (asset.uri) {
+              try {
+                const url = await uploadToCloudinary(asset.uri);
+                if (url) {
+                  uploadedUrls.push(url);
+                } else {
+                  failCount++;
+                }
+              } catch (err) {
+                console.log('Upload error for image:', err);
+                failCount++;
+              }
+            }
+          }
+          if (uploadedUrls.length > 0) {
+            const updated = [...portfolioMedia, ...uploadedUrls];
+            setPortfolioMedia(updated);
+            await savePortfolioMedia(updated);
+          }
+          if (failCount > 0) {
+            Alert.alert(
+              'Upload Warning',
+              `Successfully uploaded ${uploadedUrls.length} images. ${failCount} images failed due to size or network issues.`,
+            );
+          }
         } catch {
           Alert.alert(
             'Upload Failed',
-            'Could not upload image. Please try again.',
+            'Could not upload one or more images. Please try again.',
           );
         } finally {
           setMediaUploading(false);
@@ -461,7 +495,9 @@ export default function MyProfileScreen({navigation, route}: any) {
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
       <StatusBar
-        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
+        barStyle={
+          Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'
+        }
         backgroundColor={Colors.background}
       />
       {isEditing ? (
@@ -481,15 +517,19 @@ export default function MyProfileScreen({navigation, route}: any) {
           }
         />
       ) : (
-        <Header
-          title="My Profile"
-          navigation={navigation}
-        />
+        <Header title="My Profile" navigation={navigation} />
       )}
       <ScrollView
         ref={scrollRef}
         style={[styles.scroll, {backgroundColor: Colors.background}]}
-        contentContainerStyle={!isEditing ? {paddingTop: Spacing.sm, paddingBottom: insets.bottom + Spacing.xl} : undefined}
+        contentContainerStyle={
+          !isEditing
+            ? {
+                paddingTop: Spacing.sm,
+                paddingBottom: insets.bottom + Spacing.xl,
+              }
+            : undefined
+        }
         showsVerticalScrollIndicator={false}>
         {/* ── PROFILE HEADER (AVATAR & INFO CENTERED) ── */}
         {isEditing ? (
@@ -536,88 +576,87 @@ export default function MyProfileScreen({navigation, route}: any) {
             </Text>
           </View>
         ) : (
-          <View style={styles.centeredHeader}>
-            {/* Centered Avatar with overlapping Verified Badge */}
-            <View style={styles.centeredAvatarContainer}>
-              <Avatar
-                uri={avatarUri}
-                name={name || user?.email}
-                size="xl"
-                ring
-              />
-              {verificationStatus === 'verified' && (
-                <View style={styles.verifiedBadgeOverlap}>
-                  <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Display Name */}
-            <View style={styles.centeredNameRow}>
-              <Text style={styles.centeredName}>{name || 'Anonymous User'}</Text>
-            </View>
-
-            {/* Role */}
-            <Text style={styles.centeredRole}>{role || 'Actor'}</Text>
-
-            {/* Location */}
-            {location ? (
-              <View style={styles.centeredLocationRow}>
-                <Text style={styles.centeredLocationIcon}>📍</Text>
-                <Text style={styles.centeredLocationText}>{location}</Text>
+          <View style={styles.instagramHeaderContainer}>
+            {/* Top row: Avatar on left, Stats on right */}
+            <View style={styles.instagramTopRow}>
+              {/* Avatar with verified badge overlap */}
+              <View style={styles.instagramAvatarContainer}>
+                <Avatar
+                  uri={avatarUri}
+                  name={name || user?.email}
+                  size="xl"
+                  ring
+                />
+                {verificationStatus === 'verified' && (
+                  <View style={styles.verifiedBadgeOverlap}>
+                    <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
+                  </View>
+                )}
               </View>
-            ) : null}
+
+              {/* Stats column block */}
+              <View style={styles.instagramStatsContainer}>
+                <View style={styles.instagramStatCol}>
+                  <Text style={styles.instagramStatNum}>{portfolioMedia.length}</Text>
+                  <Text style={styles.instagramStatLbl}>posts</Text>
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.instagramStatCol}
+                  onPress={() =>
+                    navigation.navigate('Followers', {
+                      userId: user?.uid,
+                      displayName,
+                      tab: 'followers',
+                    })
+                  }>
+                  <Text style={styles.instagramStatNum}>{followersCount}</Text>
+                  <Text style={styles.instagramStatLbl}>followers</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.instagramStatCol}
+                  onPress={() =>
+                    navigation.navigate('Followers', {
+                      userId: user?.uid,
+                      displayName,
+                      tab: 'following',
+                    })
+                  }>
+                  <Text style={styles.instagramStatNum}>{followingCount}</Text>
+                  <Text style={styles.instagramStatLbl}>following</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Middle block: Name, role subtitle, location, bio */}
+            <View style={styles.instagramBioContainer}>
+              <Text style={styles.instagramDisplayName}>{name || 'Anonymous User'}</Text>
+              <Text style={styles.instagramRoleSubtitle}>{role || 'Actor'}</Text>
+              {location ? (
+                <Text style={styles.instagramLocationText}>📍 {location}</Text>
+              ) : null}
+              {bio && bio.trim() ? <Text style={styles.instagramBioText}>{bio}</Text> : null}
+            </View>
 
             {/* Action Row */}
-            <View style={styles.profileActionRow}>
+            <View style={styles.instagramActionRow}>
               <TouchableOpacity
                 onPress={() => setIsEditing(true)}
-                style={styles.profileEditBtn}>
-                <Text style={styles.profileEditBtnText}>Edit Profile</Text>
+                style={styles.instagramActionBtn}>
+                <Text style={styles.instagramActionBtnText}>Edit profile</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleShare}
-                style={styles.profileIconBtn}>
-                <Text style={styles.profileIconBtnText}>✈️</Text>
+                style={styles.instagramShareBtn}>
+                <Text style={styles.instagramShareBtnText}>Share profile</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => navigation.navigate('Settings')}
-                style={styles.profileIconBtn}>
-                <Text style={styles.profileIconBtnText}>⚙️</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Flat Stats Row (Applications, Followers, Following) */}
-            <View style={styles.centeredStatsRow}>
-              <View style={styles.centeredStatItem}>
-                <Text style={styles.centeredStatNum}>{applicationsCount}</Text>
-                <Text style={styles.centeredStatLbl}>Applications</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.centeredStatItem}
-                onPress={() =>
-                  navigation.navigate('Followers', {
-                    userId: user?.uid,
-                    displayName,
-                    tab: 'followers',
-                  })
-                }>
-                <Text style={styles.centeredStatNum}>{followersCount}</Text>
-                <Text style={styles.centeredStatLbl}>Followers</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.centeredStatItem}
-                onPress={() =>
-                  navigation.navigate('Followers', {
-                    userId: user?.uid,
-                    displayName,
-                    tab: 'following',
-                  })
-                }>
-                <Text style={styles.centeredStatNum}>{followingCount}</Text>
-                <Text style={styles.centeredStatLbl}>Following</Text>
+                style={styles.instagramIconBtn}>
+                <Text style={styles.instagramIconBtnText}>⚙️</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -644,9 +683,19 @@ export default function MyProfileScreen({navigation, route}: any) {
             <Text style={styles.sectionTitle}>Basic Info</Text>
 
             <Text style={styles.label}>I am a:</Text>
-            {((originalRole || '').toLowerCase() === 'admin' || (originalRole || '').toLowerCase() === 'director') ? (
-              <View style={{ backgroundColor: '#1E1E24', padding: 12, borderRadius: 8, marginBottom: Spacing.sm, borderWidth: 1, borderColor: '#2E2E32' }}>
-                <Text style={{ color: '#F5C451', fontWeight: '600', fontSize: 14 }}>
+            {(originalRole || '').toLowerCase() === 'admin' ||
+            (originalRole || '').toLowerCase() === 'director' ? (
+              <View
+                style={{
+                  backgroundColor: '#1E1E24',
+                  padding: 12,
+                  borderRadius: 8,
+                  marginBottom: Spacing.sm,
+                  borderWidth: 1,
+                  borderColor: '#2E2E32',
+                }}>
+                <Text
+                  style={{color: '#F5C451', fontWeight: '600', fontSize: 14}}>
                   {originalRole} (System Managed Role)
                 </Text>
               </View>
@@ -697,7 +746,9 @@ export default function MyProfileScreen({navigation, route}: any) {
               label="Phone Number"
               placeholder="Your phone number"
               value={phone}
-              onChangeText={t => setPhone(t.replace(/[^0-9]/g, '').slice(0, 10))}
+              onChangeText={t =>
+                setPhone(t.replace(/[^0-9]/g, '').slice(0, 10))
+              }
               keyboardType="phone-pad"
               containerStyle={styles.inputSpacing}
             />
@@ -880,6 +931,16 @@ export default function MyProfileScreen({navigation, route}: any) {
             />
 
             <Input
+              label="Facebook Profile URL"
+              placeholder="https://facebook.com/yourprofile"
+              value={facebookLink}
+              onChangeText={setFacebookLink}
+              autoCapitalize="none"
+              keyboardType="url"
+              containerStyle={styles.inputSpacing}
+            />
+
+            <Input
               label="YouTube Channel URL"
               placeholder="https://youtube.com/@yourchannel"
               value={youtubeLink}
@@ -949,93 +1010,175 @@ export default function MyProfileScreen({navigation, route}: any) {
             />
           </View>
         ) : (
-          <View style={styles.section}>
-            {/* ── BIO SECTION ── */}
-            {bio && bio.trim() ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>About Me</Text>
-                <Text style={styles.viewBioText}>{bio}</Text>
-              </View>
-            ) : null}
+          <View style={styles.instagramContentContainer}>
+            {/* Highlights (Portfolio Photos as circular highlights) */}
+            <View style={styles.highlightsContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.highlightsScroll}>
+                {portfolioPhotos.map((url, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.highlightItem}
+                    onPress={() => {
+                      setFeaturedGalleryIndex(i);
+                      setFeaturedGalleryVisible(true);
+                    }}>
+                    <View style={styles.highlightCircle}>
+                      <Image source={{uri: url}} style={styles.highlightImg} />
+                    </View>
+                    <Text style={styles.highlightLabel} numberOfLines={1}>
+                      Featured {i + 1}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {totalPhotos < 5 && (
+                  <TouchableOpacity
+                    style={styles.highlightItem}
+                    onPress={() => {
+                      setIsEditing(true);
+                      setTimeout(() => {
+                        scrollRef.current?.scrollTo({y: 400, animated: true});
+                      }, 200);
+                    }}>
+                    <View style={[styles.highlightCircle, styles.highlightCircleNew]}>
+                      <Text style={styles.highlightPlusText}>+</Text>
+                    </View>
+                    <Text style={styles.highlightLabel}>New</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            </View>
 
-            {/* ── BASIC DETAILS ── */}
-            {phone ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>Basic Details</Text>
-                <View style={styles.detailItemRow}>
-                  <Text style={styles.detailLabel}>📱 Phone</Text>
-                  <Text style={styles.detailValue}>{phone}</Text>
-                </View>
-              </View>
-            ) : null}
-
-            {/* ── CASTING PROFILE ── */}
-            {availabilityStatus ||
-            lookingFor ||
-            profileTags.length > 0 ||
-            instagramLink ||
-            youtubeLink ||
-            ageRange ||
-            height ||
-            bodyType ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>
-                  Casting & Physical Stats
+            {/* Instagram Style Tab Bar */}
+            <View style={styles.instagramTabBar}>
+              <TouchableOpacity
+                style={[
+                  styles.instagramTabItem,
+                  activeTab === 'grid' && styles.instagramTabItemActive,
+                ]}
+                onPress={() => setActiveTab('grid')}>
+                <Text
+                  style={[
+                    styles.instagramTabIcon,
+                    activeTab === 'grid' && styles.instagramTabIconActive,
+                  ]}>
+                  ▦
                 </Text>
+              </TouchableOpacity>
 
-                {availabilityStatus ? (
-                  <View style={styles.availabilityViewRow}>
-                    <Text style={styles.detailLabel}>Status</Text>
-                    <Chip
-                      label={`${
-                        availabilityStatus === 'Available Now'
-                          ? '🟢'
-                          : availabilityStatus === 'Booked'
-                          ? '🟡'
-                          : '🔴'
-                      } ${availabilityStatus}`}
-                      selected={true}
-                      variant={availVariant(availabilityStatus)}
-                    />
+              <TouchableOpacity
+                style={[
+                  styles.instagramTabItem,
+                  activeTab === 'details' && styles.instagramTabItemActive,
+                ]}
+                onPress={() => setActiveTab('details')}>
+                <Text
+                  style={[
+                    styles.instagramTabIcon,
+                    activeTab === 'details' && styles.instagramTabIconActive,
+                  ]}>
+                  👤
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Tab Contents */}
+            {activeTab === 'grid' ? (
+              <View style={styles.instagramGridContainer}>
+                {portfolioMedia.length > 0 ? (
+                  <View style={styles.instagramMediaGrid}>
+                    {portfolioMedia.map((url, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={styles.instagramMediaCell}
+                        onPress={() => {
+                          setGalleryIndex(i);
+                          setGalleryVisible(true);
+                        }}
+                        activeOpacity={0.85}>
+                        <Image
+                          source={{uri: url}}
+                          style={styles.instagramMediaCellImg}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.emptyGridContainer}>
+                    <Text style={styles.emptyGridText}>No posts yet</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.instagramDetailsContainer}>
+                {/* ── BIO SECTION ── */}
+                {bio && bio.trim() ? (
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.detailsCardTitle}>About Me</Text>
+                    <Text style={styles.viewBioText}>{bio}</Text>
                   </View>
                 ) : null}
 
-                {lookingFor ? (
-                  <View style={styles.lookingForBox}>
-                    <Text style={styles.detailLabel}>Looking For</Text>
-                    <Text style={styles.lookingForText}>{lookingFor}</Text>
-                  </View>
-                ) : null}
+                {/* ── CASTING & PHYSICAL STATS CARD ── */}
+                {(ageRange || height || bodyType || availabilityStatus || lookingFor) ? (
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.detailsCardTitle}>Casting & Physical Stats</Text>
 
-                {/* Physical stats grid */}
-                {ageRange || height || bodyType ? (
-                  <View style={styles.statsGrid}>
+                    {availabilityStatus ? (
+                      <View style={styles.detailRowItem}>
+                        <Text style={styles.detailRowLabel}>⚡ Status</Text>
+                        <Chip
+                          label={`${
+                            availabilityStatus === 'Available Now'
+                              ? '🟢'
+                              : availabilityStatus === 'Booked'
+                              ? '🟡'
+                              : '🔴'
+                          } ${availabilityStatus}`}
+                          selected={true}
+                          variant={availVariant ? availVariant(availabilityStatus) : 'success'}
+                        />
+                      </View>
+                    ) : null}
+
                     {ageRange ? (
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridCellTitle}>Age Range</Text>
-                        <Text style={styles.gridCellValue}>{ageRange}</Text>
+                      <View style={styles.detailRowItem}>
+                        <Text style={styles.detailRowLabel}>🎂 Age Range</Text>
+                        <Text style={styles.detailRowValue}>{ageRange}</Text>
                       </View>
                     ) : null}
+
                     {height ? (
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridCellTitle}>Height</Text>
-                        <Text style={styles.gridCellValue}>{height}</Text>
+                      <View style={styles.detailRowItem}>
+                        <Text style={styles.detailRowLabel}>📏 Height</Text>
+                        <Text style={styles.detailRowValue}>{height}</Text>
                       </View>
                     ) : null}
+
                     {bodyType ? (
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridCellTitle}>Body Type</Text>
-                        <Text style={styles.gridCellValue}>{bodyType}</Text>
+                      <View style={styles.detailRowItem}>
+                        <Text style={styles.detailRowLabel}>👤 Body Type</Text>
+                        <Text style={styles.detailRowValue}>{bodyType}</Text>
+                      </View>
+                    ) : null}
+
+                    {lookingFor ? (
+                      <View style={[styles.detailRowItem, {flexDirection: 'column', alignItems: 'flex-start', borderBottomWidth: 0}]}>
+                        <Text style={[styles.detailRowLabel, {marginBottom: 4}]}>🔍 Looking For</Text>
+                        <Text style={styles.detailRowSubtext}>{lookingFor}</Text>
                       </View>
                     ) : null}
                   </View>
                 ) : null}
 
-                {/* Profile Type Tags */}
-                {profileTags.length > 0 ? (
-                  <View style={styles.tagsViewSection}>
-                    <Text style={styles.detailLabel}>Profile Tags</Text>
-                    <View style={styles.tagGrid}>
+                {/* ── PROFILE TAGS CARD ── */}
+                {profileTags && profileTags.length > 0 ? (
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.detailsCardTitle}>Specializations</Text>
+                    <View style={styles.detailsTagGrid}>
                       {profileTags.map(tag => (
                         <Chip key={tag} label={tag} selected={true} />
                       ))}
@@ -1043,167 +1186,122 @@ export default function MyProfileScreen({navigation, route}: any) {
                   </View>
                 ) : null}
 
-                {/* Social links */}
-                {instagramLink || youtubeLink ? (
-                  <View style={styles.socialRow}>
-                    {instagramLink ? (
+                {/* ── CONTACT & SOCIALS CARD ── */}
+                {(phone || instagramLink || facebookLink || youtubeLink) ? (
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.detailsCardTitle}>Contact & Socials</Text>
+                    
+                    {phone ? (
+                      <View style={styles.detailRowItem}>
+                        <Text style={styles.detailRowLabel}>📞 Phone</Text>
+                        <TouchableOpacity 
+                          onPress={() => Linking.openURL(`tel:${phone}`)}
+                          style={styles.detailsPhoneAction}>
+                          <Text style={styles.detailsPhoneText}>{phone}</Text>
+                          <Text style={styles.detailsPhoneIcon}>📞</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+
+                    {/* Social Buttons List */}
+                    {(instagramLink || facebookLink || youtubeLink) ? (
+                      <View style={styles.detailsSocialGrid}>
+                        {instagramLink ? (
+                          <TouchableOpacity
+                            onPress={() =>
+                              Linking.openURL(instagramLink).catch(() =>
+                                Alert.alert('Error', 'Could not open Instagram link'),
+                              )
+                            }
+                            style={[styles.detailsSocialBtn, {borderColor: '#E1306C'}]}>
+                            <Text style={[styles.detailsSocialBtnText, {color: '#E1306C'}]}>📸 Instagram</Text>
+                          </TouchableOpacity>
+                        ) : null}
+
+                        {facebookLink ? (
+                          <TouchableOpacity
+                            onPress={() =>
+                              Linking.openURL(facebookLink).catch(() =>
+                                Alert.alert('Error', 'Could not open Facebook link'),
+                              )
+                            }
+                            style={[styles.detailsSocialBtn, {borderColor: '#1877F2'}]}>
+                            <Text style={[styles.detailsSocialBtnText, {color: '#1877F2'}]}>👤 Facebook</Text>
+                          </TouchableOpacity>
+                        ) : null}
+
+                        {youtubeLink ? (
+                          <TouchableOpacity
+                            onPress={() =>
+                              Linking.openURL(youtubeLink).catch(() =>
+                                Alert.alert('Error', 'Could not open YouTube link'),
+                              )
+                            }
+                            style={[styles.detailsSocialBtn, {borderColor: '#FF0000'}]}>
+                            <Text style={[styles.detailsSocialBtnText, {color: '#FF0000'}]}>🎥 YouTube</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+
+                {/* ── VIDEO & PORTFOLIO LINKS CARD ── */}
+                {(introVideoLink || portfolio1 || portfolio2 || portfolio3) ? (
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.detailsCardTitle}>Videos & Work Links</Text>
+
+                    {introVideoLink ? (
                       <TouchableOpacity
                         onPress={() =>
-                          Linking.openURL(instagramLink).catch(() =>
-                            Alert.alert(
-                              'Error',
-                              'Could not open Instagram link',
-                            ),
+                          Linking.openURL(introVideoLink).catch(() =>
+                            Alert.alert('Error', 'Could not open video link'),
                           )
                         }
-                        style={styles.socialBtn}>
-                        <Text style={styles.socialBtnText}>📸 Instagram</Text>
+                        style={styles.detailsVideoBtn}>
+                        <Text style={styles.detailsVideoBtnText}>🎬 Watch Intro Video</Text>
                       </TouchableOpacity>
                     ) : null}
-                    {youtubeLink ? (
+
+                    {portfolio1 ? (
                       <TouchableOpacity
                         onPress={() =>
-                          Linking.openURL(youtubeLink).catch(() =>
-                            Alert.alert('Error', 'Could not open YouTube link'),
+                          Linking.openURL(portfolio1).catch(() =>
+                            Alert.alert('Error', 'Could not open link'),
                           )
                         }
-                        style={styles.socialBtn}>
-                        <Text style={styles.socialBtnText}>🎥 YouTube</Text>
+                        style={styles.detailsWorkLinkBtn}>
+                        <Text style={styles.detailsWorkLinkBtnText}>🔗 Previous Work 1</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {portfolio2 ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          Linking.openURL(portfolio2).catch(() =>
+                            Alert.alert('Error', 'Could not open link'),
+                          )
+                        }
+                        style={styles.detailsWorkLinkBtn}>
+                        <Text style={styles.detailsWorkLinkBtnText}>🔗 Previous Work 2</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {portfolio3 ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          Linking.openURL(portfolio3).catch(() =>
+                            Alert.alert('Error', 'Could not open link'),
+                          )
+                        }
+                        style={styles.detailsWorkLinkBtn}>
+                        <Text style={styles.detailsWorkLinkBtnText}>🔗 Previous Work 3</Text>
                       </TouchableOpacity>
                     ) : null}
                   </View>
                 ) : null}
               </View>
-            ) : null}
-
-            {/* ── PORTFOLIO PHOTOS ── */}
-            {portfolioPhotos.length > 0 ? (
-              <View style={styles.viewSectionContainer}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.viewSectionTitle}>Featured Photos</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (portfolioPhotos.length > 0) {
-                        setGalleryIndex(0);
-                        setGalleryVisible(true);
-                      }
-                    }}>
-                    <Text style={styles.viewAllText}>View all</Text>
-                  </TouchableOpacity>
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.photoRow}>
-                  {portfolioPhotos.map((url, index) => (
-                    <View key={index} style={styles.photoBox}>
-                      <Image
-                        source={{uri: url}}
-                        style={styles.portfolioPhoto}
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-
-            {/* ── PORTFOLIO GALLERY ── */}
-            {portfolioMedia.length > 0 ? (
-              <View style={styles.viewSectionContainer}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.viewSectionTitle}>Portfolio Gallery</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setGalleryIndex(0);
-                      setGalleryVisible(true);
-                    }}>
-                    <Text style={styles.viewAllText}>View all</Text>
-                  </TouchableOpacity>
-                </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.photoRow}>
-                  {portfolioMedia.map((url, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={styles.photoBox}
-                      onPress={() => {
-                        setGalleryIndex(i);
-                        setGalleryVisible(true);
-                      }}
-                      activeOpacity={0.85}>
-                      <Image
-                        source={{uri: url}}
-                        style={styles.portfolioPhoto}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-
-            {/* ── VIDEO & LINKS ── */}
-            {introVideoLink || portfolio1 || portfolio2 || portfolio3 ? (
-              <View style={styles.viewSectionContainer}>
-                <Text style={styles.viewSectionTitle}>Videos & Work Links</Text>
-
-                {introVideoLink ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(introVideoLink).catch(() =>
-                        Alert.alert('Error', 'Could not open video link'),
-                      )
-                    }
-                    style={styles.videoLinkBtn}>
-                    <Text style={styles.videoLinkBtnText}>
-                      🎬 Watch Intro Video
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-
-                {portfolio1 ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(portfolio1).catch(() =>
-                        Alert.alert('Error', 'Could not open link'),
-                      )
-                    }
-                    style={styles.workLinkBtn}>
-                    <Text style={styles.workLinkBtnText}>
-                      🔗 Previous Work 1
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-                {portfolio2 ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(portfolio2).catch(() =>
-                        Alert.alert('Error', 'Could not open link'),
-                      )
-                    }
-                    style={styles.workLinkBtn}>
-                    <Text style={styles.workLinkBtnText}>
-                      🔗 Previous Work 2
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-                {portfolio3 ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      Linking.openURL(portfolio3).catch(() =>
-                        Alert.alert('Error', 'Could not open link'),
-                      )
-                    }
-                    style={styles.workLinkBtn}>
-                    <Text style={styles.workLinkBtnText}>
-                      🔗 Previous Work 3
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            ) : null}
-
+            )}
           </View>
         )}
       </ScrollView>
@@ -1216,6 +1314,15 @@ export default function MyProfileScreen({navigation, route}: any) {
         doubleTapToZoomEnabled
         backgroundColor="black"
       />
+      <ImageViewing
+        images={portfolioPhotos.map(url => ({uri: url}))}
+        imageIndex={featuredGalleryIndex}
+        visible={featuredGalleryVisible}
+        onRequestClose={() => setFeaturedGalleryVisible(false)}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+        backgroundColor="black"
+      />
     </View>
   );
 }
@@ -1223,6 +1330,319 @@ export default function MyProfileScreen({navigation, route}: any) {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.background},
   scroll: {flex: 1},
+
+  instagramHeaderContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  instagramTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  instagramAvatarContainer: {
+    position: 'relative',
+  },
+  instagramStatsContainer: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-around',
+    marginLeft: 20,
+  },
+  instagramStatCol: {
+    alignItems: 'center',
+  },
+  instagramStatNum: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+  },
+  instagramStatLbl: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  instagramBioContainer: {
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  instagramDisplayName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+  },
+  instagramRoleSubtitle: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  instagramLocationText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  instagramBioText: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  instagramActionRow: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 8,
+    alignItems: 'center',
+  },
+  instagramActionBtn: {
+    flex: 1,
+    height: 36,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  instagramActionBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textInverse,
+  },
+  instagramShareBtn: {
+    flex: 1,
+    height: 36,
+    backgroundColor: 'transparent',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  instagramShareBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  instagramIconBtn: {
+    width: 36,
+    height: 36,
+    backgroundColor: Colors.cardElevated,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  instagramIconBtnText: {
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  instagramContentContainer: {
+    flex: 1,
+  },
+  highlightsContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#262626',
+  },
+  highlightsScroll: {
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  highlightItem: {
+    alignItems: 'center',
+    width: 72,
+  },
+  highlightCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderColor: '#363636',
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+  },
+  highlightCircleNew: {
+    borderStyle: 'dashed',
+    borderColor: '#555555',
+  },
+  highlightImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  highlightLabel: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+    width: 72,
+  },
+  highlightPlusText: {
+    color: Colors.textSecondary,
+    fontSize: 24,
+    fontWeight: '300',
+  },
+  instagramTabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#262626',
+  },
+  instagramTabItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'transparent',
+  },
+  instagramTabItemActive: {
+    borderBottomColor: Colors.textPrimary,
+  },
+  instagramTabIcon: {
+    fontSize: 18,
+    color: '#8e8e8e',
+  },
+  instagramTabIconActive: {
+    color: Colors.textPrimary,
+  },
+  instagramGridContainer: {
+    flex: 1,
+  },
+  instagramMediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 1,
+  },
+  instagramMediaCell: {
+    width: Math.floor(SCREEN_W / 3) - 1,
+    height: Math.floor(SCREEN_W / 3) - 1,
+  },
+  instagramMediaCellImg: {
+    width: '100%',
+    height: '100%',
+  },
+  emptyGridContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyGridText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  instagramDetailsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  detailsCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    marginBottom: 16,
+  },
+  detailsCardTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginBottom: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: Colors.border,
+    paddingBottom: 6,
+  },
+  detailRowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: Colors.borderLight,
+  },
+  detailRowLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  detailRowValue: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  detailRowSubtext: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  detailsTagGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailsPhoneAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailsPhoneText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  detailsPhoneIcon: {
+    fontSize: 14,
+    color: Colors.primary,
+  },
+  detailsSocialGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
+  },
+  detailsSocialBtn: {
+    flex: 1,
+    minWidth: '45%',
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.cardElevated,
+  },
+  detailsSocialBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  detailsVideoBtn: {
+    backgroundColor: Colors.primary,
+    height: 42,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailsVideoBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.textInverse,
+  },
+  detailsWorkLinkBtn: {
+    backgroundColor: Colors.cardElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailsWorkLinkBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
 
   shareHeaderBtn: {padding: Spacing.xs},
   shareHeaderIcon: {color: Colors.primary, fontSize: 20, fontWeight: '600'},
@@ -1475,7 +1895,12 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     marginBottom: Spacing.lg,
   },
-  mediaCell: {width: 80, height: 110, borderRadius: Radius.md, overflow: 'hidden'},
+  mediaCell: {
+    width: 80,
+    height: 110,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+  },
   mediaCellImg: {width: '100%', height: '100%'},
   mediaCellAdd: {
     backgroundColor: Colors.card,

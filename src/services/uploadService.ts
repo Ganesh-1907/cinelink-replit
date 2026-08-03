@@ -22,7 +22,6 @@ async function uploadToR2(uri: string, type: UploadType): Promise<UploadResult> 
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'multipart/form-data',
     },
     body: formData,
   });

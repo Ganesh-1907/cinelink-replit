@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Colors, Spacing, Radius, Shadows, Typography} from '../src/theme';
+import {Colors, Spacing, Shadows} from '../src/theme';
 
 interface LiquidNavProps {
   navigation: any;
@@ -13,13 +13,22 @@ const tabs = [
   {key: 'Auditions', icon: '🎭', label: 'Auditions'},
   {key: 'Crew', icon: '🎥', label: 'Crew'},
   {key: 'Discover', icon: '✨', label: 'Discover'},
+  {key: 'Messages', icon: '💬', label: 'Chats'},
   {key: 'Profile', icon: '👤', label: 'Profile'},
 ];
 
 export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.container, {backgroundColor: Colors.card, borderTopColor: Colors.border, paddingBottom: Spacing.xs + 8 + insets.bottom}]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: Colors.card,
+          borderTopColor: Colors.border,
+          paddingBottom: Spacing.xs + 8 + insets.bottom,
+        },
+      ]}>
       {tabs.map((tab, idx) => {
         const isActive = idx === activeTab;
         return (
@@ -28,7 +37,7 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
             style={[styles.tab, isActive && styles.activeTab]}
             onPress={() => navigation.navigate(tab.key)}
             activeOpacity={0.7}>
-            <Text style={{fontSize: 19}}>{tab.icon}</Text>
+            <Text style={styles.tabIcon}>{tab.icon}</Text>
             <Text
               style={[
                 styles.label,
@@ -42,7 +51,11 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
               ]}>
               {tab.label}
             </Text>
-            {isActive && <View style={[styles.indicator, {backgroundColor: Colors.primary}]} />}
+            {isActive && (
+              <View
+                style={[styles.indicator, {backgroundColor: Colors.primary}]}
+              />
+            )}
           </TouchableOpacity>
         );
       })}
@@ -51,9 +64,15 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {flexDirection: 'row', borderTopWidth: 1, paddingTop: Spacing.sm, ...Shadows.sm},
+  container: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingTop: Spacing.sm,
+    ...Shadows.sm,
+  },
   tab: {flex: 1, alignItems: 'center', gap: 2, position: 'relative'},
   activeTab: {},
+  tabIcon: {fontSize: 19},
   label: {fontSize: 10, fontWeight: '600'},
   indicator: {width: 6, height: 6, borderRadius: 3, marginTop: 2},
 });

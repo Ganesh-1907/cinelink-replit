@@ -1,20 +1,24 @@
 import {io, Socket} from 'socket.io-client';
 import {API_BASE_URL} from '../api/client';
+import {storageService} from './storageService';
 
 let socket: Socket | null = null;
 
-export function connectSocket(userId: string): Socket {
+export async function connectSocket(): Promise<Socket> {
   if (socket?.connected) return socket;
+
+  const token = await storageService.getToken();
+  if (!token) throw new Error('No auth token');
 
   const baseUrl = API_BASE_URL.replace('/api', '');
   socket = io(baseUrl, {
-    query: {userId},
-    transports: ['websocket'],
+    auth: { token },
+    transports: ['polling', 'websocket'],
   });
 
   socket.on('connect', () => console.log('[Socket] Connected'));
   socket.on('disconnect', () => console.log('[Socket] Disconnected'));
-  socket.on('connect_error', (err) => console.warn('[Socket] Error:', err.message));
+  socket.on('connect_error', (err) => console.log('[Socket] Error:', err.message));
 
   return socket;
 }

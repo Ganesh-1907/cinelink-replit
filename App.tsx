@@ -20,6 +20,7 @@ import {authService} from './src/services/AuthService';
 import {initNotifications} from './src/services/NotificationService';
 import {enableOfflinePersistence} from './src/services/offlineService';
 import {trackScreenView} from './src/services/analyticsService';
+import {connectSocket, disconnectSocket} from './src/services/socketService';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SuggestedFollowsScreen from './screens/SuggestedFollowsScreen';
 import ProfileFillScreen from './screens/ProfileFillScreen';
@@ -148,6 +149,17 @@ function TabNavigator() {
           headerShown: false,
           tabBarIcon: ({color}) => (
             <Text style={{fontSize: 20, color}}>✨</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Messages"
+        component={ChatListScreen}
+        options={{
+          title: 'Chats',
+          headerShown: false,
+          tabBarIcon: ({color}) => (
+            <Text style={{fontSize: 20, color}}>💬</Text>
           ),
         }}
       />
@@ -447,6 +459,12 @@ function AppContent(): JSX.Element {
 
   // ── Auth state via AppContext ─────────────────────────────
   const {user: contextUser, loading: authLoading} = useApp();
+  useEffect(() => {
+    if (contextUser) {
+      connectSocket().catch(() => {});
+      return () => { disconnectSocket(); };
+    }
+  }, [contextUser]);
   useEffect(() => {
     if (contextUser) {
       (async () => {

@@ -119,7 +119,9 @@ export default function ProfileScreen({navigation, route}: any) {
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
       <StatusBar
-        barStyle={Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'}
+        barStyle={
+          Colors.background !== '#FFFFFF' ? 'light-content' : 'dark-content'
+        }
         backgroundColor={Colors.background}
       />
 
@@ -130,90 +132,85 @@ export default function ProfileScreen({navigation, route}: any) {
         showsVerticalScrollIndicator={false}>
         {/* ── PROFILE HEADER (AVATAR & INFO CENTERED) ── */}
         <View style={styles.centeredHeader}>
-            {/* Centered Avatar with overlapping Verified Badge */}
-            <View style={styles.centeredAvatarContainer}>
-              <Avatar
-                uri={avatarUri}
-                name={name || user?.email}
-                size="xl"
-                ring
-              />
-              {verificationStatus === 'verified' && (
-                <View style={styles.verifiedBadgeOverlap}>
-                  <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Display Name */}
-            <View style={styles.centeredNameRow}>
-              <Text style={styles.centeredName}>{name || 'Anonymous User'}</Text>
-            </View>
-
-            {/* Role */}
-            <Text style={styles.centeredRole}>{role || 'Actor'}</Text>
-
-            {/* Location */}
-            {location ? (
-              <View style={styles.centeredLocationRow}>
-                <Text style={styles.centeredLocationIcon}>📍</Text>
-                <Text style={styles.centeredLocationText}>{location}</Text>
+          {/* Centered Avatar with overlapping Verified Badge */}
+          <View style={styles.centeredAvatarContainer}>
+            <Avatar uri={avatarUri} name={name || user?.email} size="xl" ring />
+            {verificationStatus === 'verified' && (
+              <View style={styles.verifiedBadgeOverlap}>
+                <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
               </View>
-            ) : null}
-
-            {/* Action Row */}
-            <View style={styles.profileActionRow}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('MyProfile')}
-                style={styles.profileEditBtn}>
-                <Text style={styles.profileEditBtnText}>My Profile</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleShare}
-                style={styles.profileIconBtn}>
-                <Text style={styles.profileIconBtnText}>✈️</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Settings')}
-                style={styles.profileIconBtn}>
-                <Text style={styles.profileIconBtnText}>⚙️</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Flat Stats Row (Applications, Followers, Following) */}
-            <View style={styles.centeredStatsRow}>
-              <View style={styles.centeredStatItem}>
-                <Text style={styles.centeredStatNum}>{applicationsCount}</Text>
-                <Text style={styles.centeredStatLbl}>Applications</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.centeredStatItem}
-                onPress={() =>
-                  navigation.navigate('Followers', {
-                    userId: user?.uid,
-                    displayName,
-                    tab: 'followers',
-                  })
-                }>
-                <Text style={styles.centeredStatNum}>{followersCount}</Text>
-                <Text style={styles.centeredStatLbl}>Followers</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.centeredStatItem}
-                onPress={() =>
-                  navigation.navigate('Followers', {
-                    userId: user?.uid,
-                    displayName,
-                    tab: 'following',
-                  })
-                }>
-                <Text style={styles.centeredStatNum}>{followingCount}</Text>
-                <Text style={styles.centeredStatLbl}>Following</Text>
-              </TouchableOpacity>
-            </View>
+            )}
           </View>
+
+          {/* Display Name */}
+          <View style={styles.centeredNameRow}>
+            <Text style={styles.centeredName}>{name || 'Anonymous User'}</Text>
+          </View>
+
+          {/* Role */}
+          <Text style={styles.centeredRole}>{role || 'Actor'}</Text>
+
+          {/* Location */}
+          {location ? (
+            <View style={styles.centeredLocationRow}>
+              <Text style={styles.centeredLocationIcon}>📍</Text>
+              <Text style={styles.centeredLocationText}>{location}</Text>
+            </View>
+          ) : null}
+
+          {/* Action Row */}
+          <View style={styles.profileActionRow}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Chats')}
+              style={styles.profileEditBtn}>
+              <Text style={styles.profileEditBtnText}>Messages</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleShare}
+              style={styles.profileIconBtn}>
+              <Text style={styles.profileIconBtnText}>✈️</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Settings')}
+              style={styles.profileIconBtn}>
+              <Text style={styles.profileIconBtnText}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Flat Stats Row (Applications, Followers, Following) */}
+          <View style={styles.centeredStatsRow}>
+            <View style={styles.centeredStatItem}>
+              <Text style={styles.centeredStatNum}>{applicationsCount}</Text>
+              <Text style={styles.centeredStatLbl}>Applications</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.centeredStatItem}
+              onPress={() =>
+                navigation.navigate('Followers', {
+                  userId: user?.uid,
+                  displayName,
+                  tab: 'followers',
+                })
+              }>
+              <Text style={styles.centeredStatNum}>{followersCount}</Text>
+              <Text style={styles.centeredStatLbl}>Followers</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.centeredStatItem}
+              onPress={() =>
+                navigation.navigate('Followers', {
+                  userId: user?.uid,
+                  displayName,
+                  tab: 'following',
+                })
+              }>
+              <Text style={styles.centeredStatNum}>{followingCount}</Text>
+              <Text style={styles.centeredStatLbl}>Following</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* ✅ PROFILE COMPLETION CARD
         <View style={styles.completionWrapper}>
@@ -231,185 +228,204 @@ export default function ProfileScreen({navigation, route}: any) {
         </View>
         */}
 
+        {/* ── MENU ── */}
+        <View style={[styles.menuSection, {marginBottom: insets.bottom + 60}]}>
+          {/* App Settings Section */}
+          <Text style={styles.sectionHeader}>App Settings</Text>
+          {[
+            {
+              icon: '👤',
+              label: 'My Profile',
+              desc: 'View and edit your professional profile',
+              screen: 'MyProfile',
+            },
+            ...(!isAdmin
+              ? [
+                  {
+                    icon: '🎬',
+                    label: 'My Applications',
+                    desc: 'Track your audition and job applications',
+                    screen: 'MyApplications',
+                  },
+                ]
+              : []),
+            ...(isApprovedDirector || isAdmin
+              ? [
+                  {
+                    icon: '🎥',
+                    label: isAdmin ? 'Films' : 'My Films',
+                    desc: isAdmin
+                      ? 'Manage uploaded short films'
+                      : 'Manage your uploaded short films',
+                    screen: 'MyFilms',
+                  },
+                  {
+                    icon: '🏆',
+                    label: isAdmin ? 'Contests' : 'My Contests',
+                    desc: isAdmin
+                      ? 'Manage all contests'
+                      : 'View your contest participations',
+                    screen: 'MyContests',
+                  },
+                ]
+              : []),
+            ...(!isAdmin
+              ? [
+                  {
+                    icon: '💾',
+                    label: 'Saved Auditions',
+                    desc: 'Your bookmarked casting calls',
+                    screen: 'SavedAuditions',
+                  },
+                ]
+              : []),
+            ...(isApprovedDirector || isAdmin
+              ? [
+                  {
+                    icon: '🎭',
+                    label: isAdmin ? 'Auditions' : 'My Auditions',
+                    desc: isAdmin
+                      ? 'Manage all auditions'
+                      : 'Manage your posted auditions',
+                    screen: 'MyAuditions',
+                  },
+                ]
+              : []),
+            ...(isAdmin
+              ? [
+                  {
+                    icon: '⚡',
+                    label: 'Quick Post',
+                    desc: 'Publish a quick text or media update',
+                    screen: 'QuickPost',
+                  },
+                  {
+                    icon: '📢',
+                    label: 'Announcements',
+                    desc: 'Publish system announcements',
+                    screen: 'Announcements',
+                  },
+                ]
+              : []),
+            {
+              icon: '⚙️',
+              label: 'Settings',
+              desc: 'Preferences, theme, and security',
+              screen: 'Settings',
+            },
+          ].map(item => (
+            <TouchableOpacity
+              key={item.screen}
+              style={styles.menuRow}
+              onPress={() => navigation.navigate(item.screen as any)}>
+              <View style={styles.menuIconContainer}>
+                <Text style={styles.menuEmoji}>{item.icon}</Text>
+              </View>
+              <View style={styles.menuTextContainer}>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+                <Text style={styles.menuDesc}>{item.desc}</Text>
+              </View>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
 
-            {/* ── MENU ── */}
-            <View
-              style={[styles.menuSection, {marginBottom: insets.bottom + 60}]}>
-              
-              {/* App Settings Section */}
-              <Text style={styles.sectionHeader}>App Settings</Text>
-              {[
-                ...(!isAdmin
-                  ? [
-                      {
-                        icon: '🎬',
-                        label: 'My Applications',
-                        desc: 'Track your audition and job applications',
-                        screen: 'MyApplications',
-                      },
-                    ]
-                  : []),
-                ...(isApprovedDirector || isAdmin
-                  ? [
-                      {
-                        icon: '🎥',
-                        label: isAdmin ? 'Films' : 'My Films',
-                        desc: isAdmin ? 'Manage uploaded short films' : 'Manage your uploaded short films',
-                        screen: 'MyFilms',
-                      },
-                      {
-                        icon: '🏆',
-                        label: isAdmin ? 'Contests' : 'My Contests',
-                        desc: isAdmin ? 'Manage all contests' : 'View your contest participations',
-                        screen: 'MyContests',
-                      },
-                    ]
-                  : []),
-                ...(!isAdmin
-                  ? [
-                      {
-                        icon: '💾',
-                        label: 'Saved Auditions',
-                        desc: 'Your bookmarked casting calls',
-                        screen: 'SavedAuditions',
-                      },
-                    ]
-                  : []),
-                ...(isApprovedDirector || isAdmin
-                  ? [
-                      {
-                        icon: '🎭',
-                        label: isAdmin ? 'Auditions' : 'My Auditions',
-                        desc: isAdmin ? 'Manage all auditions' : 'Manage your posted auditions',
-                        screen: 'MyAuditions',
-                      },
-                    ]
-                  : []),
-                ...(isAdmin
-                  ? [
-                      {
-                        icon: '⚡',
-                        label: 'Quick Post',
-                        desc: 'Publish a quick text or media update',
-                        screen: 'QuickPost',
-                      },
-                      {
-                        icon: '📢',
-                        label: 'Announcements',
-                        desc: 'Publish system announcements',
-                        screen: 'Announcements',
-                      },
-                    ]
-                  : []),
-                {
-                  icon: '⚙️',
-                  label: 'Settings',
-                  desc: 'Preferences, theme, and security',
-                  screen: 'Settings',
-                },
-              ].map(item => (
+          {/* Creator & Admin Panel Section */}
+          {(isAdmin || isApprovedDirector || !isApprovedDirector) && (
+            <>
+              <Text style={[styles.sectionHeader, {marginTop: Spacing.xl}]}>
+                Account & Support
+              </Text>
+
+              {/* Become Casting Director */}
+              {!isApprovedDirector && !isAdmin && (
                 <TouchableOpacity
-                  key={item.screen}
                   style={styles.menuRow}
-                  onPress={() => navigation.navigate(item.screen as any)}>
+                  onPress={() => navigation.navigate('CastingRequest')}>
                   <View style={styles.menuIconContainer}>
-                    <Text style={styles.menuEmoji}>{item.icon}</Text>
+                    <Text style={styles.menuEmoji}>💼</Text>
                   </View>
                   <View style={styles.menuTextContainer}>
-                    <Text style={styles.menuLabel}>{item.label}</Text>
-                    <Text style={styles.menuDesc}>{item.desc}</Text>
+                    <Text style={styles.menuLabel}>
+                      Become a Casting Director
+                    </Text>
+                    <Text style={styles.menuDesc}>
+                      Apply to post casting calls
+                    </Text>
                   </View>
                   <Text style={styles.menuArrow}>›</Text>
                 </TouchableOpacity>
-              ))}
-
-              {/* Creator & Admin Panel Section */}
-              {(isAdmin || isApprovedDirector || !isApprovedDirector) && (
-                <>
-                  <Text style={[styles.sectionHeader, {marginTop: Spacing.xl}]}>
-                    Account & Support
-                  </Text>
-
-                  {/* Become Casting Director */}
-                  {!isApprovedDirector && !isAdmin && (
-                    <TouchableOpacity
-                      style={styles.menuRow}
-                      onPress={() => navigation.navigate('CastingRequest')}>
-                      <View style={styles.menuIconContainer}>
-                        <Text style={styles.menuEmoji}>💼</Text>
-                      </View>
-                      <View style={styles.menuTextContainer}>
-                        <Text style={styles.menuLabel}>Become a Casting Director</Text>
-                        <Text style={styles.menuDesc}>Apply to post casting calls</Text>
-                      </View>
-                      <Text style={styles.menuArrow}>›</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Industry Guide */}
-                  <TouchableOpacity
-                    style={styles.menuRow}
-                    onPress={() => navigation.navigate('IndustryGuide')}>
-                    <View style={styles.menuIconContainer}>
-                      <Text style={styles.menuEmoji}>📚</Text>
-                    </View>
-                    <View style={styles.menuTextContainer}>
-                      <Text style={styles.menuLabel}>Industry Guide</Text>
-                      <Text style={styles.menuDesc}>Learn how to grow in the industry</Text>
-                    </View>
-                    <Text style={styles.menuArrow}>›</Text>
-                  </TouchableOpacity>
-
-                  {/* AI Assistant */}
-                  {isAdmin && (
-                    <TouchableOpacity
-                      style={styles.menuRow}
-                      onPress={() => navigation.navigate('AIAssistant')}>
-                      <View style={styles.menuIconContainer}>
-                        <Text style={styles.menuEmoji}>🤖</Text>
-                      </View>
-                      <View style={styles.menuTextContainer}>
-                        <Text style={styles.menuLabel}>AI Assistant</Text>
-                        <Text style={styles.menuDesc}>Chat with the CineLink AI assistant</Text>
-                      </View>
-                      <Text style={styles.menuArrow}>›</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Admin Dashboard */}
-                  {isAdmin && (
-                    <TouchableOpacity
-                      style={styles.menuRow}
-                      onPress={() => navigation.navigate('AdminReports')}>
-                      <View style={styles.menuIconContainer}>
-                        <Text style={styles.menuEmoji}>🛡️</Text>
-                      </View>
-                      <View style={styles.menuTextContainer}>
-                        <Text style={styles.menuLabel}>Admin Dashboard</Text>
-                        <Text style={styles.menuDesc}>System administration controls</Text>
-                      </View>
-                      <Text style={styles.menuArrow}>›</Text>
-                    </TouchableOpacity>
-                  )}
-                </>
               )}
 
-              {/* Logout Button */}
+              {/* Industry Guide */}
               <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={() => {
-                  Alert.alert('Logout', 'Are you sure you want to logout?', [
-                    {text: 'Cancel', style: 'cancel'},
-                    {
-                      text: 'Logout',
-                      style: 'destructive',
-                      onPress: async () => await signOut(),
-                    },
-                  ]);
-                }}>
-                <Text style={styles.logoutBtnText}>Logout</Text>
+                style={styles.menuRow}
+                onPress={() => navigation.navigate('IndustryGuide')}>
+                <View style={styles.menuIconContainer}>
+                  <Text style={styles.menuEmoji}>📚</Text>
+                </View>
+                <View style={styles.menuTextContainer}>
+                  <Text style={styles.menuLabel}>Industry Guide</Text>
+                  <Text style={styles.menuDesc}>
+                    Learn how to grow in the industry
+                  </Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
               </TouchableOpacity>
-            </View>
+
+              {/* AI Assistant */}
+              {isAdmin && (
+                <TouchableOpacity
+                  style={styles.menuRow}
+                  onPress={() => navigation.navigate('AIAssistant')}>
+                  <View style={styles.menuIconContainer}>
+                    <Text style={styles.menuEmoji}>🤖</Text>
+                  </View>
+                  <View style={styles.menuTextContainer}>
+                    <Text style={styles.menuLabel}>AI Assistant</Text>
+                    <Text style={styles.menuDesc}>
+                      Chat with the CineLink AI assistant
+                    </Text>
+                  </View>
+                  <Text style={styles.menuArrow}>›</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Admin Dashboard */}
+              {isAdmin && (
+                <TouchableOpacity
+                  style={styles.menuRow}
+                  onPress={() => navigation.navigate('AdminReports')}>
+                  <View style={styles.menuIconContainer}>
+                    <Text style={styles.menuEmoji}>🛡️</Text>
+                  </View>
+                  <View style={styles.menuTextContainer}>
+                    <Text style={styles.menuLabel}>Admin Dashboard</Text>
+                    <Text style={styles.menuDesc}>
+                      System administration controls
+                    </Text>
+                  </View>
+                  <Text style={styles.menuArrow}>›</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={() => {
+              Alert.alert('Logout', 'Are you sure you want to logout?', [
+                {text: 'Cancel', style: 'cancel'},
+                {
+                  text: 'Logout',
+                  style: 'destructive',
+                  onPress: async () => await signOut(),
+                },
+              ]);
+            }}>
+            <Text style={styles.logoutBtnText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -670,7 +686,12 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     marginBottom: Spacing.lg,
   },
-  mediaCell: {width: 80, height: 110, borderRadius: Radius.md, overflow: 'hidden'},
+  mediaCell: {
+    width: 80,
+    height: 110,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+  },
   mediaCellImg: {width: '100%', height: '100%'},
   mediaCellAdd: {
     backgroundColor: Colors.card,
