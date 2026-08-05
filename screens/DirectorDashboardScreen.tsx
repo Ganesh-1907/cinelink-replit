@@ -48,7 +48,7 @@ export default function DirectorDashboardScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="🎬 Director Dashboard" navigation={navigation} />
+      <Header title="Director Dashboard" navigation={navigation} />
       <ScrollView contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}>
         {loading ? <LoadingView /> : auditions.length === 0 ? (
           <EmptyState icon="🎭" title="No auditions posted" subtitle="Post an audition to see applications here" actionLabel="Post Audition" onAction={() => navigation.navigate('PostAudition')} />

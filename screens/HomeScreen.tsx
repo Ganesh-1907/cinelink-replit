@@ -28,7 +28,7 @@ import Svg, {
 
 import ReportModal from './ReportModal';
 import {useApp} from '../src/context/AppContext';
-import {Colors, Spacing, Radius} from '../src/theme';
+import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Avatar, EmptyState} from '../components/ui';
 
@@ -52,6 +52,11 @@ export default function HomeScreen({navigation}: any) {
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [suggestedLoading, setSuggestedLoading] = useState(true);
+  const [films, setFilms] = useState<any[]>([]);
+  const [filmsLoading, setFilmsLoading] = useState(true);
+  const [feedPosts, setFeedPosts] = useState<any[]>([]);
+  const [feedPostsLoading, setFeedPostsLoading] = useState(true);
+  const [selectedTab, setSelectedTab] = useState<'auditions' | 'films' | 'contests' | 'quick_posts' | 'announcements'>('auditions');
 
   const [carouselIndex, setCarouselIndex] = useState(0);
 
@@ -321,6 +326,29 @@ export default function HomeScreen({navigation}: any) {
         setContestsLoading(false);
       })
       .catch(() => setContestsLoading(false));
+  }, [refreshKey]);
+
+  useEffect(() => {
+    setFilmsLoading(true);
+    api
+      .get<{films: any[]}>('/films')
+      .then(res => {
+        setFilms((res.films || []).map((f: any) => ({...f, id: f._id || f.id})));
+        setFilmsLoading(false);
+      })
+      .catch(() => setFilmsLoading(false));
+  }, [refreshKey]);
+
+  useEffect(() => {
+    setFeedPostsLoading(true);
+    api
+      .get<{posts: any[]} | any>('/feed-posts')
+      .then(res => {
+        const postsArray = Array.isArray(res) ? res : res.posts || [];
+        setFeedPosts(postsArray.map((p: any) => ({...p, id: p._id || p.id})));
+        setFeedPostsLoading(false);
+      })
+      .catch(() => setFeedPostsLoading(false));
   }, [refreshKey]);
 
   const handleSearchChange = (text: string) => {
@@ -683,368 +711,536 @@ export default function HomeScreen({navigation}: any) {
             </View>
           )}
 
-          {/* ── QUICK ACCESS ── */}
-          {renderSectionHeader('Quick Access', () =>
-            navigation.navigate('Auditions'),
-          )}
-          <View style={styles.quickAccessContainer}>
-            {[
-              {
-                id: 'auditions',
-                icon: '🎭',
-                title: 'Auditions',
-                screen: 'Auditions',
-              },
-              {id: 'crew', icon: '🎥', title: 'Crew', screen: 'Crew'},
-              {
-                id: 'discover',
-                icon: '✨',
-                title: 'Discover',
-                screen: 'Discover',
-              },
-              {id: 'chats', icon: '💬', title: 'Chats', screen: 'Messages'},
-              {id: 'profile', icon: '👤', title: 'Profile', screen: 'Profile'},
-            ].map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={[
-                  styles.quickAccessCard,
-                  {backgroundColor: Colors.card, borderColor: Colors.border},
-                ]}
-                onPress={() => navigation.navigate(item.screen)}>
-                <View style={styles.quickAccessIconContainer}>
-                  <Text style={styles.quickAccessIcon}>{item.icon}</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.quickAccessTitle,
-                    {color: Colors.textPrimary},
-                  ]}>
-                  {item.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* ── TRENDING NOW (VERTICAL RECT CARDS) ── */}
-          {renderSectionHeader('Trending Now', () =>
-            navigation.navigate('BrowseAuditions'),
-          )}
-          {feedLoading ? (
-            <ActivityIndicator
-              color={Colors.primary}
-              style={{marginVertical: Spacing.lg}}
-            />
-          ) : auditionPosts.length === 0 ? (
-            <EmptyState
-              icon="🎭"
-              title="No auditions found"
-              subtitle="Trending auditions will show up here"
-            />
-          ) : (
+          {/* ── QUICK ACCESS TABS ── */}
+          <View style={styles.tabBarContainer}>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.trendingScroll}>
-              {auditionPosts.slice(0, 5).map(item => {
-                const isSaved = savedIds.includes(item.id);
-                const imageSource = item.imageUrl || item.posterUrl;
-
+              contentContainerStyle={styles.tabBarScroll}>
+              {[
+                {key: 'auditions', icon: '🎭', label: 'Auditions'},
+                {key: 'films', icon: '🎬', label: 'Short Films'},
+                {key: 'contests', icon: '🏆', label: 'Contests'},
+                {key: 'quick_posts', icon: '⚡', label: 'Quick Posts'},
+                {key: 'announcements', icon: '📢', label: 'Announcements'},
+              ].map(tab => {
+                const isActive = selectedTab === tab.key;
                 return (
                   <TouchableOpacity
-                    key={item.id}
+                    key={tab.key}
                     style={[
-                      styles.trendingCard,
-                      {backgroundColor: Colors.card},
+                      styles.tabItem,
+                      {
+                        backgroundColor: isActive ? Colors.primary : Colors.card,
+                        borderColor: isActive ? Colors.primary : Colors.border,
+                      },
                     ]}
-                    onPress={() =>
-                      navigation.navigate('AuditionDetail', {audition: item})
-                    }
-                    activeOpacity={0.9}>
-                    {imageSource ? (
-                      <Image
-                        source={{uri: imageSource}}
-                        style={styles.trendingCardImg}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.trendingCardImg,
-                          styles.trendingCardImgPlaceholder,
-                        ]}>
-                        <Text style={styles.trendingCardEmoji}>🎭</Text>
-                      </View>
-                    )}
-
-                    <View style={styles.trendingCardTopRow}>
-                      <View
-                        style={[
-                          styles.trendingFeaturedBadge,
-                          {backgroundColor: Colors.primary},
-                        ]}>
-                        <Text style={styles.trendingFeaturedBadgeText}>
-                          Featured
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={[
-                          styles.trendingBookmarkBtn,
-                          styles.bookmarkBtnBg,
-                        ]}
-                        onPress={() => toggleSaveAudition(item)}>
-                        <Text style={styles.trendingBookmarkText}>
-                          {isSaved ? '❤️' : '🤍'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View
+                    onPress={() => setSelectedTab(tab.key as any)}
+                    activeOpacity={0.85}>
+                    <Text style={{marginRight: 6, fontSize: 13}}>{tab.icon}</Text>
+                    <Text
                       style={[
-                        styles.trendingCardBottomContent,
-                        {backgroundColor: Colors.card},
+                        styles.tabItemText,
+                        {
+                          color: isActive ? '#09090B' : Colors.textSecondary,
+                          fontWeight: isActive ? '700' : '600',
+                        },
                       ]}>
-                      <Text
-                        style={[
-                          styles.trendingCardTitle,
-                          {color: Colors.textPrimary},
-                        ]}
-                        numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.trendingCardMeta,
-                          {color: Colors.textSecondary},
-                        ]}
-                        numberOfLines={1}>
-                        {item.category}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.trendingCardLoc,
-                          {color: Colors.textSecondary},
-                        ]}
-                        numberOfLines={1}>
-                        📍 {item.location}
-                      </Text>
-                      {item.budget ? (
-                        <View style={styles.trendingCardPriceRow}>
-                          <Text
-                            style={[
-                              styles.trendingCardPrice,
-                              {color: Colors.primaryLight},
-                            ]}>
-                            ₹ {item.budget}/day
-                          </Text>
-                          <Text style={styles.trendingCardBottomBookmark}>
-                            🔖
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
+                      {tab.label}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
-          )}
+          </View>
 
-          {/* ── ACTIVE CONTESTS ── */}
-          {renderSectionHeader('Active Contests', () =>
-            navigation.navigate('Contests'),
-          )}
-          {contestsLoading ? (
-            <ActivityIndicator
-              color={Colors.primary}
-              style={{marginVertical: Spacing.lg}}
-            />
-          ) : contests.length === 0 ? (
-            <EmptyState
-              icon="🏆"
-              title="No active contests"
-              subtitle="Check back later for new contests"
-            />
-          ) : (
-            (() => {
-              const getDaysLeft = (deadline: string) => {
-                if (!deadline) {
-                  return '';
-                }
-                const diff = Math.ceil(
-                  (new Date(deadline).getTime() - Date.now()) / 86400000,
-                );
-                if (diff < 0) {
-                  return 'Ended';
-                }
-                if (diff === 0) {
-                  return 'Last Day';
-                }
-                return `${diff} Days Left`;
-              };
+          {/* ── DYNAMIC DASHBOARD FEED ── */}
+          {(() => {
+            const getDaysLeft = (deadline: string) => {
+              if (!deadline) return '';
+              const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+              if (diff < 0) return 'Ended';
+              if (diff === 0) return 'Last Day';
+              return `${diff} Days Left`;
+            };
 
-              const mainContest = contests[0];
-              const subContest1 = contests[1];
-              const subContest2 = contests[2];
-
-              return (
-                <View style={styles.activeContestsSectionContainer}>
-                  {/* Main Featured Contest Card */}
-                  <TouchableOpacity
-                    style={[
-                      styles.mainContestCard,
-                      {
-                        backgroundColor: Colors.card,
-                        borderColor: Colors.border,
-                      },
-                    ]}
-                    onPress={() =>
-                      navigation.navigate('ContestDetail', {
-                        contest: mainContest,
-                      })
-                    }
-                    activeOpacity={0.9}>
-                    <View
-                      style={[
-                        styles.mainContestLeft,
-                        {backgroundColor: Colors.cardElevated},
-                      ]}>
-                      <Text style={styles.mainContestEmoji}>🏆</Text>
-                    </View>
-                    <View style={styles.mainContestRight}>
-                      <View style={styles.mainContestHeaderRow}>
-                        <View style={styles.mainContestInfo}>
-                          <Text
+            switch (selectedTab) {
+              case 'auditions':
+                return (
+                  <View style={styles.listContainer}>
+                    {feedLoading ? (
+                      <ActivityIndicator color={Colors.primary} style={styles.loader} />
+                    ) : auditionPosts.length === 0 ? (
+                      <EmptyState
+                        icon="🎭"
+                        title="No auditions found"
+                        subtitle="Check back later for new auditions"
+                      />
+                    ) : (
+                      auditionPosts.map(item => {
+                        const isSaved = savedIds.includes(item.id);
+                        const imgUri = item.imageUrl || item.posterUrl;
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
                             style={[
-                              styles.mainContestTitle,
-                              {color: Colors.textPrimary},
+                              styles.premiumCard,
+                              {backgroundColor: Colors.card, borderColor: Colors.border},
                             ]}
-                            numberOfLines={1}>
-                            {mainContest.title}
-                          </Text>
-                          {mainContest.description ? (
-                            <Text
-                              style={styles.mainContestSubtitle}
-                              numberOfLines={1}>
-                              {mainContest.description}
-                            </Text>
-                          ) : null}
-                        </View>
-                        {mainContest.deadline ? (
-                          <View
-                            style={[
-                              styles.daysBadgeCompact,
-                              styles.daysBadgeCompactStyle,
-                            ]}>
-                            <Text
-                              style={[
-                                styles.daysBadgeTextCompact,
-                                {color: Colors.error},
-                              ]}>
-                              {getDaysLeft(mainContest.deadline)}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
+                            onPress={() => navigation.navigate('AuditionDetail', {audition: item})}
+                            activeOpacity={0.95}>
+                            {/* Creator Info Header Row */}
+                            {(item.directorId || item.postedById) ? (
+                              <View style={styles.creatorHeader}>
+                                <TouchableOpacity
+                                  activeOpacity={0.7}
+                                  onPress={() => {
+                                    const creatorId = item.directorId || item.postedById;
+                                    if (creatorId) {
+                                      navigation.navigate('PublicProfile', {userId: creatorId});
+                                    }
+                                  }}
+                                  style={styles.creatorHeaderLeft}
+                                >
+                                  <Avatar
+                                    name={item.directorName || 'D'}
+                                    uri={item.directorPhotoUrl}
+                                    size="sm"
+                                    ring
+                                  />
+                                  <View style={styles.creatorInfo}>
+                                    <Text style={styles.creatorName} numberOfLines={1}>
+                                      {item.directorName || 'Casting Director'}
+                                    </Text>
+                                    <Text style={styles.creatorRole}>
+                                      {item.directorRole || 'Casting Director'}
+                                    </Text>
+                                  </View>
+                                </TouchableOpacity>
 
-                      <View style={styles.mainContestFooter}>
-                        <View style={styles.flex1}>
-                          {mainContest.prizePool ? (
-                            <>
-                              <Text style={styles.prizePoolLabel}>
-                                Prize Pool
-                              </Text>
-                              <Text
-                                style={[
-                                  styles.prizePoolValue,
-                                  {color: Colors.primary},
-                                ]}>
-                                ₹ {mainContest.prizePool}
-                              </Text>
-                            </>
-                          ) : null}
-                        </View>
-
-                        {mainContest.participantsCount ? (
-                          <View style={styles.mainContestParticipants}>
-                            <Text style={styles.participantsTextCompact}>
-                              {mainContest.participantsCount} Participants
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Side-by-side Sub Contests */}
-                  {subContest1 || subContest2 ? (
-                    <View style={styles.subContestsRow}>
-                      {[subContest1, subContest2].filter(Boolean).map(sub => (
-                        <TouchableOpacity
-                          key={sub.id}
-                          style={[
-                            styles.subContestCard,
-                            {
-                              backgroundColor: Colors.card,
-                              borderColor: Colors.border,
-                            },
-                          ]}
-                          onPress={() =>
-                            navigation.navigate('ContestDetail', {contest: sub})
-                          }
-                          activeOpacity={0.9}>
-                          <View style={styles.subContestHeader}>
-                            <Text
-                              style={[
-                                styles.subContestTitle,
-                                {color: Colors.textPrimary},
-                              ]}
-                              numberOfLines={1}>
-                              {sub.title}
-                            </Text>
-                            {sub.deadline ? (
-                              <View
-                                style={[
-                                  styles.daysBadgeCompact,
-                                  styles.daysBadgeCompactStyle,
-                                ]}>
-                                <Text
-                                  style={[
-                                    styles.daysBadgeTextCompact,
-                                    {color: Colors.error},
-                                  ]}>
-                                  {getDaysLeft(sub.deadline)}
-                                </Text>
+                                {(item.directorId || item.postedById) !== currentUser?.uid && (
+                                  <TouchableOpacity
+                                    style={[styles.followBtn, followingIds.has(item.directorId || item.postedById) && styles.followingBtn]}
+                                    onPress={() => toggleFollowUser(item.directorId || item.postedById)}
+                                    activeOpacity={0.7}>
+                                    <Text style={[styles.followBtnText, followingIds.has(item.directorId || item.postedById) && styles.followingBtnText]}>
+                                      {followingIds.has(item.directorId || item.postedById) ? '✓ Following' : '+ Follow'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
                               </View>
                             ) : null}
-                          </View>
 
-                          {sub.prizePool ? (
-                            <View style={styles.marginTop6}>
-                              <Text style={styles.prizePoolLabel}>
-                                Prize Pool
+                            {imgUri ? (
+                              <View style={styles.premiumCardImageContainer}>
+                                <Image
+                                  source={{uri: imgUri}}
+                                  style={[
+                                    styles.premiumCardImage,
+                                    {
+                                      transform: [{ translateY: item.posterOffset || 0 }]
+                                    }
+                                  ]}
+                                />
+                              </View>
+                            ) : (
+                              <View style={[styles.premiumCardImagePlaceholder, {backgroundColor: Colors.cardElevated}]}>
+                                <Text style={styles.premiumCardPlaceholderIcon}>🎭</Text>
+                              </View>
+                            )}
+                            <View style={styles.premiumCardBody}>
+                              <View style={styles.premiumCardHeaderRow}>
+                                <Text style={[styles.premiumCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
+                                  {item.title}
+                                </Text>
+                                <TouchableOpacity
+                                  style={styles.premiumBookmarkBtn}
+                                  onPress={() => toggleSaveAudition(item)}>
+                                  <Text style={{fontSize: 14}}>{isSaved ? '❤️' : '🤍'}</Text>
+                                </TouchableOpacity>
+                              </View>
+
+                              <Text style={[styles.premiumCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
+                                {item.description || item.roles || 'No description provided.'}
                               </Text>
-                              <Text
-                                style={[
-                                  styles.prizePoolValueSmall,
-                                  {color: Colors.primary},
-                                ]}>
-                                ₹ {sub.prizePool}
-                              </Text>
+
+                              <View style={styles.premiumTagsRow}>
+                                <View style={[styles.premiumBadge, {backgroundColor: Colors.primaryFaint}]}>
+                                  <Text style={[styles.premiumBadgeText, {color: Colors.primary}]}>
+                                    💰 {item.budget ? `₹ ${item.budget}/day` : 'Paid'}
+                                  </Text>
+                                </View>
+                                <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
+                                  <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
+                                    📍 {item.location || 'Remote'}
+                                  </Text>
+                                </View>
+                                <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
+                                  <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
+                                    🎭 {item.category || 'Acting'}
+                                  </Text>
+                                </View>
+                              </View>
                             </View>
-                          ) : null}
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+                );
 
-                          {sub.participantsCount ? (
-                            <Text style={styles.participantsTextSub}>
-                              {sub.participantsCount} Participants
-                            </Text>
-                          ) : null}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })()
-          )}
+              case 'films':
+                return (
+                  <View style={styles.listContainer}>
+                    {filmsLoading ? (
+                      <ActivityIndicator color={Colors.primary} style={styles.loader} />
+                    ) : films.length === 0 ? (
+                      <EmptyState
+                        icon="🎬"
+                        title="No short films found"
+                        subtitle="Be the first to upload a short film!"
+                      />
+                    ) : (
+                      films.map(item => {
+                        const imgUri = typeof item.posterUrl === 'string' && item.posterUrl.trim().startsWith('http')
+                          ? item.posterUrl.trim()
+                          : (typeof item.imageUrl === 'string' && item.imageUrl.trim().startsWith('http')
+                              ? item.imageUrl.trim()
+                              : null);
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            style={[
+                              styles.premiumCard,
+                              {backgroundColor: Colors.card, borderColor: Colors.border},
+                            ]}
+                            onPress={() => navigation.navigate('FilmDetail', {film: item})}
+                            activeOpacity={0.95}>
+                            {/* Creator Info Header Row */}
+                            {(item.userId || item.directorId) ? (
+                              <View style={styles.creatorHeader}>
+                                <TouchableOpacity
+                                  activeOpacity={0.7}
+                                  onPress={() => {
+                                    const creatorId = item.userId || item.directorId;
+                                    if (creatorId) {
+                                      navigation.navigate('PublicProfile', {userId: creatorId});
+                                    }
+                                  }}
+                                  style={styles.creatorHeaderLeft}
+                                >
+                                  <Avatar
+                                    name={item.creatorName || item.directorName || 'D'}
+                                    uri={item.creatorPhotoUrl || item.directorPhotoUrl}
+                                    size="sm"
+                                    ring
+                                  />
+                                  <View style={styles.creatorInfo}>
+                                    <Text style={styles.creatorName} numberOfLines={1}>
+                                      {item.creatorName || item.directorName || 'Director'}
+                                    </Text>
+                                    <Text style={styles.creatorRole}>
+                                      {item.creatorRole || 'Director'}
+                                    </Text>
+                                  </View>
+                                </TouchableOpacity>
+
+                                {(item.userId || item.directorId) !== currentUser?.uid && (
+                                  <TouchableOpacity
+                                    style={[styles.followBtn, followingIds.has(item.userId || item.directorId) && styles.followingBtn]}
+                                    onPress={() => toggleFollowUser(item.userId || item.directorId)}
+                                    activeOpacity={0.7}>
+                                    <Text style={[styles.followBtnText, followingIds.has(item.userId || item.directorId) && styles.followingBtnText]}>
+                                      {followingIds.has(item.userId || item.directorId) ? '✓ Following' : '+ Follow'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            ) : null}
+
+                            {imgUri ? (
+                              <View style={styles.premiumCardImageContainer}>
+                                <Image
+                                  source={{uri: imgUri}}
+                                  style={[
+                                    styles.premiumCardImage,
+                                    {
+                                      transform: [{ translateY: item.posterOffset || 0 }]
+                                    }
+                                  ]}
+                                />
+                              </View>
+                            ) : (
+                              <View style={[styles.premiumCardImagePlaceholder, {backgroundColor: Colors.cardElevated}]}>
+                                <Text style={styles.premiumCardPlaceholderIcon}>🎬</Text>
+                              </View>
+                            )}
+                            <View style={styles.premiumCardBody}>
+                              <Text style={[styles.premiumCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
+                                {item.title || 'Untitled Film'}
+                              </Text>
+
+                              <Text style={[styles.premiumCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
+                                {item.description || 'Watch this amazing short film on CineLink.'}
+                              </Text>
+
+                              <View style={styles.premiumTagsRow}>
+                                <View style={[styles.premiumBadge, {backgroundColor: Colors.primaryFaint}]}>
+                                  <Text style={[styles.premiumBadgeText, {color: Colors.primary}]}>
+                                    🎬 {item.genre || 'Drama'}
+                                  </Text>
+                                </View>
+                                {item.duration ? (
+                                  <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
+                                    <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
+                                      ⏱️ {item.duration} mins
+                                    </Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+                );
+
+              case 'contests':
+                return (
+                  <View style={styles.listContainer}>
+                    {contestsLoading ? (
+                      <ActivityIndicator color={Colors.primary} style={styles.loader} />
+                    ) : contests.length === 0 ? (
+                      <EmptyState
+                        icon="🏆"
+                        title="No contests found"
+                        subtitle="Active contests will show up here"
+                      />
+                    ) : (
+                      contests.map(item => {
+                        const imgUri = item.imageUrl || item.bannerUrl;
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            style={[
+                              styles.premiumCard,
+                              {backgroundColor: Colors.card, borderColor: Colors.border},
+                            ]}
+                            onPress={() => navigation.navigate('Contests')}
+                            activeOpacity={0.95}>
+                            {imgUri ? (
+                              <View style={styles.premiumCardImageContainer}>
+                                <Image
+                                  source={{uri: imgUri}}
+                                  style={[
+                                    styles.premiumCardImage,
+                                    {
+                                      transform: [{ translateY: item.posterOffset || item.bannerOffset || 0 }]
+                                    }
+                                  ]}
+                                />
+                              </View>
+                            ) : (
+                              <View style={[styles.premiumCardImagePlaceholder, {backgroundColor: Colors.cardElevated}]}>
+                                <Text style={styles.premiumCardPlaceholderIcon}>🏆</Text>
+                              </View>
+                            )}
+                            <View style={styles.premiumCardBody}>
+                              <Text style={[styles.premiumCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
+                                {item.title}
+                              </Text>
+
+                              <Text style={[styles.premiumCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
+                                {item.description || 'Join this contest and showcase your creative skills.'}
+                              </Text>
+
+                              <View style={styles.premiumTagsRow}>
+                                <View style={[styles.premiumBadge, {backgroundColor: Colors.errorFaint}]}>
+                                  <Text style={[styles.premiumBadgeText, {color: Colors.error}]}>
+                                    ⏳ {getDaysLeft(item.deadline || item.endDate)}
+                                  </Text>
+                                </View>
+                                <View style={[styles.premiumBadge, {backgroundColor: Colors.primaryFaint}]}>
+                                  <Text style={[styles.premiumBadgeText, {color: Colors.primary}]}>
+                                    🏆 Prize: ₹ {item.prizePool || 'TBD'}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+                );
+
+              case 'quick_posts':
+                const quickPosts = feedPosts.filter((p: any) => p.postType === 'general');
+                return (
+                  <View style={styles.listContainer}>
+                    {feedPostsLoading ? (
+                      <ActivityIndicator color={Colors.primary} style={styles.loader} />
+                    ) : quickPosts.length === 0 ? (
+                      <EmptyState
+                        icon="⚡"
+                        title="No quick posts yet"
+                        subtitle="Publish updates to the community feed!"
+                      />
+                    ) : (
+                      quickPosts.map(item => {
+                        const imgUri = item.imageUrl || item.mediaUrl;
+                        return (
+                          <View
+                            key={item.id}
+                            style={[
+                              styles.premiumCard,
+                              {backgroundColor: Colors.card, borderColor: Colors.border},
+                            ]}>
+                            {/* Creator Info Header Row */}
+                            {(item.userId) ? (
+                              <View style={styles.creatorHeader}>
+                                <TouchableOpacity
+                                  activeOpacity={0.7}
+                                  onPress={() => {
+                                    navigation.navigate('PublicProfile', {userId: item.userId});
+                                  }}
+                                  style={styles.creatorHeaderLeft}
+                                >
+                                  <Avatar
+                                    name={item.creatorName || 'D'}
+                                    uri={item.creatorPhotoUrl}
+                                    size="sm"
+                                    ring
+                                  />
+                                  <View style={styles.creatorInfo}>
+                                    <Text style={styles.creatorName} numberOfLines={1}>
+                                      {item.creatorName || 'Community Member'}
+                                    </Text>
+                                    <Text style={styles.creatorRole}>
+                                      {item.creatorRole || 'Creator'} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
+                                    </Text>
+                                  </View>
+                                </TouchableOpacity>
+
+                                {item.userId !== currentUser?.uid && (
+                                  <TouchableOpacity
+                                    style={[styles.followBtn, followingIds.has(item.userId) && styles.followingBtn]}
+                                    onPress={() => toggleFollowUser(item.userId)}
+                                    activeOpacity={0.7}>
+                                    <Text style={[styles.followBtnText, followingIds.has(item.userId) && styles.followingBtnText]}>
+                                      {followingIds.has(item.userId) ? '✓ Following' : '+ Follow'}
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            ) : null}
+
+                            {imgUri ? (
+                              <View style={styles.premiumCardImageContainer}>
+                                <Image
+                                  source={{uri: imgUri}}
+                                  style={[
+                                    styles.premiumCardImage,
+                                    {
+                                      transform: [{ translateY: item.imageOffset || 0 }]
+                                    }
+                                  ]}
+                                />
+                              </View>
+                            ) : null}
+                            <View style={styles.premiumCardBody}>
+
+                              <Text style={[styles.premiumCardDesc, {color: Colors.textPrimary, marginVertical: Spacing.sm}]}>
+                                {item.text}
+                              </Text>
+
+                              {item.location ? (
+                                <View style={styles.premiumTagsRow}>
+                                  <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
+                                    <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
+                                      📍 {item.location}
+                                    </Text>
+                                  </View>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+                        );
+                      })
+                    )}
+                  </View>
+                );
+
+              case 'announcements':
+                const announcements = feedPosts.filter((p: any) => p.postType === 'announcement');
+                return (
+                  <View style={styles.listContainer}>
+                    {feedPostsLoading ? (
+                      <ActivityIndicator color={Colors.primary} style={styles.loader} />
+                    ) : announcements.length === 0 ? (
+                      <EmptyState
+                        icon="📢"
+                        title="No announcements yet"
+                        subtitle="Stay tuned for official updates!"
+                      />
+                    ) : (
+                      announcements.map(item => {
+                        const imgUri = item.imageUrl || item.mediaUrl;
+                        return (
+                          <View
+                            key={item.id}
+                            style={[
+                              styles.premiumCard,
+                              {backgroundColor: Colors.card, borderColor: Colors.border},
+                            ]}>
+                            {imgUri ? (
+                              <View style={styles.premiumCardImageContainer}>
+                                <Image
+                                  source={{uri: imgUri}}
+                                  style={[
+                                    styles.premiumCardImage,
+                                    {
+                                      transform: [{ translateY: item.imageOffset || 0 }]
+                                    }
+                                  ]}
+                                />
+                              </View>
+                            ) : null}
+                            <View style={styles.premiumCardBody}>
+                              <View style={styles.premiumCardHeaderRow}>
+                                <View style={[styles.premiumBadge, {backgroundColor: Colors.errorFaint}]}>
+                                  <Text style={[styles.premiumBadgeText, {color: Colors.error, fontSize: 9}]}>
+                                    📢 Announcement
+                                  </Text>
+                                </View>
+                                <Text style={{fontSize: 10, color: Colors.textSecondary}}>
+                                  {new Date(item.createdAt).toLocaleDateString()}
+                                </Text>
+                              </View>
+
+                              <Text style={[styles.premiumCardDesc, {color: Colors.textPrimary, marginVertical: Spacing.sm}]}>
+                                {item.text}
+                              </Text>
+
+                              {item.location ? (
+                                <View style={styles.premiumTagsRow}>
+                                  <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
+                                    <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
+                                      📍 {item.location}
+                                    </Text>
+                                  </View>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+                        );
+                      })
+                    )}
+                  </View>
+                );
+            }
+          })()}
 
           {/* ── TOP INFLUENCERS TO FOLLOW ── */}
           {renderSectionHeader('Top Influencers to Follow', () =>
@@ -1242,6 +1438,123 @@ const SliderIcon = ({
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.background},
+
+  tabBarContainer: {
+    marginVertical: Spacing.md,
+  },
+  tabBarScroll: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    alignItems: 'center',
+  },
+  tabItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  tabItemText: {
+    fontSize: 13,
+    letterSpacing: 0.1,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  listContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: 40,
+  },
+  tabAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.md,
+  },
+  tabAddButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  premiumCard: {
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  premiumCardImageContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    overflow: 'hidden',
+  },
+  premiumCardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  premiumCardImagePlaceholder: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  premiumCardPlaceholderIcon: {
+    fontSize: 40,
+  },
+  premiumCardBody: {
+    padding: Spacing.md,
+  },
+  premiumCardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  premiumCardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  premiumBookmarkBtn: {
+    padding: Spacing.xs,
+  },
+  premiumCardDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: Spacing.md,
+  },
+  premiumTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+    alignItems: 'center',
+  },
+  premiumBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+  },
+  premiumBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  loader: {
+    marginVertical: Spacing.xl,
+  },
 
   // Header
   topHeader: {
@@ -1985,5 +2298,136 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     marginHorizontal: 1,
+  },
+  quickAccessScroll: {
+    flexDirection: 'row',
+    paddingLeft: Spacing.lg,
+    paddingRight: Spacing.md,
+    gap: Spacing.md,
+    paddingBottom: Spacing.xs,
+  },
+  filmsHorizontalScroll: {
+    paddingLeft: Spacing.lg,
+    paddingRight: Spacing.md,
+    gap: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  filmCardCompact: {
+    width: 140,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  filmPosterCompact: {
+    width: '100%',
+    height: 100,
+  },
+  filmPosterFallback: {
+    width: '100%',
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filmPosterFallbackIcon: {
+    fontSize: 28,
+  },
+  filmMetaCompact: {
+    padding: Spacing.sm,
+  },
+  filmTitleCompact: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filmGenreCompact: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+  filmDirectorCompact: {
+    fontSize: 9,
+    marginTop: 2,
+  },
+  announcementCardCompact: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  announcementHeaderCompact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  announcementBadgeCompact: {
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+  },
+  announcementBadgeTextCompact: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  announcementTimeCompact: {
+    fontSize: 10,
+  },
+  announcementBodyCompact: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: Spacing.xs,
+  },
+  announcementLocationCompact: {
+    fontSize: 10,
+  },
+  creatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  creatorHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  creatorInfo: {
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  creatorName: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+  },
+  creatorRole: {
+    ...Typography.micro,
+    color: Colors.textSecondary,
+  },
+  followBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xs,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  followingBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  followBtnText: {
+    color: Colors.textInverse,
+    fontWeight: '700',
+    fontSize: 11,
+    ...Typography.bodyBold,
+  },
+  followingBtnText: {
+    color: Colors.primary,
   },
 });

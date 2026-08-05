@@ -23,6 +23,7 @@ export default function BrowseFilmsScreen({navigation}: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
 
   const fetchFilms = useCallback(async () => {
     try {
@@ -35,22 +36,64 @@ export default function BrowseFilmsScreen({navigation}: any) {
     }
   }, []);
 
+  const fetchFollowing = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const followRes = await api.get<any>(`/users/${currentUser.uid}/following`);
+      const followingList = followRes.following || [];
+      setFollowingIds(new Set(followingList.map((u: any) => u._id || u.id)));
+    } catch (e) {
+      console.log('Error fetching following:', e);
+    }
+  }, [currentUser]);
+
+  const toggleFollowUser = async (targetId: string) => {
+    const isCurrentlyFollowing = followingIds.has(targetId);
+
+    setFollowingIds(prev => {
+      const next = new Set(prev);
+      if (isCurrentlyFollowing) {
+        next.delete(targetId);
+      } else {
+        next.add(targetId);
+      }
+      return next;
+    });
+
+    try {
+      await api.post('/users/follow', {targetUserId: targetId});
+    } catch (e) {
+      setFollowingIds(prev => {
+        const next = new Set(prev);
+        if (isCurrentlyFollowing) {
+          next.add(targetId);
+        } else {
+          next.delete(targetId);
+        }
+        return next;
+      });
+      Alert.alert('Error', 'Could not update follow status.');
+    }
+  };
+
   useEffect(() => {
     fetchFilms();
-  }, [fetchFilms]);
+    fetchFollowing();
+  }, [fetchFilms, fetchFollowing]);
 
   useEffect(() => {
     const unsub = navigation.addListener('focus', () => {
       fetchFilms();
+      fetchFollowing();
     });
     return unsub;
-  }, [navigation, fetchFilms]);
+  }, [navigation, fetchFilms, fetchFollowing]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchFilms();
+    await Promise.all([fetchFilms(), fetchFollowing()]);
     setRefreshing(false);
-  }, [fetchFilms]);
+  }, [fetchFilms, fetchFollowing]);
 
   const toggleLike = async (film: any) => {
     if (!currentUser) return;
@@ -87,32 +130,52 @@ export default function BrowseFilmsScreen({navigation}: any) {
 
   const renderCard = ({item}: {item: any}) => {
     const isLiked = item.likedBy?.includes(currentUser?.uid);
-    const isOwner = item.directorId === currentUser?.uid;
+    const isOwner = item.userId === currentUser?.uid || item.directorId === currentUser?.uid;
+    const creatorId = item.userId || item.directorId;
 
     return (
       <View style={styles.card}>
         <View style={styles.filmCardHeader}>
-          <Avatar
-            name={item.directorName || item.directorEmail}
-            size="sm"
-            ring
-            verified={item.verified}
-          />
-          <View style={{flex: 1, marginLeft: Spacing.sm}}>
-            <Text style={styles.filmDirectorName} numberOfLines={1}>
-              {item.directorName || item.directorEmail?.split('@')[0] || 'Director'}
-            </Text>
-            <Text style={styles.filmDirectorMeta}>
-              Director · {item.genre || 'Film'}
-            </Text>
-          </View>
-          <View style={styles.viewsChip}>
-            <Text style={styles.viewsChipText}>👁 {item.views || 0}</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => creatorId && navigation.navigate('PublicProfile', {userId: creatorId})}
+            style={styles.creatorHeaderLeft}>
+            <Avatar
+              name={item.creatorName || item.directorName || item.userEmail || item.directorEmail}
+              uri={item.creatorPhotoUrl || item.directorPhotoUrl}
+              size="sm"
+              ring
+              verified={item.verified}
+            />
+            <View style={{flex: 1, marginLeft: Spacing.sm}}>
+              <Text style={styles.filmDirectorName} numberOfLines={1}>
+                {item.creatorName || item.directorName || item.userEmail?.split('@')[0] || 'Director'}
+              </Text>
+              <Text style={styles.filmDirectorMeta}>
+                {item.creatorRole || 'Director'} · {item.genre || 'Film'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: Spacing.xs}}>
+            {creatorId && creatorId !== currentUser?.uid && (
+              <TouchableOpacity
+                style={[styles.followBtn, followingIds.has(creatorId) && styles.followingBtn]}
+                onPress={() => toggleFollowUser(creatorId)}
+                activeOpacity={0.7}>
+                <Text style={[styles.followBtnText, followingIds.has(creatorId) && styles.followingBtnText]}>
+                  {followingIds.has(creatorId) ? '✓ Following' : '+ Follow'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <View style={styles.viewsChip}>
+              <Text style={styles.viewsChipText}>👁 {item.views || 0}</Text>
+            </View>
           </View>
         </View>
 
-        {item.posterUrl ? (
-          <Image source={{uri: item.posterUrl}} style={styles.poster} resizeMode="cover" />
+        {item.posterUrl && item.posterUrl.trim().startsWith('http') ? (
+          <Image source={{uri: item.posterUrl.trim()}} style={styles.poster} resizeMode="cover" />
         ) : (
           <View style={styles.posterPlaceholder}>
             <Text style={styles.posterPlaceholderText}>🎬</Text>
@@ -154,7 +217,7 @@ export default function BrowseFilmsScreen({navigation}: any) {
         <View style={styles.filmBtnRow}>
           <TouchableOpacity
             style={styles.watchBtn}
-            onPress={() => navigation.navigate('MovieDetails', {movie: item})}>
+            onPress={() => navigation.navigate('FilmDetail', {film: item})}>
             <Text style={styles.watchBtnText}>Watch Now →</Text>
           </TouchableOpacity>
 
@@ -170,7 +233,7 @@ export default function BrowseFilmsScreen({navigation}: any) {
 
   return (
     <View style={styles.root}>
-      <Header title="🎬 Browse Short Films" navigation={navigation} onBack={() => navigation.goBack()} />
+      <Header title="Browse Short Films" navigation={navigation} onBack={() => navigation.goBack()} />
       <View style={styles.searchContainer}>
         <Input
           value={searchText}
@@ -343,5 +406,35 @@ const styles = StyleSheet.create({
     color: Colors.error,
     fontWeight: 'bold',
     ...Typography.label,
+  },
+  creatorHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  followBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xs,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  followingBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  followBtnText: {
+    color: Colors.textInverse,
+    fontWeight: '700',
+    fontSize: 11,
+    ...Typography.bodyBold,
+  },
+  followingBtnText: {
+    color: Colors.primary,
   },
 });

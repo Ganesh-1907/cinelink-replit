@@ -42,10 +42,12 @@ export default function UploadFilmScreen({navigation, route}: any) {
   const [uploadType, setUploadType] = useState<'link' | 'file'>('link');
   const [posterUri, setPosterUri] = useState<string | null>(null);
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  const [posterOffset, setPosterOffset] = useState(0);
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
   const {user, isAdmin, isApprovedDirector} = useApp();
 
   useEffect(() => {
@@ -70,6 +72,14 @@ export default function UploadFilmScreen({navigation, route}: any) {
       setPosterUrl(editingFilm.posterUrl || '');
       if (editingFilm.posterUrl) {
         setPosterUri(editingFilm.posterUrl);
+        Image.getSize(editingFilm.posterUrl, (width, height) => {
+          if (width && height) {
+            setImageAspectRatio(width / height);
+          }
+        }, () => {});
+      }
+      if (editingFilm.posterOffset) {
+        setPosterOffset(editingFilm.posterOffset);
       }
       if (editingFilm.videoLink) {
         setUploadType('link');
@@ -88,6 +98,11 @@ export default function UploadFilmScreen({navigation, route}: any) {
       setPosterUri(uri);
       setPosterUrl(null);
       setUploadingPoster(true);
+      Image.getSize(uri, (width, height) => {
+        if (width && height) {
+          setImageAspectRatio(width / height);
+        }
+      });
       try {
         const res = await uploadImage(uri);
         setPosterUrl(res.secureUrl);
@@ -137,6 +152,10 @@ export default function UploadFilmScreen({navigation, route}: any) {
       );
       return;
     }
+    if (!posterUrl) {
+      Alert.alert('Poster Required', 'Please select and upload a film poster.');
+      return;
+    }
     if (uploadType === 'link' && !videoLink.trim()) {
       Alert.alert('Missing Link', 'Please paste your video link.');
       return;
@@ -157,6 +176,7 @@ export default function UploadFilmScreen({navigation, route}: any) {
         genre: selectedGenres.join(', '),
         duration: duration.trim(),
         posterUrl: posterUrl || '',
+        posterOffset: posterOffset || 0,
         videoLink: uploadType === 'link' ? videoLink.trim() : '',
         videoUrl: uploadType === 'file' ? videoUrl : '',
       };
@@ -206,43 +226,66 @@ export default function UploadFilmScreen({navigation, route}: any) {
 
           {/* Section 1: Film Poster */}
           <View style={styles.sectionHeaderContainer}>
-            <Text style={styles.sectionLabel}>Film Poster</Text>
-            <Text style={styles.sectionSubtitle}>Add a high-quality thumbnail banner for your film</Text>
+            <Text style={styles.sectionLabel}>Film Poster *</Text>
+            <Text style={styles.sectionSubtitle}>Add a high-quality thumbnail banner for your film (Required)</Text>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.posterPicker}
-            onPress={pickPoster}>
-            {posterUri ? (
-              <>
-                <Image source={{uri: posterUri}} style={styles.posterImage} />
-                <View style={styles.posterOverlay}>
-                  <Text style={{fontSize: 22}}>📷</Text>
-                  <Text style={styles.posterOverlayText}>Change Poster</Text>
+          <View style={styles.posterWrapper}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.posterPicker}
+              onPress={pickPoster}>
+              {posterUri ? (
+                <>
+                  <View style={[styles.posterImageContainer, {aspectRatio: imageAspectRatio}]}>
+                    <Image
+                      source={{uri: posterUri}}
+                      style={[
+                        styles.posterImage,
+                        {
+                          transform: [{ translateY: posterOffset }]
+                        }
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.posterOverlay}>
+                    <Text style={{fontSize: 22}}>📷</Text>
+                    <Text style={styles.posterOverlayText}>Change Poster</Text>
+                  </View>
+                  {uploadingPoster && (
+                    <View style={styles.overlay}>
+                      <ActivityIndicator color={Colors.primary} />
+                      <Text style={styles.overlayText}>Uploading poster...</Text>
+                    </View>
+                  )}
+                  {posterUrl && !uploadingPoster && (
+                    <View style={styles.doneBadge}>
+                      <Text style={styles.doneBadgeText}>✅ Uploaded</Text>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <View style={styles.posterEmpty}>
+                  <Text style={styles.posterIcon}>📤</Text>
+                  <Text style={styles.posterEmptyText}>Upload Poster *</Text>
+                  <Text style={styles.posterEmptySub}>
+                    Recommended size 16:9 image (Max 5MB)
+                  </Text>
                 </View>
-                {uploadingPoster && (
-                  <View style={styles.overlay}>
-                    <ActivityIndicator color={Colors.primary} />
-                    <Text style={styles.overlayText}>Uploading poster...</Text>
-                  </View>
-                )}
-                {posterUrl && !uploadingPoster && (
-                  <View style={styles.doneBadge}>
-                    <Text style={styles.doneBadgeText}>✅ Uploaded</Text>
-                  </View>
-                )}
-              </>
-            ) : (
-              <View style={styles.posterEmpty}>
-                <Text style={styles.posterIcon}>📤</Text>
-                <Text style={styles.posterEmptyText}>Upload Poster</Text>
-                <Text style={styles.posterEmptySub}>
-                  Recommended size 16:9 image (Max 5MB)
-                </Text>
+              )}
+            </TouchableOpacity>
+
+            {posterUri ? (
+              <View style={styles.repositionContainer}>
+                <Text style={styles.repositionLabel}>Adjust Portion Display (Vertical Crop)</Text>
+                <View style={styles.repositionButtons}>
+                  <TouchableOpacity onPress={() => setPosterOffset(prev => Math.max(-100, prev - 5))} style={styles.repositionBtn}><Text style={styles.repositionBtnText}>▲ Shift Up</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setPosterOffset(0)} style={styles.repositionBtn}><Text style={styles.repositionBtnText}>↺ Reset</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setPosterOffset(prev => Math.min(100, prev + 5))} style={styles.repositionBtn}><Text style={styles.repositionBtnText}>▼ Shift Down</Text></TouchableOpacity>
+                </View>
               </View>
-            )}
-          </TouchableOpacity>
+            ) : null}
+          </View>
 
           {/* Section 2: Basic Details */}
           <View style={styles.sectionHeaderContainer}>
@@ -472,7 +515,6 @@ const styles = StyleSheet.create({
   },
   posterPicker: {
     width: '100%',
-    height: 180,
     borderRadius: Radius.card,
     overflow: 'hidden',
     borderWidth: 1.5,
@@ -482,6 +524,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  posterImageContainer: {
+    width: '100%',
+    overflow: 'hidden',
   },
   posterImage: {width: '100%', height: '100%', resizeMode: 'cover'},
   posterOverlay: {
@@ -498,6 +544,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   posterEmpty: {
+    width: '100%',
+    aspectRatio: 16 / 9,
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.lg,
@@ -518,6 +566,41 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Inter-Regular',
     marginTop: 2,
+  },
+  posterWrapper: {
+    marginBottom: Spacing.md,
+  },
+  repositionContainer: {
+    backgroundColor: Colors.cardElevated,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  repositionLabel: {
+    color: Colors.textSecondary,
+    ...Typography.captionBold,
+    marginBottom: Spacing.sm,
+  },
+  repositionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  repositionBtn: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.button,
+    paddingVertical: Spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  repositionBtnText: {
+    color: Colors.textPrimary,
+    ...Typography.captionBold,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

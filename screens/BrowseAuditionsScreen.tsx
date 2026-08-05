@@ -14,7 +14,7 @@ import api from '../src/api/client';
 import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
-import {Header, Input, Chip, EmptyState, SkeletonCard} from '../components/ui';
+import {Header, Input, Chip, EmptyState, SkeletonCard, Avatar} from '../components/ui';
 
 const ROLES = ['All', 'Hero', 'Heroine', 'Villain', 'Supporting', 'Child Artist', 'Comedian', 'Any Role'];
 
@@ -27,6 +27,7 @@ export default function BrowseAuditionsScreen({navigation}: any) {
   const [searchText, setSearchText] = useState('');
   const [selectedRole, setSelectedRole] = useState('All');
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
 
   const fetchAuditions = useCallback(async () => {
     try {
@@ -47,24 +48,66 @@ export default function BrowseAuditionsScreen({navigation}: any) {
     } catch (e) { /* ignore */ }
   }, [currentUser]);
 
+  const fetchFollowing = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const followRes = await api.get<any>(`/users/${currentUser.uid}/following`);
+      const followingList = followRes.following || [];
+      setFollowingIds(new Set(followingList.map((u: any) => u._id || u.id)));
+    } catch (e) {
+      console.log('Error fetching following:', e);
+    }
+  }, [currentUser]);
+
+  const toggleFollowUser = async (targetId: string) => {
+    const isCurrentlyFollowing = followingIds.has(targetId);
+
+    setFollowingIds(prev => {
+      const next = new Set(prev);
+      if (isCurrentlyFollowing) {
+        next.delete(targetId);
+      } else {
+        next.add(targetId);
+      }
+      return next;
+    });
+
+    try {
+      await api.post('/users/follow', {targetUserId: targetId});
+    } catch (e) {
+      setFollowingIds(prev => {
+        const next = new Set(prev);
+        if (isCurrentlyFollowing) {
+          next.add(targetId);
+        } else {
+          next.delete(targetId);
+        }
+        return next;
+      });
+      Alert.alert('Error', 'Could not update follow status.');
+    }
+  };
+
   useEffect(() => {
     fetchAuditions();
     fetchSavedIds();
-  }, [fetchAuditions, fetchSavedIds]);
+    fetchFollowing();
+  }, [fetchAuditions, fetchSavedIds, fetchFollowing]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchAuditions(), fetchSavedIds()]);
+    await Promise.all([fetchAuditions(), fetchSavedIds(), fetchFollowing()]);
     setRefreshing(false);
-  }, [fetchAuditions, fetchSavedIds]);
+  }, [fetchAuditions, fetchSavedIds, fetchFollowing]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchAuditions();
       fetchSavedIds();
+      fetchFollowing();
     });
     return unsubscribe;
-  }, [navigation, fetchAuditions, fetchSavedIds]);
+  }, [navigation, fetchAuditions, fetchSavedIds, fetchFollowing]);
 
   const toggleSave = async (audition: any) => {
     if (!currentUser) return;
@@ -103,6 +146,48 @@ export default function BrowseAuditionsScreen({navigation}: any) {
         activeOpacity={0.88} 
         onPress={() => navigation.navigate('AuditionDetail', {audition: item, auditionId: item._id || item.id})}
       >
+        {/* Creator Info Header Row */}
+        {(item.directorId || item.postedById) ? (
+          <View style={styles.creatorHeader}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                const creatorId = item.directorId || item.postedById;
+                if (creatorId) {
+                  navigation.navigate('PublicProfile', {userId: creatorId});
+                }
+              }}
+              style={styles.creatorHeaderLeft}
+            >
+              <Avatar
+                name={item.directorName || 'D'}
+                uri={item.directorPhotoUrl}
+                size="sm"
+                ring
+              />
+              <View style={styles.creatorInfo}>
+                <Text style={styles.creatorName} numberOfLines={1}>
+                  {item.directorName || 'Casting Director'}
+                </Text>
+                <Text style={styles.creatorRole}>
+                  {item.directorRole || 'Casting Director'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {(item.directorId || item.postedById) !== currentUser?.uid && (
+              <TouchableOpacity
+                style={[styles.followBtn, followingIds.has(item.directorId || item.postedById) && styles.followingBtn]}
+                onPress={() => toggleFollowUser(item.directorId || item.postedById)}
+                activeOpacity={0.7}>
+                <Text style={[styles.followBtnText, followingIds.has(item.directorId || item.postedById) && styles.followingBtnText]}>
+                  {followingIds.has(item.directorId || item.postedById) ? '✓ Following' : '+ Follow'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
+
         <View style={styles.cardContent}>
           {/* Left Side: Poster Thumbnail */}
           {hasPoster ? (
@@ -179,7 +264,7 @@ export default function BrowseAuditionsScreen({navigation}: any) {
 
   return (
     <View style={styles.root}>
-      <Header title="Browse Auditions" navigation={navigation} onBack={() => navigation.goBack()} />
+      <Header title="Browse Auditions" />
       <View style={styles.searchContainer}>
         <Input value={searchText} onChangeText={setSearchText} placeholder="Search by title, location, director..." />
       </View>
@@ -391,6 +476,58 @@ const styles = StyleSheet.create({
   },
   deleteActionText: {
     ...Typography.captionBold,
+    color: Colors.primary,
+  },
+  creatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  creatorHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  creatorInfo: {
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  creatorName: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+  },
+  creatorRole: {
+    ...Typography.micro,
+    color: Colors.textSecondary,
+  },
+  followBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xs,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  followingBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  followBtnText: {
+    color: Colors.textInverse,
+    fontWeight: '700',
+    fontSize: 11,
+    ...Typography.bodyBold,
+  },
+  followingBtnText: {
     color: Colors.primary,
   },
 });

@@ -155,7 +155,7 @@ export default function BrowseProjectsScreen({navigation}: any) {
   return (
     <SafeAreaView style={[styles.safe, {backgroundColor: Colors.background}]}>
       <Header
-        title="📂 Projects"
+        title="Projects"
         navigation={navigation}
         right={
           (isAdmin || isApprovedDirector) ? (

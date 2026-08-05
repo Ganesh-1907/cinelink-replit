@@ -95,7 +95,7 @@ export default function ProjectDetailScreen({route, navigation}: any) {
   if (loading && !project.title) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Header title="📂 Project Room" navigation={navigation} />
+        <Header title="Project Room" navigation={navigation} />
         <ActivityIndicator size="large" color={Colors.primary} style={{marginTop: 60}} />
       </SafeAreaView>
     );
@@ -103,7 +103,7 @@ export default function ProjectDetailScreen({route, navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="📂 Project Room" navigation={navigation} />
+      <Header title="Project Room" navigation={navigation} />
       
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         

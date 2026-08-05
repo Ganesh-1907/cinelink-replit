@@ -12,6 +12,7 @@ import {
   Dimensions,
   Linking,
   StatusBar,
+  Modal,
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
 import {
@@ -85,6 +86,7 @@ export default function MyProfileScreen({navigation, route}: any) {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [applicationsCount, setApplicationsCount] = useState(0);
+  const [showFullAvatar, setShowFullAvatar] = useState(false);
 
   // Gallery
   const [portfolioMedia, setPortfolioMedia] = useState<string[]>([]);
@@ -525,7 +527,7 @@ export default function MyProfileScreen({navigation, route}: any) {
         contentContainerStyle={
           !isEditing
             ? {
-                paddingTop: Spacing.sm,
+                paddingTop: 0,
                 paddingBottom: insets.bottom + Spacing.xl,
               }
             : undefined
@@ -580,7 +582,10 @@ export default function MyProfileScreen({navigation, route}: any) {
             {/* Top row: Avatar on left, Stats on right */}
             <View style={styles.instagramTopRow}>
               {/* Avatar with verified badge overlap */}
-              <View style={styles.instagramAvatarContainer}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setShowFullAvatar(true)}
+                style={styles.instagramAvatarContainer}>
                 <Avatar
                   uri={avatarUri}
                   name={name || user?.email}
@@ -592,7 +597,7 @@ export default function MyProfileScreen({navigation, route}: any) {
                     <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
 
               {/* Stats column block */}
               <View style={styles.instagramStatsContainer}>
@@ -1323,6 +1328,36 @@ export default function MyProfileScreen({navigation, route}: any) {
         doubleTapToZoomEnabled
         backgroundColor="black"
       />
+
+      {/* FULL AVATAR IMAGE VIEW MODAL */}
+      <Modal
+        visible={showFullAvatar}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFullAvatar(false)}
+      >
+        <TouchableOpacity
+          style={styles.avatarModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFullAvatar(false)}
+        >
+          <View style={styles.avatarModalContent}>
+            {avatarUri ? (
+              <Image
+                source={{uri: avatarUri}}
+                style={styles.avatarModalImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.avatarModalImage, styles.avatarModalPlaceholder]}>
+                <Text style={styles.avatarModalPlaceholderText}>
+                  {name ? name.substring(0, 1).toUpperCase() : '?'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -1333,7 +1368,7 @@ const styles = StyleSheet.create({
 
   instagramHeaderContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 4,
     paddingBottom: 16,
   },
   instagramTopRow: {
@@ -2237,5 +2272,37 @@ const styles = StyleSheet.create({
   profileIconBtnText: {
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+  avatarModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalContent: {
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    backgroundColor: Colors.cardElevated,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 130,
+  },
+  avatarModalPlaceholder: {
+    backgroundColor: Colors.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalPlaceholderText: {
+    color: Colors.primary,
+    fontSize: 72,
+    fontWeight: '700',
   },
 });

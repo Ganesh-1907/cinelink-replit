@@ -64,7 +64,7 @@ export default function PaymentScreen({route, navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="💳 Payment" navigation={navigation} />
+      <Header title="Payment" navigation={navigation} />
       <View style={styles.content}>
         <Card variant="elevated" padding={Spacing.xxl} style={styles.card}>
           <Text style={styles.amountLabel}>Amount</Text>

@@ -16,7 +16,7 @@ import api from '../src/api/client';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {uploadImage} from '../src/services/uploadService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Avatar} from '../components/ui';
+import {Avatar, Header} from '../components/ui';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {useApp} from '../src/context/AppContext';
 import {
@@ -393,14 +393,7 @@ export default function ChatScreen({route, navigation}: any) {
       style={styles.safe}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}>
-      <View style={[styles.header, {paddingTop: insets.top + 4}]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerName}>{headerName}</Text>
-      </View>
+      <Header title={headerName} navigation={navigation} />
 
       {loading ? (
         <ActivityIndicator

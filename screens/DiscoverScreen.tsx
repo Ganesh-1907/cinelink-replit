@@ -21,6 +21,7 @@ import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useApp} from '../src/context/AppContext';
 import PremiumBadge from '../src/components/Premium/PremiumBadge';
+import {Header} from '../components/ui';
 
 const ADMIN_EMAIL = 'anilkumardevarakonda03@gmail.com';
 
@@ -558,20 +559,19 @@ export default function DiscoverScreen({navigation}: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, {paddingTop: insets.top}]}>
+      <View style={styles.container}>
+        <Header title="Discover Creators" />
         <View style={styles.loaderBox}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loaderText}>Finding creators…</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, {paddingTop: insets.top}]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover Creators</Text>
-      </View>
+    <View style={styles.container}>
+      <Header title="Discover Creators" />
       <FlatList
         data={users}
         keyExtractor={item => item._id || item.id}
@@ -608,7 +608,7 @@ export default function DiscoverScreen({navigation}: any) {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -660,21 +660,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
     ...Typography.bodyBold,
-  },
-
-  // ── header ────────────────────────────────────────────────────────
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    backgroundColor: Colors.card,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    ...Typography.title,
   },
 
   // ── card shell ────────────────────────────────────────────────────

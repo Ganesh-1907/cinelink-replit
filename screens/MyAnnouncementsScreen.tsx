@@ -59,7 +59,7 @@ export default function MyAnnouncementsScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="📢 Announcements" navigation={navigation} />
+      <Header title="Announcements" navigation={navigation} />
       <ScrollView contentContainerStyle={[styles.scroll, {paddingBottom: insets.bottom + 40}]}>
         {canManage && (
           <Button

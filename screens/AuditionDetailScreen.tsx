@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Linking,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import api from '../src/api/client';
 import {LiquidPress} from '../components/LiquidPress';
@@ -51,6 +52,11 @@ export default function AuditionDetailScreen({route, navigation}: any) {
   const paramAudition = route?.params?.audition;
   const paramAuditionId = route?.params?.auditionId;
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [commentsY, setCommentsY] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+
   const [audition, setAudition] = useState<any>(paramAudition || null);
   const [fetching, setFetching] = useState(!paramAudition && !!paramAuditionId);
   const [loading, setLoading] = useState(false);
@@ -83,6 +89,31 @@ export default function AuditionDetailScreen({route, navigation}: any) {
         .finally(() => setFetching(false));
     }
   }, []);
+
+  useEffect(() => {
+    if (!audition) return;
+    setLikesCount(audition.likes || 0);
+    if (user?.uid && audition.likedBy) {
+      setLiked(audition.likedBy.includes(user.uid));
+    }
+  }, [audition, user?.uid]);
+
+  const handleLike = async () => {
+    if (!user || !audition?.id) return;
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikesCount(prev => newLiked ? prev + 1 : Math.max(0, prev - 1));
+    try {
+      await api.post(`/auditions/${audition.id}/like`);
+    } catch (e) {
+      setLiked(liked);
+      setLikesCount(prev => newLiked ? Math.max(0, prev - 1) : prev + 1);
+    }
+  };
+
+  const scrollToComments = () => {
+    scrollViewRef.current?.scrollTo({ y: commentsY, animated: true });
+  };
 
   useEffect(() => {
     if (!audition?.id) return;
@@ -328,7 +359,7 @@ export default function AuditionDetailScreen({route, navigation}: any) {
         navigation={navigation}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollViewRef} style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* POSTER */}
         {audition.posterUrl ? (
           <TouchableOpacity
@@ -338,7 +369,15 @@ export default function AuditionDetailScreen({route, navigation}: any) {
             }
             style={styles.posterContainer}
           >
-            <Image source={{uri: audition.posterUrl}} style={styles.poster} />
+            <Image
+              source={{uri: audition.posterUrl}}
+              style={[
+                styles.poster,
+                {
+                  transform: [{ translateY: audition.posterOffset || 0 }]
+                }
+              ]}
+            />
             <View style={styles.tapHint}>
               <Text style={styles.tapHintText}>🔍 Tap for fullscreen</Text>
             </View>
@@ -358,16 +397,44 @@ export default function AuditionDetailScreen({route, navigation}: any) {
               static
             />
             {applied && <Chip label="✅ Applied" variant="info" static />}
-            <TouchableOpacity
-              style={[styles.saveBtn, saved && styles.saveBtnActive]}
-              onPress={toggleSave}>
-              <Text style={styles.saveBtnText}>
-                {saved ? '❤️ Saved' : '🤍 Save'}
-              </Text>
-            </TouchableOpacity>
+
+            <View style={styles.rightActionsRow}>
+              <TouchableOpacity
+                style={[styles.saveBtn, saved && styles.saveBtnActive]}
+                onPress={toggleSave}>
+                <Text style={styles.saveBtnText}>
+                  {saved ? '❤️ Saved' : '🤍 Save'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.applyBtn,
+                  applied && styles.applyBtnDone,
+                  loading && { opacity: 0.7 }
+                ]}
+                onPress={applyNow}
+                disabled={applied || loading}
+              >
+                <Text style={[styles.applyBtnText, applied && styles.applyBtnTextDone]}>
+                  {loading ? '...' : applied ? '✓ Applied' : 'Apply Now'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <Text style={styles.title}>{audition.title}</Text>
+
+          {/* WHATSAPP CONTACT ACTION */}
+          {phoneNumber && (
+            <TouchableOpacity
+              style={styles.whatsappBtnMain}
+              onPress={openWhatsApp}>
+              <Text style={styles.whatsappBtnTextMain}>
+                📱 WhatsApp Chat
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* MOCKUP SPECS ROW */}
           <View style={styles.specsRow}>
@@ -388,6 +455,27 @@ export default function AuditionDetailScreen({route, navigation}: any) {
               <Text style={styles.specValue} numberOfLines={1}>{audition.positions || '1'}</Text>
             </View>
           </View>
+
+          {/* ENGAGEMENT CARD */}
+          <Card variant="elevated" style={styles.engagementCard}>
+            <View style={styles.engagementRow}>
+              <TouchableOpacity onPress={handleLike} style={styles.engagementBtn}>
+                <Text style={styles.engagementText}>
+                  {liked ? '❤️' : '🤍'} {likesCount}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={scrollToComments} style={styles.engagementBtn}>
+                <Text style={styles.engagementText}>
+                  💬 {comments.length}
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.engagementBtn}>
+                <Text style={styles.engagementText}>
+                  👁 {audition.views || 0}
+                </Text>
+              </View>
+            </View>
+          </Card>
 
           {/* MORE DETAILED META INFO */}
           <View style={styles.detailsList}>
@@ -676,7 +764,12 @@ export default function AuditionDetailScreen({route, navigation}: any) {
           )}
 
           {/* COMMENTS SECTION */}
-          <View style={styles.commentsSection}>
+          <View
+            style={styles.commentsSection}
+            onLayout={(event) => {
+              const layout = event.nativeEvent.layout;
+              setCommentsY(layout.y);
+            }}>
             <Text style={styles.sectionTitle}>
               💬 Comments ({comments.length})
             </Text>
@@ -759,51 +852,69 @@ export default function AuditionDetailScreen({route, navigation}: any) {
         </View>
       </ScrollView>
 
-      {/* FLOATING ACTION BOTTOM FOOTER */}
-      <View style={[styles.floatingFooter, {paddingBottom: Math.max(insets.bottom, Spacing.md)}]}>
-        <View style={styles.footerButtonRow}>
-          <LiquidPress
-            style={[
-              styles.applyBtn,
-              {flex: phoneNumber ? 1.2 : 1},
-              applied && styles.applyBtnDone,
-            ]}
-            onPress={applyNow}
-            disabled={applied || loading}>
-            {loading ? (
-              <ActivityIndicator color={Colors.textInverse} />
-            ) : (
-              <Text style={[styles.applyBtnText, applied && styles.applyBtnTextDone]}>
-                {applied
-                  ? '✓ Applied'
-                  : showNoteInput
-                  ? '🚀 Submit Application'
-                  : 'Apply Now →'}
-              </Text>
-            )}
-          </LiquidPress>
-          {phoneNumber && (
-            <TouchableOpacity
-              style={styles.whatsappBtn}
-              onPress={openWhatsApp}>
-              <Text style={styles.whatsappBtnText} numberOfLines={1}>
-                📱 WhatsApp
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* APPLICATION NOTE MODAL */}
+      <Modal
+        visible={showNoteInput && !applied}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowNoteInput(false);
+          setNote('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Apply for Audition</Text>
+            <Text style={styles.modalSubtitle}>Include a message for the director (optional):</Text>
+            <TextInput
+              style={[
+                styles.noteTextInput,
+                {
+                  color: Colors.textPrimary,
+                  backgroundColor: Colors.inputBg,
+                  borderColor: Colors.border,
+                }
+              ]}
+              placeholder="Introduce yourself or leave a message..."
+              placeholderTextColor={Colors.textTertiary}
+              value={note}
+              onChangeText={setNote}
+              multiline
+            />
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity
+                style={styles.cancelNoteBtn}
+                onPress={() => {
+                  setShowNoteInput(false);
+                  setNote('');
+                }}>
+                <Text style={styles.cancelNoteText}>✕ Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.skipNoteBtn}
+                onPress={() => {
+                  setNote('');
+                  applyNow();
+                }}>
+                <Text style={styles.skipNoteText}>Skip & Apply</Text>
+              </TouchableOpacity>
 
-        {showNoteInput && !applied && (
-          <TouchableOpacity
-            style={styles.skipBtn}
-            onPress={() => {
-              setNote('');
-              applyNow();
-            }}>
-            <Text style={styles.skipBtnText}>Skip note & apply directly</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+              <TouchableOpacity
+                style={[styles.submitNoteBtn, {backgroundColor: Colors.primary}]}
+                onPress={applyNow}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={Colors.textInverse} size="small" />
+                ) : (
+                  <Text style={styles.submitNoteText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -818,7 +929,7 @@ const styles = StyleSheet.create({
   },
   notFoundText: {color: Colors.textPrimary, ...Typography.body},
   container: {flex: 1, backgroundColor: Colors.background},
-  scrollContent: {paddingBottom: 150},
+  scrollContent: {paddingBottom: 40},
   posterContainer: {width: '100%', aspectRatio: 16 / 9, overflow: 'hidden'},
   poster: {width: '100%', height: '100%', resizeMode: 'cover'},
   tapHint: {
@@ -854,7 +965,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs + 2,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    marginLeft: 'auto',
   },
   saveBtnActive: {
     backgroundColor: Colors.primaryGlow,
@@ -1074,27 +1184,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     alignItems: 'center',
   },
-  applyBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.button,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.primary,
-  },
-  applyBtnDone: {
-    backgroundColor: Colors.successFaint,
-    borderWidth: 1,
-    borderColor: Colors.success,
-  },
-  applyBtnText: {
-    color: Colors.textInverse,
-    ...Typography.btnLg,
-    fontWeight: 'bold',
-  },
-  applyBtnTextDone: {
-    color: Colors.success,
-  },
+
   whatsappBtn: {
     backgroundColor: '#25D366',
     borderRadius: Radius.button,
@@ -1251,6 +1341,157 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     ...Typography.bodySm,
     lineHeight: 20,
+  },
+  mainApplyContainer: {
+    marginVertical: Spacing.md,
+  },
+  noteInputContainer: {
+    marginTop: Spacing.sm,
+    backgroundColor: Colors.cardElevated,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  noteTextInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+    padding: Spacing.sm,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    fontFamily: Typography.body.fontFamily,
+    fontSize: 14,
+    marginBottom: Spacing.sm,
+  },
+  noteActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cancelNoteBtn: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+  },
+  cancelNoteText: {
+    color: Colors.textSecondary,
+    ...Typography.captionBold,
+  },
+  skipNoteBtn: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+  },
+  skipNoteText: {
+    color: Colors.primary,
+    ...Typography.captionBold,
+    textDecorationLine: 'underline',
+  },
+  whatsappBtnMain: {
+    backgroundColor: '#25D366',
+    borderRadius: Radius.button,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  whatsappBtnTextMain: {
+    color: '#FFFFFF',
+    ...Typography.label,
+    fontWeight: 'bold',
+  },
+  engagementCard: {
+    backgroundColor: Colors.cardElevated,
+    marginVertical: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  engagementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  engagementBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  engagementText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  rightActionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginLeft: 'auto',
+    alignItems: 'center',
+  },
+  applyBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.pill,
+    paddingVertical: Spacing.xs + 2,
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applyBtnDone: {
+    backgroundColor: Colors.cardElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  applyBtnText: {
+    ...Typography.captionBold,
+    color: '#FFFFFF',
+    fontSize: 13,
+  },
+  applyBtnTextDone: {
+    color: Colors.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: Colors.cardElevated,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.md,
+  },
+  modalTitle: {
+    ...Typography.h4,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  modalSubtitle: {
+    ...Typography.bodySm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.md,
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  submitNoteBtn: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 70,
+  },
+  submitNoteText: {
+    color: Colors.textInverse,
+    ...Typography.captionBold,
   },
 });
 

@@ -16,8 +16,16 @@ export default function FilmDetailScreen({route, navigation}: any) {
   const [commentText, setCommentText] = useState('');
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(paramFilm?.likes || 0);
+  const [creator, setCreator] = useState<any>(null);
   const heartScale = useRef(new Animated.Value(1)).current;
   const {user: currentUser} = useApp();
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [commentsY, setCommentsY] = useState(0);
+
+  const scrollToComments = () => {
+    scrollViewRef.current?.scrollTo({ y: commentsY, animated: true });
+  };
 
   useEffect(() => {
     loadFilm();
@@ -31,8 +39,22 @@ export default function FilmDetailScreen({route, navigation}: any) {
         setFilm(res.film);
         setLikesCount(res.film.likes || 0);
         if (res.film.likedBy?.includes(currentUser?.uid)) setLiked(true);
+        if (res.film.userId) {
+          fetchCreatorProfile(res.film.userId);
+        }
       }
     } catch (e) { console.log(e); }
+  };
+
+  const fetchCreatorProfile = async (userId: string) => {
+    try {
+      const res = await api.get<any>(`/users/${userId}`);
+      if (res?.user) {
+        setCreator(res.user);
+      }
+    } catch (e) {
+      console.log('Error fetching creator profile:', e);
+    }
   };
 
   const loadComments = async () => {
@@ -69,8 +91,24 @@ export default function FilmDetailScreen({route, navigation}: any) {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Film Details" navigation={navigation} transparent />
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {film.posterUrl ? <Image source={{uri: film.posterUrl}} style={styles.poster} /> : <View style={styles.posterPlaceholder}><Text style={styles.posterEmoji}>🎬</Text></View>}
+      <ScrollView ref={scrollViewRef} style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {film.posterUrl && film.posterUrl.trim().startsWith('http') ? (
+          <View style={styles.posterContainer}>
+            <Image
+              source={{uri: film.posterUrl.trim()}}
+              style={[
+                styles.poster,
+                {
+                  transform: [{ translateY: film.posterOffset || 0 }]
+                }
+              ]}
+            />
+          </View>
+        ) : (
+          <View style={styles.posterPlaceholder}>
+            <Text style={styles.posterEmoji}>🎬</Text>
+          </View>
+        )}
         <View style={styles.content}>
           <Text style={styles.title}>{film.title}</Text>
           <View style={styles.metaRow}>
@@ -79,18 +117,57 @@ export default function FilmDetailScreen({route, navigation}: any) {
             <Text style={styles.metaText}>👁 {film.views || 0} views</Text>
           </View>
           {film.description ? <View style={styles.section}><Text style={styles.sectionTitle}>Description</Text><Text style={styles.description}>{film.description}</Text></View> : null}
+          
           <View style={styles.actionRow}>
             <Button label="▶ Watch Film" onPress={watchFilm} size="lg" fullWidth />
             <Button label="🔗 Share" onPress={shareFilm} variant="secondary" size="lg" />
           </View>
+
+          {/* Creator Profile Section */}
+          {(creator || film.creatorName) && (
+            <Card variant="elevated" style={styles.creatorCard} padding={Spacing.md}>
+              <Text style={styles.creatorHeaderTitle}>Uploaded By</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  const uid = creator?._id || creator?.id || film.userId;
+                  if (uid) navigation.navigate('PublicProfile', {userId: uid});
+                }}
+                style={styles.creatorRow}>
+                <Avatar
+                  name={creator?.fullName || creator?.displayName || film.creatorName || film.userEmail}
+                  uri={creator?.photoUrl || creator?.photoURL || film.creatorPhotoUrl}
+                  size="md"
+                  ring
+                />
+                <View style={styles.creatorInfo}>
+                  <Text style={styles.creatorName}>
+                    {creator?.fullName || creator?.displayName || film.creatorName || 'Anonymous Creator'}
+                  </Text>
+                  <Text style={styles.creatorRole}>
+                    {creator?.role || film.creatorRole || 'Creator'} · {creator?.location || 'CineLink'}
+                  </Text>
+                </View>
+                <View style={styles.viewProfileChevron}>
+                  <Text style={{color: Colors.primary, fontSize: 18}}>→</Text>
+                </View>
+              </TouchableOpacity>
+            </Card>
+          )}
+
           <Card variant="elevated" style={styles.engagementCard}>
             <View style={styles.engagementRow}>
               <TouchableOpacity onPress={handleLike} hitSlop={HitSlop.lg}><Animated.Text style={[styles.engagementText, {transform: [{scale: heartScale}]}]}>{liked ? '❤️' : '🤍'} {likesCount}</Animated.Text></TouchableOpacity>
-              <Text style={styles.engagementText}>💬 {comments.length}</Text>
+              <TouchableOpacity onPress={scrollToComments} hitSlop={HitSlop.lg}><Text style={styles.engagementText}>💬 {comments.length}</Text></TouchableOpacity>
               <Text style={styles.engagementText}>👁 {film.views || 0}</Text>
             </View>
           </Card>
-          <View style={styles.section}>
+          <View
+            style={styles.section}
+            onLayout={(event) => {
+              const layout = event.nativeEvent.layout;
+              setCommentsY(layout.y);
+            }}>
             <Text style={styles.sectionTitle}>Comments</Text>
             <View style={styles.commentInputRow}>
               <Input value={commentText} onChangeText={setCommentText} placeholder="Write a comment..." containerStyle={styles.commentInput} />
@@ -112,8 +189,9 @@ export default function FilmDetailScreen({route, navigation}: any) {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.background},
   scroll: {flex: 1},
-  poster: {width: '100%', height: 250, resizeMode: 'cover'},
-  posterPlaceholder: {width: '100%', height: 250, backgroundColor: Colors.card, justifyContent: 'center', alignItems: 'center'},
+  posterContainer: {width: '100%', aspectRatio: 16 / 9, overflow: 'hidden', backgroundColor: Colors.card},
+  poster: {width: '100%', height: '100%', resizeMode: 'cover'},
+  posterPlaceholder: {width: '100%', aspectRatio: 16 / 9, backgroundColor: Colors.card, justifyContent: 'center', alignItems: 'center'},
   posterEmoji: {fontSize: 64},
   content: {padding: Spacing.lg, gap: Spacing.lg},
   title: {fontSize: 24, fontWeight: 'bold', color: Colors.textPrimary},
@@ -133,4 +211,38 @@ const styles = StyleSheet.create({
   commentHeader: {flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.xs},
   commentUser: {color: Colors.primary, fontWeight: '600', fontSize: 13},
   commentText: {color: Colors.textPrimary, fontSize: 14},
+  creatorCard: {
+    backgroundColor: Colors.cardElevated,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+  },
+  creatorHeaderTitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  creatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  creatorInfo: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  creatorName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  creatorRole: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  viewProfileChevron: {
+    paddingHorizontal: Spacing.sm,
+  },
 });

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  Modal,
 } from 'react-native';
 import api from '../src/api/client';
 import {Colors, Spacing, Radius} from '../src/theme';
@@ -31,6 +32,7 @@ export default function PublicProfileScreen({route, navigation}: any) {
   const [galleryVisible, setGalleryVisible] = useState<boolean>(false);
   const [featuredGalleryVisible, setFeaturedGalleryVisible] = useState<boolean>(false);
   const [featuredGalleryIndex, setFeaturedGalleryIndex] = useState<number>(0);
+  const [showFullAvatar, setShowFullAvatar] = useState(false);
   const {user: currentUser} = useApp();
   const isOwn = userId === currentUser?.uid;
 
@@ -106,7 +108,10 @@ export default function PublicProfileScreen({route, navigation}: any) {
           {/* Top row: Avatar on left, Stats on right */}
           <View style={styles.instagramTopRow}>
             {/* Avatar with verified badge overlap */}
-            <View style={styles.instagramAvatarContainer}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowFullAvatar(true)}
+              style={styles.instagramAvatarContainer}>
               <Avatar
                 uri={profile.photoUrl}
                 name={profile.fullName || profile.displayName || 'User'}
@@ -118,7 +123,7 @@ export default function PublicProfileScreen({route, navigation}: any) {
                   <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
 
             {/* Stats column block */}
             <View style={styles.instagramStatsContainer}>
@@ -498,6 +503,36 @@ export default function PublicProfileScreen({route, navigation}: any) {
           backgroundColor="black"
         />
       )}
+
+      {/* FULL AVATAR IMAGE VIEW MODAL */}
+      <Modal
+        visible={showFullAvatar}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFullAvatar(false)}
+      >
+        <TouchableOpacity
+          style={styles.avatarModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFullAvatar(false)}
+        >
+          <View style={styles.avatarModalContent}>
+            {profile.photoUrl ? (
+              <Image
+                source={{uri: profile.photoUrl}}
+                style={styles.avatarModalImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.avatarModalImage, styles.avatarModalPlaceholder]}>
+                <Text style={styles.avatarModalPlaceholderText}>
+                  {profile.fullName ? profile.fullName.substring(0, 1).toUpperCase() : '?'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -508,7 +543,7 @@ const styles = StyleSheet.create({
 
   instagramHeaderContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 4,
     paddingBottom: 16,
   },
   instagramTopRow: {
@@ -1071,5 +1106,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textPrimary,
     lineHeight: 22,
+  },
+  avatarModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalContent: {
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    backgroundColor: Colors.cardElevated,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 130,
+  },
+  avatarModalPlaceholder: {
+    backgroundColor: Colors.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalPlaceholderText: {
+    color: Colors.primary,
+    fontSize: 72,
+    fontWeight: '700',
   },
 });

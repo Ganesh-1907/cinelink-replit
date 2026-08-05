@@ -112,7 +112,7 @@ export default function BrowseUpdatesScreen({navigation}: any) {
 
   return (
     <View style={styles.root}>
-      <Header title="📢 Announcements & Updates" navigation={navigation} onBack={() => navigation.goBack()} />
+      <Header title="Announcements & Updates" navigation={navigation} onBack={() => navigation.goBack()} />
       {loading ? (
         <ActivityIndicator color={Colors.primary} size="large" style={{marginTop: 60}} />
       ) : updates.length === 0 ? (

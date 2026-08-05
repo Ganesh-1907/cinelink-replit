@@ -149,7 +149,7 @@ export default function AdminReportsScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="🛡️ Admin" navigation={navigation} />
+      <Header title="Admin" navigation={navigation} />
       {authorized === false ? (
         <View style={styles.unauthorized}>
           <Text style={styles.unauthorizedIcon}>🔒</Text>

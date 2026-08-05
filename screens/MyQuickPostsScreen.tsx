@@ -69,7 +69,7 @@ export default function MyQuickPostsScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="⚡ My Quick Posts" navigation={navigation} />
+      <Header title="My Quick Posts" navigation={navigation} />
       <ScrollView contentContainerStyle={[styles.scroll, {paddingBottom: insets.bottom + 40}]}>
         {canPost && (
           <Button

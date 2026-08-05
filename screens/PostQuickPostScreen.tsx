@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import {launchImageLibrary} from 'react-native-image-picker';
 import api from '../src/api/client';
@@ -24,7 +25,11 @@ export default function PostQuickPostScreen({navigation, route}: any) {
   const isEditing = !!postToEdit;
 
   const [text, setText] = useState('');
-  const [image, setImage] = useState<string | null>(null);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageOffset, setImageOffset] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9);
   const [posting, setPosting] = useState(false);
 
   const canPost = isAdmin || isApprovedDirector;
@@ -40,33 +45,65 @@ export default function PostQuickPostScreen({navigation, route}: any) {
   useEffect(() => {
     if (isEditing && postToEdit) {
       setText(postToEdit.text || '');
-      setImage(postToEdit.imageUrl || null);
+      setImageUrl(postToEdit.imageUrl || null);
+      if (postToEdit.imageUrl) {
+        setImageUri(postToEdit.imageUrl);
+        Image.getSize(postToEdit.imageUrl, (w, h) => {
+          if (w && h) {
+            setImageAspectRatio(w / h);
+          }
+        }, () => {});
+      }
+      if (postToEdit.imageOffset) {
+        setImageOffset(postToEdit.imageOffset);
+      }
     }
   }, [isEditing, postToEdit]);
 
   const pickImage = async () => {
     const result = await launchImageLibrary({mediaType: 'photo', quality: 0.8});
-    if (result.assets?.[0]) {
-      setImage(result.assets[0].uri || null);
+    if (result.assets?.[0]?.uri) {
+      const uri = result.assets[0].uri;
+      setImageUri(uri);
+      setImageUrl(null);
+      setUploading(true);
+      Image.getSize(uri, (w, h) => {
+        if (w && h) {
+          setImageAspectRatio(w / h);
+        }
+      });
+      try {
+        const res = await uploadImage(uri);
+        setImageUrl(res.secureUrl);
+      } catch {
+        Alert.alert('Error', 'Image upload failed.');
+        setImageUri(null);
+        setImageUrl(null);
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
   const handlePost = async () => {
-    if (!text.trim() && !image) {
-      Alert.alert('Empty Post', 'Please write something or attach an image.');
+    if (!text.trim()) {
+      Alert.alert('Missing Info', 'Please write something for the post content.');
+      return;
+    }
+    if (!imageUrl) {
+      Alert.alert('Image Required', 'Please select and upload an image for your quick post.');
+      return;
+    }
+    if (uploading) {
+      Alert.alert('Please Wait', 'Image is still uploading...');
       return;
     }
     setPosting(true);
     try {
-      let imageUrl = image || '';
-      if (image && image.startsWith('file://')) {
-        const result = await uploadImage(image);
-        imageUrl = result.secureUrl;
-      }
-      
       const payload = {
         text: text.trim(),
         imageUrl,
+        imageOffset: imageOffset || 0,
         postType: 'general',
       };
 
@@ -133,40 +170,66 @@ export default function PostQuickPostScreen({navigation, route}: any) {
 
               {/* Section 2: Attachment */}
               <View style={styles.sectionHeaderContainer}>
-                <Text style={styles.sectionLabel}>Image Attachment</Text>
-                <Text style={styles.sectionSubtitle}>Add an image to accompany your post (optional)</Text>
+                <Text style={styles.sectionLabel}>Image Attachment *</Text>
+                <Text style={styles.sectionSubtitle}>Add an image to accompany your post (Required)</Text>
               </View>
 
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.imagePicker}
-                onPress={pickImage}>
-                {image ? (
-                  <>
-                    <Image source={{uri: image}} style={styles.imagePreview} />
-                    <View style={styles.imageOverlay}>
-                      <Text style={{fontSize: 22}}>📷</Text>
-                      <Text style={styles.imageOverlayText}>Change Image</Text>
+              <View style={styles.imageWrapper}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.imagePicker}
+                  onPress={pickImage}>
+                  {imageUri ? (
+                    <>
+                      <View style={[styles.imagePreviewContainer, {aspectRatio: imageAspectRatio}]}>
+                        <Image
+                          source={{uri: imageUri}}
+                          style={[
+                            styles.imagePreview,
+                            {
+                              transform: [{ translateY: imageOffset }]
+                            }
+                          ]}
+                        />
+                      </View>
+                      <View style={styles.imageOverlay}>
+                        <Text style={{fontSize: 22}}>📷</Text>
+                        <Text style={styles.imageOverlayText}>Change Image</Text>
+                      </View>
+                      {uploading && (
+                        <View style={styles.overlay}>
+                          <ActivityIndicator color={Colors.primary} />
+                          <Text style={styles.overlayText}>Uploading image...</Text>
+                        </View>
+                      )}
+                      {imageUrl && !uploading && (
+                        <View style={styles.doneBadge}>
+                          <Text style={styles.doneBadgeText}>✅ Uploaded</Text>
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    <View style={styles.imageEmpty}>
+                      <Text style={styles.imageIcon}>📤</Text>
+                      <Text style={styles.imageEmptyText}>Upload Image *</Text>
+                      <Text style={styles.imageEmptySub}>
+                        Recommended: 16:9 landscape aspect ratio (Max 5MB)
+                      </Text>
                     </View>
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        setImage(null);
-                      }}
-                      style={styles.removeBadge}>
-                      <Text style={styles.removeBadgeText}>🗑️ Remove</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <View style={styles.imageEmpty}>
-                    <Text style={styles.imageIcon}>📤</Text>
-                    <Text style={styles.imageEmptyText}>Upload Image</Text>
-                    <Text style={styles.imageEmptySub}>
-                      Select a photo from gallery (Max 5MB)
-                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {imageUri ? (
+                  <View style={styles.repositionContainer}>
+                    <Text style={styles.repositionLabel}>Adjust Portion Display (Vertical Crop)</Text>
+                    <View style={styles.repositionButtons}>
+                      <TouchableOpacity onPress={() => setImageOffset(prev => Math.max(-100, prev - 5))} style={styles.repositionBtn}><Text style={styles.repositionBtnText}>▲ Shift Up</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => setImageOffset(0)} style={styles.repositionBtn}><Text style={styles.repositionBtnText}>↺ Reset</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => setImageOffset(prev => Math.min(100, prev + 5))} style={styles.repositionBtn}><Text style={styles.repositionBtnText}>▼ Shift Down</Text></TouchableOpacity>
+                    </View>
                   </View>
-                )}
-              </TouchableOpacity>
+                ) : null}
+              </View>
 
               {/* SUBMIT BUTTON */}
               <View style={styles.submitContainer}>
@@ -177,7 +240,7 @@ export default function PostQuickPostScreen({navigation, route}: any) {
                   size="lg"
                   fullWidth
                   loading={posting}
-                  disabled={posting || (!text.trim() && !image)}
+                  disabled={posting || !text.trim() || !imageUrl}
                 />
               </View>
             </>
@@ -254,7 +317,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: Radius.card,
     overflow: 'hidden',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     borderWidth: 1.5,
     borderColor: Colors.border,
     borderStyle: 'dashed',
@@ -262,9 +325,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  imagePreviewContainer: {
+    width: '100%',
+    overflow: 'hidden',
+  },
   imagePreview: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    height: '100%',
     resizeMode: 'cover',
   },
   imageOverlay: {
@@ -304,17 +371,64 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     marginTop: 2,
   },
-  removeBadge: {
+  imageWrapper: {
+    marginBottom: Spacing.md,
+  },
+  repositionContainer: {
+    backgroundColor: Colors.cardElevated,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  repositionLabel: {
+    color: Colors.textSecondary,
+    ...Typography.captionBold,
+    marginBottom: Spacing.sm,
+  },
+  repositionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  repositionBtn: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    borderRadius: Radius.button,
+    paddingVertical: Spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  repositionBtnText: {
+    color: Colors.textPrimary,
+    ...Typography.captionBold,
+  },
+  submitContainer: {
+    marginTop: Spacing.sm,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  overlayText: {
+    color: '#FAFAFA',
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+  },
+  doneBadge: {
     position: 'absolute',
     bottom: Spacing.sm,
     right: Spacing.sm,
-    backgroundColor: 'rgba(230,57,70,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     borderRadius: Radius.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
   },
-  removeBadgeText: {color: '#FFFFFF', fontSize: 12, fontWeight: 'bold'},
-  submitContainer: {
-    marginTop: Spacing.sm,
-  },
+  doneBadgeText: {color: Colors.success, fontSize: 12, fontWeight: 'bold'},
 });

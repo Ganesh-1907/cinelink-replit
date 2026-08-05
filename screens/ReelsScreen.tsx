@@ -114,7 +114,7 @@ export default function ReelsScreen({navigation}: any) {
   if (loading) {
     return (
       <View style={styles.safe}>
-        <Header title="🎞️ Reels" navigation={navigation} />
+        <Header title="Reels" navigation={navigation} />
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
@@ -124,7 +124,7 @@ export default function ReelsScreen({navigation}: any) {
 
   return (
     <View style={styles.safe}>
-      <Header title="🎞️ Reels" navigation={navigation} />
+      <Header title="Reels" navigation={navigation} />
       {reels.length === 0 ? (
         <View style={styles.centerState}>
           <Text style={styles.emptyIcon}>🎬</Text>

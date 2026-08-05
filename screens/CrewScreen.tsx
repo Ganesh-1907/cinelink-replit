@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Image, ScrollView, Alert
+  ActivityIndicator, Image, ScrollView, Alert, Modal, TextInput
 } from 'react-native';
 import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -23,15 +23,23 @@ export default function CrewScreen({navigation}: any) {
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [connectionStatus, setConnectionStatus] = useState<{[key: string]: 'connected' | 'pending' | 'none'}>({});
   
+  const [myProjects, setMyProjects] = useState<any[]>([]);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [selectedTargetUser, setSelectedTargetUser] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [selectedInviteRole, setSelectedInviteRole] = useState('');
+  const [inviting, setInviting] = useState(false);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch follow states and connection states on focus
+  // Fetch follow states, connection states, and user projects on focus
   const fetchRelations = useCallback(async () => {
     if (!currentUser) return;
     try {
-      const [followRes, connRes] = await Promise.all([
+      const [followRes, connRes, projRes] = await Promise.all([
         api.get<{followingIds: string[]}>('/users/following-ids'),
-        api.get<{connections: any[]}>('/connections/all')
+        api.get<{connections: any[]}>('/connections/all'),
+        api.get<{projects: any[]}>('/projects?createdBy=' + (currentUser._id || currentUser.uid))
       ]);
 
       if (followRes?.followingIds) {
@@ -50,30 +58,22 @@ export default function CrewScreen({navigation}: any) {
         });
         setConnectionStatus(statusMap);
       }
+
+      if (projRes?.projects) {
+        setMyProjects(projRes.projects);
+      }
     } catch (e) {
       console.log('Error fetching relations:', e);
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    fetchRelations();
-    const unsub = navigation.addListener('focus', fetchRelations);
-    return unsub;
-  }, [navigation, fetchRelations]);
-
   const doSearch = useCallback(async (queryStr: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    
-    if (!queryStr.trim()) {
-      setUsers([]);
-      setSearched(false);
-      return;
-    }
 
     setLoading(true);
     setSearched(true);
     try {
-      const queryString = `query=${encodeURIComponent(queryStr.trim())}`;
+      const queryString = queryStr.trim() ? `query=${encodeURIComponent(queryStr.trim())}` : '';
       const res = await api.get<any>(`/users/search?${queryString}`);
       
       // Filter out admin and self
@@ -87,6 +87,16 @@ export default function CrewScreen({navigation}: any) {
       setLoading(false);
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    fetchRelations();
+    doSearch('');
+    const unsub = navigation.addListener('focus', () => {
+      fetchRelations();
+      doSearch('');
+    });
+    return unsub;
+  }, [navigation, fetchRelations, doSearch]);
 
   const handleSearchChange = (text: string) => {
     setSearchText(text);
@@ -128,6 +138,38 @@ export default function CrewScreen({navigation}: any) {
     }
   };
 
+  const handleInvitePress = (user: any) => {
+    setSelectedTargetUser(user);
+    if (myProjects.length === 0) {
+      Alert.alert('No Projects', 'You do not have any projects to invite this creator to. Go to CineLink Rooms to create a project!');
+      return;
+    }
+    setSelectedProject(myProjects[0]);
+    const openRoles = myProjects[0].rolesNeeded?.filter((r: any) => !r.filled) || [];
+    setSelectedInviteRole(openRoles.length > 0 ? openRoles[0].role : '');
+    setInviteModalVisible(true);
+  };
+
+  const sendInvitation = async () => {
+    if (!selectedTargetUser || !selectedProject || !selectedInviteRole) {
+      Alert.alert('Error', 'Please select a project and a role.');
+      return;
+    }
+    setInviting(true);
+    try {
+      await api.post(`/projects/${selectedProject._id || selectedProject.id}/invite`, {
+        userId: selectedTargetUser._id,
+        role: selectedInviteRole,
+      });
+      Alert.alert('Invitation Sent! 📩', `Invited ${selectedTargetUser.fullName || 'creator'} to join "${selectedProject.title}" as ${selectedInviteRole}`);
+      setInviteModalVisible(false);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Could not send invitation.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const renderUser = ({item}: any) => {
     const displayName = item.fullName || item.displayName || item.name || 'User';
     const status = connectionStatus[item._id] || 'none';
@@ -159,21 +201,31 @@ export default function CrewScreen({navigation}: any) {
             </Text>
           </TouchableOpacity>
 
-          {status === 'connected' ? (
-            <View style={[styles.connectBtn, styles.connectedBtn]}>
-              <Text style={styles.connectEmoji}>✅</Text>
-            </View>
-          ) : status === 'pending' ? (
-            <View style={[styles.connectBtn, styles.pendingBtn]}>
-              <Text style={styles.connectEmoji}>⏳</Text>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.connectBtn}
-              onPress={e => { e.stopPropagation(); sendConnectRequest(item); }}>
-              <Text style={styles.connectEmoji}>🤝</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.iconBtnRow}>
+            {status === 'connected' ? (
+              <View style={[styles.connectBtn, styles.connectedBtn]}>
+                <Text style={styles.connectEmoji}>✅</Text>
+              </View>
+            ) : status === 'pending' ? (
+              <View style={[styles.connectBtn, styles.pendingBtn]}>
+                <Text style={styles.connectEmoji}>⏳</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.connectBtn}
+                onPress={e => { e.stopPropagation(); sendConnectRequest(item); }}>
+                <Text style={styles.connectEmoji}>🤝</Text>
+              </TouchableOpacity>
+            )}
+
+            {myProjects.length > 0 && (
+              <TouchableOpacity
+                style={styles.inviteBtn}
+                onPress={e => { e.stopPropagation(); handleInvitePress(item); }}>
+                <Text style={styles.inviteEmoji}>📩</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -181,7 +233,7 @@ export default function CrewScreen({navigation}: any) {
 
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
-      <Header title="🎥 Find Creators" subtitle="Search to discover cinema professionals" noBorder />
+      <Header title="Find Creators" />
 
       <View style={styles.searchOuter}>
         <Input
@@ -244,12 +296,106 @@ export default function CrewScreen({navigation}: any) {
           contentContainerStyle={[styles.list, {paddingBottom: insets.bottom + 100}]}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <Text style={styles.resultsCount}>
-              {users.length} result{users.length > 1 ? 's' : ''} for "{searchText}"
-            </Text>
+            searchText.trim().length > 0 ? (
+              <Text style={styles.resultsCount}>
+                {users.length} result{users.length > 1 ? 's' : ''} for "{searchText}"
+              </Text>
+            ) : null
           }
         />
       )}
+
+      {/* INVITE MODAL */}
+      <Modal
+        visible={inviteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInviteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>📩 Invite to Project</Text>
+            <Text style={styles.modalSub}>
+              Invite {selectedTargetUser?.fullName || selectedTargetUser?.displayName || 'Creator'} to join one of your projects.
+            </Text>
+
+            <Text style={styles.label}>Select Project</Text>
+            <ScrollView style={styles.projectList} nestedScrollEnabled>
+              {myProjects.map((p) => {
+                const isSelected = selectedProject?._id === p._id;
+                return (
+                  <TouchableOpacity
+                    key={p._id}
+                    style={[styles.projectItem, isSelected && styles.projectItemActive]}
+                    onPress={() => {
+                      setSelectedProject(p);
+                      const openRoles = p.rolesNeeded?.filter((r: any) => !r.filled) || [];
+                      setSelectedInviteRole(openRoles.length > 0 ? openRoles[0].role : '');
+                    }}
+                  >
+                    <Text style={[styles.projectItemText, isSelected && styles.projectItemTextActive]}>
+                      🎬 {p.title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <Text style={styles.label}>Select Role</Text>
+            <View style={styles.rolesContainer}>
+              {selectedProject && (selectedProject.rolesNeeded?.filter((r: any) => !r.filled) || []).length > 0 ? (
+                <View style={styles.rolesChipsRow}>
+                  {(selectedProject.rolesNeeded?.filter((r: any) => !r.filled) || []).map((r: any) => {
+                    const isSelected = selectedInviteRole === r.role;
+                    return (
+                      <TouchableOpacity
+                        key={r.role}
+                        style={[styles.roleChip, isSelected && styles.roleChipActive]}
+                        onPress={() => setSelectedInviteRole(r.role)}
+                      >
+                        <Text style={[styles.roleChipText, isSelected && styles.roleChipTextActive]}>
+                          {r.role}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.noRolesBox}>
+                  <Text style={styles.noRolesText}>No open roles in this project.</Text>
+                  <TextInput
+                    style={styles.roleInput}
+                    placeholder="Enter custom role..."
+                    placeholderTextColor={Colors.textTertiary}
+                    value={selectedInviteRole}
+                    onChangeText={setSelectedInviteRole}
+                  />
+                </View>
+              )}
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+                onPress={() => setInviteModalVisible(false)}
+              >
+                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnSubmit]}
+                onPress={sendInvitation}
+                disabled={inviting || !selectedInviteRole}
+              >
+                {inviting ? (
+                  <ActivityIndicator color={Colors.textInverse} size="small" />
+                ) : (
+                  <Text style={styles.modalBtnTextSubmit}>Send Invite</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -327,6 +473,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border
   },
   followPillText: {color: Colors.textInverse, fontSize: 11, fontWeight: 'bold'},
+  iconBtnRow: {flexDirection: 'row', gap: Spacing.xs, alignItems: 'center'},
   connectBtn: {
     backgroundColor: Colors.primaryFaint,
     borderRadius: Radius.sm,
@@ -335,9 +482,21 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 44,
-    height: 44
+    width: 40,
+    height: 40
   },
+  inviteBtn: {
+    backgroundColor: Colors.primaryFaint,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    height: 40
+  },
+  inviteEmoji: {fontSize: 18},
   connectedBtn: {
     borderColor: Colors.success,
     backgroundColor: Colors.successFaint
@@ -347,5 +506,142 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warningFaint
   },
   connectEmoji: {fontSize: 18},
-  loader: {marginTop: 60}
+  loader: {marginTop: 60},
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg
+  },
+  modalContainer: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.border
+  },
+  modalTitle: {
+    ...Typography.h2,
+    color: Colors.primary,
+    marginBottom: Spacing.sm
+  },
+  modalSub: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.md
+  },
+  label: {
+    ...Typography.label,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+    marginTop: Spacing.md
+  },
+  projectList: {
+    maxHeight: 120,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    padding: Spacing.xs,
+    marginBottom: Spacing.sm
+  },
+  projectItem: {
+    padding: Spacing.sm,
+    borderRadius: Radius.xs,
+    marginBottom: Spacing.xs,
+    backgroundColor: Colors.background
+  },
+  projectItemActive: {
+    backgroundColor: Colors.primaryFaint,
+    borderColor: Colors.primary,
+    borderWidth: 1
+  },
+  projectItemText: {
+    ...Typography.bodySm,
+    color: Colors.textSecondary
+  },
+  projectItemTextActive: {
+    color: Colors.primary,
+    fontWeight: 'bold'
+  },
+  rolesContainer: {
+    minHeight: 60,
+    justifyContent: 'center'
+  },
+  rolesChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs
+  },
+  roleChip: {
+    backgroundColor: Colors.background,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs
+  },
+  roleChipActive: {
+    backgroundColor: Colors.primaryFaint,
+    borderColor: Colors.primary
+  },
+  roleChipText: {
+    ...Typography.bodySm,
+    color: Colors.textSecondary
+  },
+  roleChipTextActive: {
+    color: Colors.primary,
+    fontWeight: 'bold'
+  },
+  noRolesBox: {
+    alignItems: 'center'
+  },
+  noRolesText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm
+  },
+  roleInput: {
+    width: '100%',
+    height: 40,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    color: Colors.textPrimary,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.background
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.xl
+  },
+  modalBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: Radius.sm,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  modalBtnCancel: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border
+  },
+  modalBtnSubmit: {
+    backgroundColor: Colors.primary
+  },
+  modalBtnTextCancel: {
+    ...Typography.label,
+    color: Colors.textSecondary
+  },
+  modalBtnTextSubmit: {
+    ...Typography.label,
+    color: Colors.textInverse,
+    fontWeight: 'bold'
+  }
 });

@@ -40,7 +40,7 @@ export default function SuggestedFollowsScreen({navigation}: any) {
 
   return (
     <View style={styles.safe}>
-      <Header title="👥 Follow Suggestions" onBack={navigation.goBack} />
+      <Header title="Follow Suggestions" onBack={navigation.goBack} />
       {loading ? null : users.length === 0 ? <EmptyState icon="👥" title="No suggestions" subtitle="Check back later" /> : (
         <FlatList data={users} keyExtractor={item => item._id || item.id} contentContainerStyle={styles.list}
           ListFooterComponent={

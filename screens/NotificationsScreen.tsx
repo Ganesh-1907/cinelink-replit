@@ -196,15 +196,37 @@ export default function NotificationsScreen({navigation}: any) {
       navigation.navigate('AdminReports');
     } else if (isCastingApprovedNotif(item.type)) {
       navigation.navigate('MyAuditions');
-    } else if (isMessageNotif(item.type) && item.chatId) {
-      navigation.navigate('ChatScreen', {
-        chat: {
-          id: item.chatId,
-          participants: [user?.uid, item.senderId].filter(Boolean),
-          participantNames: [],
-          lastMessage: '',
-        },
-      });
+    } else if (isMessageNotif(item.type)) {
+      if (item.chatId) {
+        navigation.navigate('ChatScreen', {
+          chat: {
+            id: item.chatId,
+            participants: [user?._id || user?.uid, item.senderId].filter(Boolean),
+            participantNames: [],
+            lastMessage: '',
+          },
+        });
+      } else if (senderId) {
+        try {
+          const res = await api.post<any>('/chat/start', { otherUserId: senderId });
+          if (res.chat) {
+            navigation.navigate('ChatScreen', {
+              chat: {
+                id: res.chat._id || res.chat.id,
+                participants: res.chat.participants,
+                participantNames: res.chat.participantNames || [],
+                lastMessage: res.chat.lastMessage || '',
+              }
+            });
+          } else {
+            navigation.navigate('Chats');
+          }
+        } catch (err) {
+          navigation.navigate('Chats');
+        }
+      } else {
+        navigation.navigate('Chats');
+      }
     } else if (isContestNotif(item.type)) {
       if (item.contestId) {
         navigation.navigate('ContestDetail', {
@@ -238,14 +260,14 @@ export default function NotificationsScreen({navigation}: any) {
       });
     } else if (item.type === 'comment' && item.auditionId) {
       navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
+    } else if (item.type === 'project_invite' && item.projectId) {
+      navigation.navigate('ProjectDetail', {projectId: item.projectId});
     }
   };
 
   // ── ACCEPT CONNECT REQUEST ───────────────────────────────────
   const handleAccept = async (notif: any) => {
     try {
-      const currentUserName =
-        user?.displayName || user?.email?.split('@')[0] || 'User';
       const senderId = notif.senderId;
 
       // Accept connection via API
@@ -255,7 +277,7 @@ export default function NotificationsScreen({navigation}: any) {
       });
 
       // Delete this notification
-      await deleteNotification(notif.id);
+      await deleteNotification(notif._id || notif.id);
 
       // ✅ Navigate to their profile after accepting
       Alert.alert(
@@ -285,6 +307,34 @@ export default function NotificationsScreen({navigation}: any) {
         status: 'rejected',
       });
       await deleteNotification(notif._id || notif.id);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Something went wrong.');
+    }
+  };
+
+  // ── ACCEPT PROJECT INVITE ────────────────────────────────────
+  const handleAcceptInvite = async (notif: any) => {
+    try {
+      await api.post(`/projects/${notif.projectId}/respond-invite`, {
+        status: 'Accepted',
+        role: notif.role,
+        notificationId: notif._id || notif.id
+      });
+      setNotifications(prev => prev.filter((n: any) => (n._id || n.id) !== (notif._id || notif.id)));
+      Alert.alert('Joined Project! 🎉', 'You have successfully joined the project crew.');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Something went wrong.');
+    }
+  };
+
+  const handleDeclineInvite = async (notif: any) => {
+    try {
+      await api.post(`/projects/${notif.projectId}/respond-invite`, {
+        status: 'Rejected',
+        role: notif.role,
+        notificationId: notif._id || notif.id
+      });
+      setNotifications(prev => prev.filter((n: any) => (n._id || n.id) !== (notif._id || notif.id)));
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Something went wrong.');
     }
@@ -351,6 +401,7 @@ export default function NotificationsScreen({navigation}: any) {
           ) : (
             notifications.map(item => {
               const isConnectRequest = item.type === 'connect_request';
+              const isProjectInvite = item.type === 'project_invite';
               const isTappable =
                 isProfileNotif(item.type) ||
                 isAuditionNotif(item.type) ||
@@ -362,7 +413,8 @@ export default function NotificationsScreen({navigation}: any) {
                 item.type === 'request_accepted' ||
                 item.type === 'request_rejected' ||
                 item.type === 'new_audition' ||
-                item.type === 'comment';
+                item.type === 'comment' ||
+                item.type === 'project_invite';
 
               const borderColor = getBorderColor(item.type);
 
@@ -374,10 +426,10 @@ export default function NotificationsScreen({navigation}: any) {
                     styles.card,
                     {borderLeftColor: borderColor},
                     !item.read && styles.cardUnread,
-                    isConnectRequest && styles.connectRequestCard,
+                    (isConnectRequest || isProjectInvite) && styles.connectRequestCard,
                   ]}
                   onPress={() =>
-                    isTappable && !isConnectRequest && handleNotifTap(item)
+                    isTappable && !isConnectRequest && !isProjectInvite && handleNotifTap(item)
                   }>
                   <View style={styles.cardRow}>
                     {/* SENDER AVATAR or ICON */}
@@ -399,10 +451,10 @@ export default function NotificationsScreen({navigation}: any) {
                     {/* CONTENT */}
                     <View style={styles.cardContent}>
                       <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>{item.title}</Text>
+                        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
                         {!item.read && <View style={styles.unreadDot} />}
                       </View>
-                      <Text style={styles.cardMessage}>
+                      <Text style={styles.cardMessage} numberOfLines={2}>
                         {resolveMessage(item)}
                       </Text>
                       <Text style={styles.cardTime}>
@@ -432,27 +484,27 @@ export default function NotificationsScreen({navigation}: any) {
                         </View>
                       )}
 
-                      {/* Tap hint for tappable notifications */}
-                      {isTappable && !isConnectRequest && (
-                        <Text style={styles.tapHint}>
-                          {isApplicationNotif(item.type)
-                            ? 'Tap to view applications →'
-                            : isCastingRequestNotif(item.type)
-                            ? 'Tap to review application →'
-                            : isMessageNotif(item.type)
-                            ? 'Tap to open chat →'
-                            : isCastingApprovedNotif(item.type)
-                            ? 'Tap to view auditions →'
-                            : isContestNotif(item.type)
-                            ? 'Tap to view contest →'
-                            : 'Tap to view profile →'}
-                        </Text>
+                      {/* PROJECT INVITATION — Accept / Decline */}
+                      {isProjectInvite && (
+                        <View style={styles.actionBtns}>
+                          <TouchableOpacity
+                            style={styles.acceptBtn}
+                            onPress={() => handleAcceptInvite(item)}>
+                            <Text style={styles.acceptBtnText}>✅ Accept</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.declineBtn}
+                            onPress={() => handleDeclineInvite(item)}>
+                            <Text style={styles.declineBtnText}>✕ Decline</Text>
+                          </TouchableOpacity>
+                        </View>
                       )}
                     </View>
 
                     {/* DELETE */}
                     <TouchableOpacity
                       style={styles.deleteBtn}
+                      hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                       onPress={e => {
                         e.stopPropagation?.();
                         deleteNotification(getId(item));
@@ -502,12 +554,13 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
     borderLeftColor: Colors.primary,
   },
   cardUnread: {
@@ -518,74 +571,91 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryFaint,
     borderLeftColor: Colors.primary,
   },
-  cardRow: {flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start'},
+  cardRow: {flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start'},
   iconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 2,
   },
-  icon: {fontSize: 20},
+  icon: {fontSize: 16},
 
   cardContent: {flex: 1},
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: 1,
   },
-  cardTitle: {...Typography.label, color: Colors.textPrimary, flex: 1},
+  cardTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    flex: 1,
+  },
   unreadDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: Colors.primary,
     marginLeft: Spacing.sm,
   },
   cardMessage: {
-    ...Typography.bodySm,
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
     color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-    lineHeight: 18,
+    marginBottom: 2,
+    lineHeight: 15,
   },
-  cardTime: {...Typography.micro, color: Colors.textSecondary},
-  tapHint: {
-    ...Typography.micro,
-    color: Colors.primary,
-    marginTop: Spacing.sm,
-    fontWeight: '500',
+  cardTime: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    color: Colors.textTertiary,
   },
 
-  actionBtns: {flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md},
+  actionBtns: {flexDirection: 'row', gap: Spacing.xs, marginTop: Spacing.xs},
   acceptBtn: {
     flex: 1,
     backgroundColor: Colors.successFaint,
     borderRadius: Radius.sm,
-    padding: Spacing.sm,
+    paddingVertical: 4,
+    paddingHorizontal: Spacing.xs,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.successBorder,
   },
-  acceptBtnText: {...Typography.label, color: Colors.success},
+  acceptBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+    color: Colors.success,
+    fontSize: 10,
+  },
   declineBtn: {
     flex: 1,
     backgroundColor: Colors.errorFaint,
     borderRadius: Radius.sm,
-    padding: Spacing.sm,
+    paddingVertical: 4,
+    paddingHorizontal: Spacing.xs,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.errorBorder,
   },
-  declineBtnText: {...Typography.label, color: Colors.error},
+  declineBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+    color: Colors.error,
+    fontSize: 10,
+  },
 
   deleteBtn: {
-    backgroundColor: Colors.primaryFaint,
-    borderRadius: Radius.md,
-    width: 28,
-    height: 28,
+    width: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 2,
   },
-  deleteBtnText: {...Typography.captionBold, color: Colors.primary},
+  deleteBtnText: {fontSize: 12, color: Colors.textTertiary, fontWeight: 'bold'},
 });

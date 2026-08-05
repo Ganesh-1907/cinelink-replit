@@ -53,7 +53,7 @@ export default function ContestDetailScreen({route, navigation}: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="🏆 Contest" navigation={navigation} />
+      <Header title="Contest" navigation={navigation} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.mainCard}>
           {contest.posterUrl ? (

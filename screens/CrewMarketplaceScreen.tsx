@@ -156,7 +156,7 @@ export default function CrewMarketplaceScreen({navigation}: any) {
 
   return (
     <View style={styles.safe}>
-      <Header title="🎬 Crew Marketplace" navigation={navigation} />
+      <Header title="Crew Marketplace" navigation={navigation} />
       
       <View style={styles.searchBarWrap}>
         <Input

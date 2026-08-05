@@ -293,7 +293,7 @@ export default function ChatListScreen({navigation}: any) {
   if (loading) {
     return (
       <View style={styles.safe}>
-        <Header title="Messages" navigation={navigation} />
+        <Header title="Messages" />
         <ActivityIndicator
           size="large"
           color={Colors.primary}
@@ -306,7 +306,7 @@ export default function ChatListScreen({navigation}: any) {
   if (chats.length === 0 && discoverUsers.length === 0 && !discoverLoading) {
     return (
       <View style={styles.safe}>
-        <Header title="Messages" navigation={navigation} />
+        <Header title="Messages" />
         <EmptyState
           icon="💬"
           title="No conversations yet"
@@ -318,7 +318,7 @@ export default function ChatListScreen({navigation}: any) {
 
   return (
     <View style={styles.safe}>
-      <Header title="Messages" navigation={navigation} />
+      <Header title="Messages" />
       <SectionList
         sections={sections}
         keyExtractor={(item, i) => item._id || item.id || String(i)}

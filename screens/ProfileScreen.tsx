@@ -12,6 +12,7 @@ import {
   Dimensions,
   Linking,
   StatusBar,
+  Modal,
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
 import {
@@ -71,6 +72,7 @@ export default function ProfileScreen({navigation, route}: any) {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [applicationsCount, setApplicationsCount] = useState(0);
+  const [showFullAvatar, setShowFullAvatar] = useState(false);
 
   const {isAdmin, isApprovedDirector, user, signOut} = useApp();
   const scrollRef = useRef<ScrollView>(null);
@@ -125,38 +127,74 @@ export default function ProfileScreen({navigation, route}: any) {
         backgroundColor={Colors.background}
       />
 
+      <Header title="Profile" />
+
       <ScrollView
         ref={scrollRef}
         style={[styles.scroll, {backgroundColor: Colors.background}]}
-        contentContainerStyle={{paddingTop: insets.top + Spacing.sm}}
+        contentContainerStyle={{paddingTop: 0}}
         showsVerticalScrollIndicator={false}>
-        {/* ── PROFILE HEADER (AVATAR & INFO CENTERED) ── */}
+        {/* ── PROFILE HEADER (AVATAR ON LEFT, STATS ON RIGHT) ── */}
         <View style={styles.centeredHeader}>
-          {/* Centered Avatar with overlapping Verified Badge */}
-          <View style={styles.centeredAvatarContainer}>
-            <Avatar uri={avatarUri} name={name || user?.email} size="xl" ring />
-            {verificationStatus === 'verified' && (
-              <View style={styles.verifiedBadgeOverlap}>
-                <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
+          <View style={styles.profileHeaderTopRow}>
+            {/* Touchable Avatar for full image circle view */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowFullAvatar(true)}
+              style={styles.centeredAvatarContainer}
+            >
+              <Avatar uri={avatarUri} name={name || user?.email} size="lg" ring />
+              {verificationStatus === 'verified' && (
+                <View style={styles.verifiedBadgeOverlap}>
+                  <Text style={styles.verifiedBadgeOverlapText}>✓</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Stats Row beside avatar */}
+            <View style={styles.centeredStatsRow}>
+              <View style={styles.centeredStatItem}>
+                <Text style={styles.centeredStatNum}>{applicationsCount}</Text>
+                <Text style={styles.centeredStatLbl}>Applications</Text>
               </View>
-            )}
-          </View>
-
-          {/* Display Name */}
-          <View style={styles.centeredNameRow}>
-            <Text style={styles.centeredName}>{name || 'Anonymous User'}</Text>
-          </View>
-
-          {/* Role */}
-          <Text style={styles.centeredRole}>{role || 'Actor'}</Text>
-
-          {/* Location */}
-          {location ? (
-            <View style={styles.centeredLocationRow}>
-              <Text style={styles.centeredLocationIcon}>📍</Text>
-              <Text style={styles.centeredLocationText}>{location}</Text>
+              <TouchableOpacity
+                style={styles.centeredStatItem}
+                onPress={() =>
+                  navigation.navigate('Followers', {
+                    userId: user?.uid,
+                    displayName,
+                    tab: 'followers',
+                  })
+                }>
+                <Text style={styles.centeredStatNum}>{followersCount}</Text>
+                <Text style={styles.centeredStatLbl}>Followers</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.centeredStatItem}
+                onPress={() =>
+                  navigation.navigate('Followers', {
+                    userId: user?.uid,
+                    displayName,
+                    tab: 'following',
+                  })
+                }>
+                <Text style={styles.centeredStatNum}>{followingCount}</Text>
+                <Text style={styles.centeredStatLbl}>Following</Text>
+              </TouchableOpacity>
             </View>
-          ) : null}
+          </View>
+
+          {/* User Info below avatar/stats */}
+          <View style={styles.profileMetaInfo}>
+            <Text style={styles.centeredName}>{name || 'Anonymous User'}</Text>
+            <Text style={styles.centeredRole}>{role || 'Actor'}</Text>
+            {location ? (
+              <View style={styles.centeredLocationRow}>
+                <Text style={styles.centeredLocationIcon}>📍</Text>
+                <Text style={styles.centeredLocationText}>{location}</Text>
+              </View>
+            ) : null}
+          </View>
 
           {/* Action Row */}
           <View style={styles.profileActionRow}>
@@ -178,57 +216,7 @@ export default function ProfileScreen({navigation, route}: any) {
               <Text style={styles.profileIconBtnText}>⚙️</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Flat Stats Row (Applications, Followers, Following) */}
-          <View style={styles.centeredStatsRow}>
-            <View style={styles.centeredStatItem}>
-              <Text style={styles.centeredStatNum}>{applicationsCount}</Text>
-              <Text style={styles.centeredStatLbl}>Applications</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.centeredStatItem}
-              onPress={() =>
-                navigation.navigate('Followers', {
-                  userId: user?.uid,
-                  displayName,
-                  tab: 'followers',
-                })
-              }>
-              <Text style={styles.centeredStatNum}>{followersCount}</Text>
-              <Text style={styles.centeredStatLbl}>Followers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.centeredStatItem}
-              onPress={() =>
-                navigation.navigate('Followers', {
-                  userId: user?.uid,
-                  displayName,
-                  tab: 'following',
-                })
-              }>
-              <Text style={styles.centeredStatNum}>{followingCount}</Text>
-              <Text style={styles.centeredStatLbl}>Following</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ✅ PROFILE COMPLETION CARD
-        <View style={styles.completionWrapper}>
-          <ProfileCompletionCard
-            name={name}
-            phone={phone}
-            bio={bio}
-            photoUrl={photoUrl}
-            role={role}
-            portfolioPhotos={portfolioPhotos}
-            introVideoLink={introVideoLink}
-            portfolio1={portfolio1}
-            onItemPress={handleItemPress}
-          />
-        </View>
-        */}
-
-        {/* ── MENU ── */}
+        </View>        {/* ── MENU ── */}
         <View style={[styles.menuSection, {marginBottom: insets.bottom + 60}]}>
           {/* App Settings Section */}
           <Text style={styles.sectionHeader}>App Settings</Text>
@@ -427,6 +415,36 @@ export default function ProfileScreen({navigation, route}: any) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* FULL AVATAR IMAGE VIEW MODAL */}
+      <Modal
+        visible={showFullAvatar}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFullAvatar(false)}
+      >
+        <TouchableOpacity
+          style={styles.avatarModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFullAvatar(false)}
+        >
+          <View style={styles.avatarModalContent}>
+            {avatarUri ? (
+              <Image
+                source={{uri: avatarUri}}
+                style={styles.avatarModalImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.avatarModalImage, styles.avatarModalPlaceholder]}>
+                <Text style={styles.avatarModalPlaceholderText}>
+                  {name ? name.substring(0, 1).toUpperCase() : '?'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -621,21 +639,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-SemiBold',
     fontWeight: '600',
     color: Colors.textPrimary,
-    fontSize: 16,
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.xs,
+    fontSize: 15,
+    marginTop: Spacing.md,
+    marginBottom: 4,
     marginHorizontal: Spacing.screenH,
   },
-  menuSection: {marginTop: Spacing.md, marginBottom: 30},
+  menuSection: {marginTop: Spacing.xs, marginBottom: 20},
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     marginHorizontal: Spacing.screenH,
   },
   menuIconContainer: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: Radius.sm,
     backgroundColor: Colors.primaryFaint,
     justifyContent: 'center',
@@ -643,25 +661,25 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
   },
   menuEmoji: {
-    fontSize: 20,
+    fontSize: 16,
   },
   menuTextContainer: {
     flex: 1,
   },
   menuLabel: {
     ...Typography.label,
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textPrimary,
   },
   menuDesc: {
     ...Typography.caption,
     color: Colors.textSecondary,
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 1,
   },
   menuArrow: {
     color: Colors.textTertiary,
-    fontSize: 18,
+    fontSize: 16,
   },
   logoutBtn: {
     backgroundColor: Colors.error,
@@ -767,21 +785,22 @@ const styles = StyleSheet.create({
   },
   centeredHeader: {
     alignItems: 'center',
-    paddingVertical: Spacing.lg,
+    paddingTop: 0,
+    paddingBottom: Spacing.xs,
     paddingHorizontal: Spacing.screenH,
   },
   centeredAvatarContainer: {
     position: 'relative',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   verifiedBadgeOverlap: {
     position: 'absolute',
     bottom: -2,
     right: -2,
     backgroundColor: Colors.success,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: Colors.background,
     justifyContent: 'center',
@@ -789,14 +808,14 @@ const styles = StyleSheet.create({
   },
   verifiedBadgeOverlapText: {
     color: '#FAFAFA',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   centeredNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
   centeredName: {
     ...Typography.h3,
@@ -805,31 +824,41 @@ const styles = StyleSheet.create({
   centeredRole: {
     ...Typography.body,
     color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
   centeredLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.xs,
   },
   centeredLocationIcon: {
-    fontSize: 14,
+    fontSize: 13,
   },
   centeredLocationText: {
     ...Typography.caption,
     color: Colors.textSecondary,
   },
+  profileHeaderTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: Spacing.xs,
+  },
+  profileMetaInfo: {
+    width: '100%',
+    alignItems: 'flex-start',
+    marginTop: Spacing.xs,
+    paddingHorizontal: 4,
+  },
   centeredStatsRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-evenly',
-    width: '100%',
-    marginTop: Spacing.sm,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.xs,
   },
   centeredStatItem: {
-    flex: 1,
     alignItems: 'center',
   },
   centeredStatDivider: {
@@ -847,6 +876,38 @@ const styles = StyleSheet.create({
     ...Typography.micro,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  avatarModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalContent: {
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    backgroundColor: Colors.cardElevated,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 130,
+  },
+  avatarModalPlaceholder: {
+    backgroundColor: Colors.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalPlaceholderText: {
+    color: Colors.primary,
+    fontSize: 72,
+    fontWeight: '700',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -997,12 +1058,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.sm,
     width: '100%',
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.md,
+    marginTop: 4,
+    marginBottom: Spacing.xs,
   },
   profileEditBtn: {
     flex: 1,
-    height: 38,
+    height: 34,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -1016,8 +1077,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   profileIconBtn: {
-    width: 38,
-    height: 38,
+    width: 34,
+    height: 34,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
