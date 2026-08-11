@@ -216,7 +216,8 @@ export default function ProfileScreen({navigation, route}: any) {
               <Text style={styles.profileIconBtnText}>⚙️</Text>
             </TouchableOpacity>
           </View>
-        </View>        {/* ── MENU ── */}
+        </View>
+
         <View style={[styles.menuSection, {marginBottom: insets.bottom + 60}]}>
           {/* App Settings Section */}
           <Text style={styles.sectionHeader}>App Settings</Text>

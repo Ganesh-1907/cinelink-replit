@@ -10,17 +10,17 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNavigationContainerRef} from '@react-navigation/native';
 import {
   setNavigator,
-  registerBackgroundHandler,
+  initNotifications,
+  registerForegroundHandler,
 } from './src/services/NotificationService';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import api from './src/api/client';
 import {authService} from './src/services/AuthService';
-import {initNotifications} from './src/services/NotificationService';
 import {enableOfflinePersistence} from './src/services/offlineService';
 import {trackScreenView} from './src/services/analyticsService';
-import {connectSocket, disconnectSocket} from './src/services/socketService';
+import {connectSocket, disconnectSocket, onNotification} from './src/services/socketService';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SuggestedFollowsScreen from './screens/SuggestedFollowsScreen';
 import ProfileFillScreen from './screens/ProfileFillScreen';
@@ -58,7 +58,14 @@ import PostQuickPostScreen from './screens/PostQuickPostScreen';
 import MyAnnouncementsScreen from './screens/MyAnnouncementsScreen';
 import PostAnnouncementScreen from './screens/PostAnnouncementScreen';
 import AIScanAuditionScreen from './screens/AIScanAuditionScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import PostDetailScreen from './screens/PostDetailScreen';
 import AdminReportsScreen from './screens/AdminReportsScreen';
+import AdminUserListScreen from './screens/AdminUserListScreen';
+import AdminReportListScreen from './screens/AdminReportListScreen';
+import AdminAuditionListScreen from './screens/AdminAuditionListScreen';
+import AdminContestListScreen from './screens/AdminContestListScreen';
+import AdminFilmListScreen from './screens/AdminFilmListScreen';
 import CastingRequestScreen from './screens/CastingRequestScreen';
 import CreateProjectScreen from './screens/CreateProjectScreen';
 import BrowseProjectsScreen from './screens/BrowseProjectsScreen';
@@ -80,7 +87,6 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {Colors} from './src/theme';
 
 export const navigationRef = createNavigationContainerRef();
-registerBackgroundHandler();
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -91,7 +97,7 @@ function TabNavigator() {
       tabBar={props => (
         <LiquidNav
           navigation={props.navigation}
-          activeTab={props.state.index}
+          activeRouteName={props.state.routes[props.state.index].name}
         />
       )}
       screenOptions={{
@@ -118,17 +124,7 @@ function TabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="Auditions"
-        component={BrowseAuditionsScreen}
-        options={{
-          title: 'Auditions',
-          headerShown: false,
-          tabBarIcon: ({color}) => (
-            <Text style={{fontSize: 20, color}}>🎭</Text>
-          ),
-        }}
-      />
+
       <Tab.Screen
         name="Crew"
         component={CrewScreen}
@@ -312,6 +308,11 @@ function MainStack() {
         options={{title: 'Settings'}}
       />
       <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{title: 'Reset Password'}}
+      />
+      <Stack.Screen
         name="MyProfile"
         component={MyProfileScreen}
         options={{headerShown: false}}
@@ -336,11 +337,16 @@ function MainStack() {
         component={MyAnnouncementsScreen}
         options={{headerShown: false}}
       />
-      <Stack.Screen
-        name="PostAnnouncement"
-        component={PostAnnouncementScreen}
-        options={{headerShown: false}}
-      />
+        <Stack.Screen
+          name="PostAnnouncement"
+          component={PostAnnouncementScreen}
+          options={{headerShown: false}}
+        />
+        <Stack.Screen
+          name="PostDetail"
+          component={PostDetailScreen}
+          options={{title: 'Post'}}
+        />
       <Stack.Screen
         name="AIScanAudition"
         component={AIScanAuditionScreen}
@@ -350,6 +356,31 @@ function MainStack() {
         name="AdminReports"
         component={AdminReportsScreen}
         options={{title: '🛡️ Admin Dashboard'}}
+      />
+      <Stack.Screen
+        name="AdminUserList"
+        component={AdminUserListScreen}
+        options={{title: 'Users', headerShown: false}}
+      />
+      <Stack.Screen
+        name="AdminReportList"
+        component={AdminReportListScreen}
+        options={{title: 'Reports', headerShown: false}}
+      />
+      <Stack.Screen
+        name="AdminAuditionList"
+        component={AdminAuditionListScreen}
+        options={{title: 'Auditions', headerShown: false}}
+      />
+      <Stack.Screen
+        name="AdminContestList"
+        component={AdminContestListScreen}
+        options={{title: 'Contests', headerShown: false}}
+      />
+      <Stack.Screen
+        name="AdminFilmList"
+        component={AdminFilmListScreen}
+        options={{title: 'Films', headerShown: false}}
       />
       <Stack.Screen
         name="ImageViewer"
@@ -431,6 +462,7 @@ function AuthStack() {
     <Stack.Navigator screenOptions={{headerShown: false}}>
       <Stack.Screen name="Auth" component={AuthScreen} />
       <Stack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="Terms" component={TermsScreen} />
     </Stack.Navigator>
@@ -461,8 +493,19 @@ function AppContent(): JSX.Element {
   const {user: contextUser, loading: authLoading} = useApp();
   useEffect(() => {
     if (contextUser) {
-      connectSocket().catch(() => {});
-      return () => { disconnectSocket(); };
+      let unsubNotif: (() => void) | null = null;
+      connectSocket().then(() => {
+        unsubNotif = onNotification((notif: any) => {
+          console.log('[Socket] Live notification:', notif.type, notif.title);
+        });
+        return () => {
+          if (unsubNotif) unsubNotif();
+        };
+      }).catch(() => {});
+      return () => {
+        if (unsubNotif) unsubNotif();
+        disconnectSocket();
+      };
     }
   }, [contextUser]);
   useEffect(() => {
@@ -494,6 +537,10 @@ function AppContent(): JSX.Element {
   useEffect(() => {
     if (contextUser) {
       initNotifications();
+      const unsubForeground = registerForegroundHandler();
+      return () => {
+        unsubForeground();
+      };
     }
   }, [contextUser]);
 

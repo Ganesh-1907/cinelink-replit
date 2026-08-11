@@ -5,19 +5,18 @@ import {Colors, Spacing, Shadows} from '../src/theme';
 
 interface LiquidNavProps {
   navigation: any;
-  activeTab: number;
+  activeRouteName: string;
 }
 
 const tabs = [
   {key: 'Home', icon: '🏠', label: 'Home'},
-  {key: 'Auditions', icon: '🎭', label: 'Auditions'},
   {key: 'Crew', icon: '🎥', label: 'Crew'},
   {key: 'Discover', icon: '✨', label: 'Discover'},
   {key: 'Messages', icon: '💬', label: 'Chats'},
   {key: 'Profile', icon: '👤', label: 'Profile'},
 ];
 
-export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
+export function LiquidNav({navigation, activeRouteName}: LiquidNavProps) {
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -30,7 +29,7 @@ export function LiquidNav({navigation, activeTab}: LiquidNavProps) {
         },
       ]}>
       {tabs.map((tab, idx) => {
-        const isActive = idx === activeTab;
+        const isActive = tab.key === activeRouteName;
         return (
           <TouchableOpacity
             key={tab.key}

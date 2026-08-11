@@ -27,6 +27,7 @@ import {
   EmptyState,
   Badge,
 } from '../components/ui';
+import ReportModal from './ReportModal';
 
 const cleanName = (raw: string | null | undefined): string => {
   if (!raw) {
@@ -51,6 +52,7 @@ export default function AuditionDetailScreen({route, navigation}: any) {
   const insets = useSafeAreaInsets();
   const paramAudition = route?.params?.audition;
   const paramAuditionId = route?.params?.auditionId;
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [commentsY, setCommentsY] = useState(0);
@@ -358,6 +360,11 @@ export default function AuditionDetailScreen({route, navigation}: any) {
         title="Audition Details"
         navigation={navigation}
         onBack={() => navigation.goBack()}
+        right={
+          <TouchableOpacity onPress={() => setReportModalVisible(true)} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <Text style={{fontSize: 18}}>⚠️</Text>
+          </TouchableOpacity>
+        }
       />
       <ScrollView ref={scrollViewRef} style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* POSTER */}
@@ -703,8 +710,8 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                   subtitle="Applications will appear here."
                 />
               ) : (
-                applicants.map((app: any) => (
-                  <View key={app._id || app.id || app.applicantId} style={styles.applicantCard}>
+                applicants.map((app: any, idx: number) => (
+                  <View key={app._id || app.id || app.applicantId || `applicant-${idx}`} style={styles.applicantCard}>
                     <TouchableOpacity
                       style={styles.applicantMainRow}
                       activeOpacity={0.7}
@@ -814,12 +821,12 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                 subtitle="Be the first to comment!"
               />
             ) : (
-              comments.map((comment: any) => {
+              comments.map((comment: any, idx: number) => {
                 const isOwn = comment.userId === user?.uid;
                 const isDirector = audition.directorId === user?.uid;
                 const canDelete = isOwn || isDirector;
                 return (
-                  <View key={comment.id} style={styles.commentCard}>
+                  <View key={comment._id || comment.id || `comment-${idx}`} style={styles.commentCard}>
                     <View style={styles.commentHeader}>
                       <Avatar name={comment.userName || 'U'} size={32} />
                       <View style={styles.commentMeta}>
@@ -851,6 +858,36 @@ export default function AuditionDetailScreen({route, navigation}: any) {
           </View>
         </View>
       </ScrollView>
+
+      {/* Admin-only: Delete/Hide Audition */}
+      {isAdmin && audition._id && (
+        <View style={styles.adminBar}>
+          <TouchableOpacity style={[styles.adminBtn, {backgroundColor: Colors.errorFaint, borderColor: Colors.errorBorder}]}
+            onPress={() => {
+              Alert.alert('🚫 Ban Audition', `Ban "${audition.title}"? It will be hidden from all users.`, [
+                {text: 'Cancel', style: 'cancel'},
+                {text: 'Ban', style: 'destructive', onPress: async () => {
+                  try {
+                    await api.put(`/auditions/${audition._id || audition.id}`, {status: 'closed', banned: true});
+                    Alert.alert('✅ Banned', 'Audition has been banned.', [{text: 'OK', onPress: () => navigation.goBack()}]);
+                  } catch(e: any) { Alert.alert('Error', e.message); }
+                }}
+              ]);
+            }}>
+            <Text style={[styles.adminBtnText, {color: Colors.error}]}>🚫 Ban</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.adminBtn, {backgroundColor: Colors.warningFaint, borderColor: Colors.warningBorder}]}
+            onPress={async () => {
+              try {
+                await api.put(`/auditions/${audition._id || audition.id}`, {status: 'closed'});
+                Alert.alert('✅ Closed', 'Audition has been closed.');
+                setAudition({...audition, status: 'closed'});
+              } catch(e: any) { Alert.alert('Error', e.message); }
+            }}>
+            <Text style={[styles.adminBtnText, {color: Colors.warning}]}>🔒 Close</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* APPLICATION NOTE MODAL */}
       <Modal
@@ -915,6 +952,14 @@ export default function AuditionDetailScreen({route, navigation}: any) {
           </View>
         </View>
       </Modal>
+
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        contentId={audition._id || audition.id || ''}
+        contentType="audition"
+        contentTitle={audition.title || 'Audition'}
+      />
     </View>
   );
 }
@@ -1492,6 +1537,26 @@ const styles = StyleSheet.create({
   submitNoteText: {
     color: Colors.textInverse,
     ...Typography.captionBold,
+  },
+  adminBar: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    backgroundColor: Colors.background,
+  },
+  adminBtn: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  adminBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

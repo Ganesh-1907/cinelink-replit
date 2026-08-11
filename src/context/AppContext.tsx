@@ -9,6 +9,15 @@ import React, {
 import {authService} from '../services/AuthService';
 import {User, PremiumTier} from '../types';
 import {useTheme} from './ThemeContext';
+import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import {GOOGLE_WEB_CLIENT_ID} from '../api/config';
+
+GoogleSignin.configure({
+  webClientId: GOOGLE_WEB_CLIENT_ID,
+  offlineAccess: true,
+  forceCodeForRefreshToken: true,
+});
+
 
 interface AppState {
   user: any | null;
@@ -86,6 +95,11 @@ export function AppProvider({children}: {children: ReactNode}) {
   }, [populateFromUserData]);
 
   const signOut = useCallback(async () => {
+    try {
+      await GoogleSignin.signOut();
+    } catch (e) {
+      // ignore
+    }
     await authService.logout();
     resetToSystemTheme();
     setUser(null);

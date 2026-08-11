@@ -6,14 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
+  TextInput,
 } from 'react-native';
 import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {useTheme} from '../src/context/ThemeContext';
 import {useApp} from '../src/context/AppContext';
-import {Card, Button, Header} from '../components/ui';
+import {Card, Button, Header, PopupModal} from '../components/ui';
 
 export default function SettingsScreen({navigation}: any) {
   const {isDark, toggleTheme} = useTheme();
@@ -21,9 +21,12 @@ export default function SettingsScreen({navigation}: any) {
   const insets = useSafeAreaInsets();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
   const [profileVisible, setProfileVisible] = useState(true);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  const [confirmModal, setConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{field: string; newVal: boolean; label: string} | null>(null);
+  const [confirmInput, setConfirmInput] = useState('');
 
   const loadSettings = useCallback(async () => {
     try {
@@ -31,7 +34,6 @@ export default function SettingsScreen({navigation}: any) {
       const data = res.user;
       if (data) {
         if (data.notificationsEnabled !== undefined) setNotificationsEnabled(data.notificationsEnabled);
-        if (data.emailNotifications !== undefined) setEmailNotifications(data.emailNotifications);
         if (data.profileVisible !== undefined) setProfileVisible(data.profileVisible);
       }
     } catch (e) {
@@ -41,9 +43,7 @@ export default function SettingsScreen({navigation}: any) {
     }
   }, []);
 
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+  useEffect(() => { loadSettings(); }, [loadSettings]);
 
   const updateSetting = async (field: string, val: boolean) => {
     try {
@@ -54,65 +54,98 @@ export default function SettingsScreen({navigation}: any) {
     }
   };
 
-  const toggleNotifications = async (val: boolean) => {
-    setNotificationsEnabled(val);
-    await updateSetting('notificationsEnabled', val);
+  const openConfirm = (field: string, newVal: boolean, label: string) => {
+    setConfirmAction({field, newVal, label});
+    setConfirmInput('');
+    setConfirmModal(true);
   };
 
-  const toggleEmailNotifications = async (val: boolean) => {
-    setEmailNotifications(val);
-    await updateSetting('emailNotifications', val);
-  };
-
-  const toggleProfileVisible = async (val: boolean) => {
-    setProfileVisible(val);
-    await updateSetting('profileVisible', val);
+  const executeConfirm = async () => {
+    if (!confirmAction) return;
+    const {field, newVal} = confirmAction;
+    if (field === 'notificationsEnabled') {
+      setNotificationsEnabled(newVal);
+    } else if (field === 'profileVisible') {
+      setProfileVisible(newVal);
+    }
+    await updateSetting(field, newVal);
+    setConfirmModal(false);
+    setConfirmAction(null);
   };
 
   const [deleting, setDeleting] = useState(false);
 
-  const deleteAccount = () => {
-    Alert.alert(
-      '🗑 Delete Account',
-      'This will permanently delete:\n\n• Your profile\n• Your posts\n• Your auditions\n• Your applications\n• All your data\n\nThis cannot be undone!',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete Everything',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await api.delete('/users/account');
-              Alert.alert('✅ Done', 'Your account has been deleted.');
-            } catch (e: any) {
-              console.log('DELETE ERROR:', e);
-              Alert.alert('Error', 'Could not delete account. Please try again.');
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ],
-    );
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+
+  const openDeleteConfirm = () => {
+    setDeleteConfirm('');
+    setDeleteModal(true);
   };
 
-  const changePassword = () => {
-    if (!user?.email) return;
-    Alert.alert('Reset Password', `A reset email will be sent to ${user.email}`, [
-      {text: 'Send', onPress: async () => {
-        await api.post('/auth/forgot-password', {email: user.email});
-        Alert.alert('Done!', 'Check your email for reset link.');
-      }},
-      {text: 'Cancel', style: 'cancel'},
-    ]);
+  const executeDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.delete('/users/account');
+      setDeleteModal(false);
+    } catch (e: any) {
+      console.log('DELETE ERROR:', e);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      {text: 'Cancel', style: 'cancel'},
-      {text: 'Logout', style: 'destructive', onPress: () => signOut()},
-    ]);
+    openConfirm('logout', false, 'Logout');
+  };
+
+  const getConfirmWord = () => {
+    if (!confirmAction) return '';
+    switch (confirmAction.field) {
+      case 'notificationsEnabled': return confirmAction.newVal ? 'OFF' : 'ON';
+      case 'profileVisible': return confirmAction.newVal ? 'PRIVATE' : 'PUBLIC';
+      case 'logout': return 'LOGOUT';
+      default: return '';
+    }
+  };
+
+  const getConfirmTitle = () => {
+    if (!confirmAction) return '';
+    switch (confirmAction.field) {
+      case 'notificationsEnabled':
+        return confirmAction.newVal ? 'Turn Off Notifications?' : 'Turn On Notifications?';
+      case 'profileVisible':
+        return confirmAction.newVal ? 'Make Profile Private?' : 'Make Profile Public?';
+      case 'logout': return 'Logout?';
+      default: return '';
+    }
+  };
+
+  const getConfirmMessage = () => {
+    if (!confirmAction) return '';
+    switch (confirmAction.field) {
+      case 'notificationsEnabled':
+        return confirmAction.newVal
+          ? 'You will stop receiving push notifications. Type OFF to confirm.'
+          : 'You will start receiving push notifications again. Type ON to confirm.';
+      case 'profileVisible':
+        return confirmAction.newVal
+          ? 'Your profile will be hidden from Discover and search. Type PRIVATE to confirm.'
+          : 'Your profile will be visible to everyone in Discover and search. Type PUBLIC to confirm.';
+      case 'logout':
+        return 'Are you sure you want to logout? Type LOGOUT to confirm.';
+      default: return '';
+    }
+  };
+
+  const handleActionConfirm = () => {
+    if (confirmAction?.field === 'logout') {
+      setConfirmModal(false);
+      setConfirmAction(null);
+      signOut();
+      return;
+    }
+    executeConfirm();
   };
 
   return (
@@ -180,7 +213,7 @@ export default function SettingsScreen({navigation}: any) {
             {user?.email ? (
               <>
                 <View style={styles.cardSeparator} />
-                <TouchableOpacity style={styles.accountActionRow} onPress={changePassword}>
+                <TouchableOpacity style={styles.accountActionRow} onPress={() => navigation.navigate('ForgotPassword')}>
                   <Text style={styles.settingIcon}>🔑</Text>
                   <Text style={styles.settingText}>Change Password</Text>
                   <Text style={styles.settingArrow}>›</Text>
@@ -202,15 +235,7 @@ export default function SettingsScreen({navigation}: any) {
                 <Text style={styles.settingIcon}>🔔</Text>
                 <View><Text style={styles.toggleText}>Push Notifications</Text></View>
               </View>
-              <Switch value={notificationsEnabled} onValueChange={toggleNotifications} trackColor={{false: Colors.borderLight, true: Colors.primary}} thumbColor={Colors.textPrimary} />
-            </View>
-            <View style={styles.cardSeparator} />
-            <View style={styles.accountInfoRow}>
-              <View style={styles.accountInfoLeft}>
-                <Text style={styles.settingIcon}>📧</Text>
-                <View><Text style={styles.toggleText}>Email Notifications</Text></View>
-              </View>
-              <Switch value={emailNotifications} onValueChange={toggleEmailNotifications} trackColor={{false: Colors.borderLight, true: Colors.primary}} thumbColor={Colors.textPrimary} />
+              <Switch value={notificationsEnabled} onValueChange={() => openConfirm('notificationsEnabled', !notificationsEnabled, 'Push Notifications')} trackColor={{false: Colors.borderLight, true: Colors.primary}} thumbColor={Colors.textPrimary} />
             </View>
           </View>
 
@@ -221,7 +246,7 @@ export default function SettingsScreen({navigation}: any) {
                 <Text style={styles.settingIcon}>👁</Text>
                 <View><Text style={styles.toggleText}>Profile Visible to Others</Text></View>
               </View>
-              <Switch value={profileVisible} onValueChange={toggleProfileVisible} trackColor={{false: Colors.borderLight, true: Colors.primary}} thumbColor={Colors.textPrimary} />
+              <Switch value={profileVisible} onValueChange={() => openConfirm('profileVisible', !profileVisible, 'Profile Visibility')} trackColor={{false: Colors.borderLight, true: Colors.primary}} thumbColor={Colors.textPrimary} />
             </View>
           </View>
 
@@ -263,7 +288,7 @@ export default function SettingsScreen({navigation}: any) {
 
           <Text style={styles.dangerTitle}>Danger Zone</Text>
           <Card variant="outlined" padding={Spacing.lg}>
-            <Button label={deleting ? '' : '🗑 Delete My Account & Data'} onPress={deleteAccount} variant="danger" fullWidth disabled={deleting} loading={deleting} />
+            <Button label={deleting ? '' : '🗑 Delete My Account & Data'} onPress={openDeleteConfirm} variant="danger" fullWidth disabled={deleting} loading={deleting} />
             <Text style={styles.deleteNote}>As per India's DPDP Act 2023, you have the right to delete all your personal data from CineLink.{'\n'}⚠️ You may need to sign out and sign back in before deleting.</Text>
           </Card>
 
@@ -273,6 +298,51 @@ export default function SettingsScreen({navigation}: any) {
           </View>
         </View>
       </ScrollView>
+
+      <PopupModal
+        visible={confirmModal}
+        onClose={() => { setConfirmModal(false); setConfirmAction(null); }}
+        title={getConfirmTitle()}
+        message={getConfirmMessage()}
+        variant={confirmAction?.field === 'logout' ? 'warning' : 'confirm'}
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        confirmDisabled={confirmInput !== getConfirmWord()}
+        onConfirm={handleActionConfirm}
+        onCancel={() => { setConfirmModal(false); setConfirmAction(null); }}>
+        <TextInput
+          style={styles.popupInput}
+          placeholder={`Type "${getConfirmWord()}" to confirm`}
+          placeholderTextColor={Colors.textTertiary}
+          value={confirmInput}
+          onChangeText={setConfirmInput}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
+      </PopupModal>
+
+      <PopupModal
+        visible={deleteModal}
+        onClose={() => setDeleteModal(false)}
+        title="Delete Account?"
+        message="This is permanent. Type DELETE to confirm."
+        variant="ban"
+        confirmLabel="Delete Forever"
+        cancelLabel="Cancel"
+        confirmDisabled={deleteConfirm !== 'DELETE'}
+        confirmVariant="danger"
+        onConfirm={executeDelete}
+        onCancel={() => setDeleteModal(false)}>
+        <TextInput
+          style={styles.popupInput}
+          placeholder='Type "DELETE" to confirm'
+          placeholderTextColor={Colors.textTertiary}
+          value={deleteConfirm}
+          onChangeText={setDeleteConfirm}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
+      </PopupModal>
     </View>
   );
 }
@@ -299,4 +369,15 @@ const styles = StyleSheet.create({
   accountInfoValue: {...Typography.body, color: Colors.textPrimary, fontWeight: '500', marginTop: 2},
   accountActionRow: {paddingVertical: 12, paddingHorizontal: 0, flexDirection: 'row', alignItems: 'center'},
   flex1: {flex: 1},
+  popupInput: {
+    backgroundColor: Colors.background,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    color: Colors.textPrimary,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    width: '100%',
+  },
 });

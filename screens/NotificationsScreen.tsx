@@ -54,6 +54,26 @@ const getIcon = (type: string) => {
       return '💬';
     case 'application':
       return '📋';
+    case 'comment':
+      return '💬';
+    case 'like':
+      return '❤️';
+    case 'reel_like':
+      return '🎬';
+    case 'project_apply':
+      return '📁';
+    case 'project_accepted':
+      return '✅';
+    case 'project_rejected':
+      return '❌';
+    case 'project_invite':
+      return '📩';
+    case 'verification':
+      return '✓';
+    case 'casting_approved':
+      return '🎬';
+    case 'casting_rejected':
+      return '❌';
     default:
       return '🔔';
   }
@@ -68,15 +88,26 @@ const getBorderColor = (type: string) => {
     case 'new_follower':
       return Colors.primary;
     case 'shortlisted':
+    case 'selected':
+    case 'project_accepted':
+    case 'casting_approved':
+    case 'verification':
       return Colors.success;
     case 'new_audition':
+    case 'application':
+    case 'comment':
+    case 'project_apply':
+    case 'project_invite':
       return Colors.primary;
     case 'contest_deadline':
       return Colors.warning;
-    case 'selected':
-      return Colors.success;
     case 'rejected':
+    case 'project_rejected':
+    case 'casting_rejected':
+    case 'like':
       return Colors.error;
+    case 'reel_like':
+      return Colors.primary;
     default:
       return Colors.primary;
   }
@@ -93,7 +124,6 @@ const isProfileNotif = (type: string) =>
     'message',
   ].includes(type);
 
-// Which notification types navigate to audition detail
 const isAuditionNotif = (type: string) =>
   ['new_audition', 'shortlisted', 'selected', 'rejected'].includes(type);
 
@@ -115,6 +145,16 @@ const isContestNotif = (type: string) =>
     'contest_deadline',
     'contest_winner',
   ].includes(type);
+
+const isProjectNotif = (type: string) =>
+  ['project_invite', 'project_apply', 'project_accepted', 'project_rejected'].includes(type);
+
+const isCommentOrLikeNotif = (type: string) =>
+  ['comment', 'like'].includes(type);
+
+const isReelLikeNotif = (type: string) => type === 'reel_like';
+
+const isVerificationNotif = (type: string) => type === 'verification';
 
 const getId = (item: any) => item._id || item.id || '';
 
@@ -258,10 +298,14 @@ export default function NotificationsScreen({navigation}: any) {
       navigation.navigate('PublicProfile', {
         userId: senderId,
       });
-    } else if (item.type === 'comment' && item.auditionId) {
-      navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
-    } else if (item.type === 'project_invite' && item.projectId) {
+    } else if (isProjectNotif(item.type) && item.projectId) {
       navigation.navigate('ProjectDetail', {projectId: item.projectId});
+    } else if (isCommentOrLikeNotif(item.type) && item.auditionId) {
+      navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
+    } else if (isReelLikeNotif(item.type)) {
+      navigation.navigate('ReelsScreen');
+    } else if (isVerificationNotif(item.type)) {
+      // Info only — no navigation needed
     }
   };
 
@@ -410,11 +454,12 @@ export default function NotificationsScreen({navigation}: any) {
                 isCastingApprovedNotif(item.type) ||
                 isMessageNotif(item.type) ||
                 isContestNotif(item.type) ||
+                isProjectNotif(item.type) ||
+                isCommentOrLikeNotif(item.type) ||
+                isReelLikeNotif(item.type) ||
                 item.type === 'request_accepted' ||
                 item.type === 'request_rejected' ||
-                item.type === 'new_audition' ||
-                item.type === 'comment' ||
-                item.type === 'project_invite';
+                item.type === 'new_audition';
 
               const borderColor = getBorderColor(item.type);
 

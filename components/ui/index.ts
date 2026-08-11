@@ -16,4 +16,5 @@ export {
 } from './Skeleton';
 export {Divider} from './Divider';
 export {DatePickerModal} from './DatePickerModal';
+export {PopupModal} from './PopupModal';
 

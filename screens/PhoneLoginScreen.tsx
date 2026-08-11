@@ -141,7 +141,6 @@ export default function PhoneLoginScreen({navigation}: any) {
       await refreshUserData();
     } catch (e: any) {
       setErrorMsg(errorMessage(e.message));
-    } finally {
       setVerifying(false);
     }
   };
@@ -177,10 +176,12 @@ export default function PhoneLoginScreen({navigation}: any) {
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+      await GoogleSignin.signOut().catch(() => {});
       await GoogleSignin.signIn();
       const {idToken} = await GoogleSignin.getTokens();
       if (!idToken) {
         Alert.alert('Error', 'Could not get Google token. Try again.');
+        setGoogleLoading(false);
         return;
       }
       await authService.googleSignIn(idToken);
@@ -200,7 +201,6 @@ export default function PhoneLoginScreen({navigation}: any) {
           'Could not sign in with Google. Please try again.',
         );
       }
-    } finally {
       setGoogleLoading(false);
     }
   };
@@ -447,6 +447,12 @@ export default function PhoneLoginScreen({navigation}: any) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {(sendingOtp || verifying || googleLoading) && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Please wait...</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -455,6 +461,23 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(9, 9, 11, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   container: {
     flex: 1,

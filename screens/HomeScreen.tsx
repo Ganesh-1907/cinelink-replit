@@ -48,6 +48,11 @@ export default function HomeScreen({navigation}: any) {
   const {isAdmin, isApprovedDirector, user: currentUser, signOut} = useApp();
   const {isDark, toggleTheme} = useTheme();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  const openReport = (id: string, type: string, title: string) => {
+    setReportTarget({id, type, title});
+    setReportModalVisible(true);
+  };
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
@@ -242,12 +247,20 @@ export default function HomeScreen({navigation}: any) {
       const searchRes = await api.get<any>('/users/search?limit=30');
       const allUsers = searchRes.users || [];
 
-      const filtered = allUsers.filter((u: any) => {
+      const otherUsers = allUsers.filter((u: any) => {
         const targetId = u._id || u.id;
-        return targetId !== uid && !followedSet.has(targetId);
+        return targetId !== uid;
       });
 
-      setSuggestedUsers(filtered);
+      const sorted = [...otherUsers].sort((a, b) => {
+        const aId = a._id || a.id;
+        const bId = b._id || b.id;
+        const aFollowed = followedSet.has(aId) ? 1 : 0;
+        const bFollowed = followedSet.has(bId) ? 1 : 0;
+        return aFollowed - bFollowed;
+      });
+
+      setSuggestedUsers(sorted);
     } catch (e) {
       console.log('Error fetching suggestions:', e);
     } finally {
@@ -386,6 +399,121 @@ export default function HomeScreen({navigation}: any) {
         <TouchableOpacity onPress={onViewAll} style={styles.viewAllTouch}>
           <Text style={styles.sectionHeaderViewAll}>View all</Text>
         </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderInfluencersSection = (title: string) => {
+    if (suggestedLoading) {
+      return (
+        <ActivityIndicator
+          color={Colors.primary}
+          style={{ marginVertical: Spacing.lg }}
+        />
+      );
+    }
+    if (suggestedUsers.length === 0) {
+      return null;
+    }
+
+    const displayedUsers = suggestedUsers.slice(0, 7);
+
+    return (
+      <View style={{ marginVertical: Spacing.md }}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>{title}</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginTop: 10 }}
+          contentContainerStyle={styles.influencersScroll}>
+          {displayedUsers.map(item => {
+            const uid = item._id || item.id;
+            const isFollowed = followingIds.has(uid);
+            return (
+              <TouchableOpacity
+                key={uid}
+                style={[
+                  styles.influencerCardCompact,
+                  isDark ? styles.borderDark : styles.borderLight,
+                ]}
+                onPress={() =>
+                  navigation.navigate('PublicProfile', { userId: uid })
+                }
+                activeOpacity={0.9}>
+                <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center', width: '100%' }}>
+                  <View style={styles.influencerAvatarWrapper}>
+                    <Avatar
+                      name={
+                        item.fullName ||
+                        item.displayName ||
+                        item.name ||
+                        'User'
+                      }
+                      size={68}
+                      uri={item.photoUrl}
+                      ring={true}
+                      ringColor="rgba(245, 196, 81, 0.4)"
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.influencerNameText,
+                      { color: Colors.textPrimary },
+                    ]}
+                    numberOfLines={1}>
+                    {item.fullName || item.displayName || item.name || 'User'}
+                  </Text>
+                  <Text style={styles.influencerRoleText} numberOfLines={1}>
+                    {item.role || 'Actor'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.influencerFollowBtnCompact,
+                    styles.influencerFollowBtnBorder,
+                    isFollowed && styles.influencerFollowingBtnBg,
+                  ]}
+                  onPress={() => toggleFollowUser(uid)}>
+                  <Text
+                    style={[
+                      styles.influencerFollowTextCompact,
+                      { color: Colors.primary },
+                    ]}>
+                    {isFollowed ? 'Following' : 'Follow'}
+                  </Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            );
+          })}
+
+          <TouchableOpacity
+            style={[
+              styles.influencerCardCompact,
+              isDark ? styles.borderDark : styles.borderLight,
+            ]}
+            onPress={() => navigation.navigate('SuggestedFollows')}
+            activeOpacity={0.8}
+          >
+            <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center', width: '100%' }}>
+              <View style={[styles.influencerAvatarWrapper, { width: 68, height: 68, borderRadius: 34, backgroundColor: isDark ? 'rgba(245, 196, 81, 0.1)' : 'rgba(245, 196, 81, 0.05)', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ fontSize: 26 }}>👥</Text>
+              </View>
+              <Text style={[styles.influencerNameText, { color: Colors.textPrimary }]} numberOfLines={1}>
+                View All
+              </Text>
+              <Text style={[styles.influencerRoleText, { color: Colors.textSecondary }]} numberOfLines={1}>
+                More Creators
+              </Text>
+            </View>
+            <View style={[styles.influencerFollowBtnCompact, { borderColor: Colors.primary, marginTop: 4 }]}>
+              <Text style={[styles.influencerFollowTextCompact, { color: Colors.primary }]}>
+                See All
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     );
   };
@@ -717,40 +845,41 @@ export default function HomeScreen({navigation}: any) {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.tabBarScroll}>
-              {[
-                {key: 'auditions', icon: '🎭', label: 'Auditions'},
-                {key: 'films', icon: '🎬', label: 'Short Films'},
-                {key: 'contests', icon: '🏆', label: 'Contests'},
-                {key: 'quick_posts', icon: '⚡', label: 'Quick Posts'},
-                {key: 'announcements', icon: '📢', label: 'Announcements'},
-              ].map(tab => {
-                const isActive = selectedTab === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[
-                      styles.tabItem,
-                      {
-                        backgroundColor: isActive ? Colors.primary : Colors.card,
-                        borderColor: isActive ? Colors.primary : Colors.border,
-                      },
-                    ]}
-                    onPress={() => setSelectedTab(tab.key as any)}
-                    activeOpacity={0.85}>
-                    <Text style={{marginRight: 6, fontSize: 13}}>{tab.icon}</Text>
-                    <Text
+               {[
+                 {key: 'auditions', icon: '🎭', label: 'Auditions'},
+                 {key: 'films', icon: '🎬', label: 'Films'},
+                 {key: 'contests', icon: '🏆', label: 'Contests'},
+                 {key: 'quick_posts', icon: '⚡', label: 'Posts'},
+                 {key: 'announcements', icon: '📢', label: 'Announcements'},
+               ].map(tab => {
+                  const isActive = selectedTab === tab.key;
+                  return (
+                    <TouchableOpacity
+                      key={tab.key}
                       style={[
-                        styles.tabItemText,
+                        styles.tabItem,
                         {
-                          color: isActive ? '#09090B' : Colors.textSecondary,
-                          fontWeight: isActive ? '700' : '600',
+                          backgroundColor: isActive ? '#1E1E2E' : Colors.card,
+                          borderColor: isActive ? Colors.primary : Colors.border,
                         },
-                      ]}>
-                      {tab.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                      ]}
+                      onPress={() => setSelectedTab(tab.key as any)}
+                      activeOpacity={0.85}>
+                      <Text style={styles.tabIcon}>{tab.icon}</Text>
+                      <Text
+                        style={[
+                          styles.tabItemText,
+                          {
+                            color: isActive ? '#FFFFFF' : Colors.textSecondary,
+                            fontWeight: isActive ? '700' : '600',
+                          },
+                        ]}
+                        numberOfLines={1}>
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+               })}
             </ScrollView>
           </View>
 
@@ -766,123 +895,77 @@ export default function HomeScreen({navigation}: any) {
 
             switch (selectedTab) {
               case 'auditions':
+                const sq = searchText.toLowerCase().trim();
+                const filteredAuditions = sq
+                  ? auditionPosts.filter((item: any) =>
+                      (item.title || '').toLowerCase().includes(sq) ||
+                      (item.description || '').toLowerCase().includes(sq) ||
+                      (item.location || '').toLowerCase().includes(sq) ||
+                      (item.directorName || '').toLowerCase().includes(sq) ||
+                      (item.category || '').toLowerCase().includes(sq) ||
+                      (item.roles || '').toLowerCase().includes(sq)
+                    )
+                  : auditionPosts;
                 return (
                   <View style={styles.listContainer}>
                     {feedLoading ? (
                       <ActivityIndicator color={Colors.primary} style={styles.loader} />
-                    ) : auditionPosts.length === 0 ? (
-                      <EmptyState
-                        icon="🎭"
-                        title="No auditions found"
-                        subtitle="Check back later for new auditions"
-                      />
+                    ) : filteredAuditions.length === 0 ? (
+                      <>
+                        <EmptyState
+                          icon="🎭"
+                          title={sq ? 'No matching auditions' : 'No auditions found'}
+                          subtitle={sq ? 'Try a different search' : 'Check back later for new auditions'}
+                        />
+                        {!sq && renderInfluencersSection('People You May Know')}
+                      </>
                     ) : (
-                      auditionPosts.map(item => {
+                      filteredAuditions.map((item, index) => {
                         const isSaved = savedIds.includes(item.id);
                         const imgUri = item.imageUrl || item.posterUrl;
                         return (
-                          <TouchableOpacity
-                            key={item.id}
-                            style={[
-                              styles.premiumCard,
-                              {backgroundColor: Colors.card, borderColor: Colors.border},
-                            ]}
-                            onPress={() => navigation.navigate('AuditionDetail', {audition: item})}
-                            activeOpacity={0.95}>
-                            {/* Creator Info Header Row */}
-                            {(item.directorId || item.postedById) ? (
-                              <View style={styles.creatorHeader}>
-                                <TouchableOpacity
-                                  activeOpacity={0.7}
-                                  onPress={() => {
-                                    const creatorId = item.directorId || item.postedById;
-                                    if (creatorId) {
-                                      navigation.navigate('PublicProfile', {userId: creatorId});
-                                    }
-                                  }}
-                                  style={styles.creatorHeaderLeft}
-                                >
-                                  <Avatar
-                                    name={item.directorName || 'D'}
-                                    uri={item.directorPhotoUrl}
-                                    size="sm"
-                                    ring
-                                  />
-                                  <View style={styles.creatorInfo}>
-                                    <Text style={styles.creatorName} numberOfLines={1}>
-                                      {item.directorName || 'Casting Director'}
-                                    </Text>
-                                    <Text style={styles.creatorRole}>
-                                      {item.directorRole || 'Casting Director'}
-                                    </Text>
-                                  </View>
-                                </TouchableOpacity>
-
-                                {(item.directorId || item.postedById) !== currentUser?.uid && (
+                          <React.Fragment key={item.id}>
+                            <TouchableOpacity
+                              style={[
+                                styles.horizontalCard,
+                                {backgroundColor: Colors.card},
+                              ]}
+                              onPress={() => navigation.navigate('AuditionDetail', {audition: item})}
+                              activeOpacity={0.95}>
+                              {imgUri ? (
+                                <Image source={{uri: imgUri}} style={styles.horizontalCardImage} />
+                              ) : (
+                                <View style={[styles.horizontalCardPlaceholder, {backgroundColor: Colors.cardElevated}]}>
+                                  <Text style={{fontSize: 36}}>🎭</Text>
+                                </View>
+                              )}
+                              <View style={styles.horizontalCardBody}>
+                                <View style={styles.horizontalCardHeaderRow}>
+                                  <Text style={[styles.horizontalCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
+                                    {item.title}
+                                  </Text>
                                   <TouchableOpacity
-                                    style={[styles.followBtn, followingIds.has(item.directorId || item.postedById) && styles.followingBtn]}
-                                    onPress={() => toggleFollowUser(item.directorId || item.postedById)}
-                                    activeOpacity={0.7}>
-                                    <Text style={[styles.followBtnText, followingIds.has(item.directorId || item.postedById) && styles.followingBtnText]}>
-                                      {followingIds.has(item.directorId || item.postedById) ? '✓ Following' : '+ Follow'}
-                                    </Text>
+                                    style={styles.horizontalCardHeart}
+                                    onPress={() => toggleSaveAudition(item)}>
+                                    <Text style={{fontSize: 14}}>{isSaved ? '❤️' : '🤍'}</Text>
                                   </TouchableOpacity>
-                                )}
-                              </View>
-                            ) : null}
+                                </View>
 
-                            {imgUri ? (
-                              <View style={styles.premiumCardImageContainer}>
-                                <Image
-                                  source={{uri: imgUri}}
-                                  style={[
-                                    styles.premiumCardImage,
-                                    {
-                                      transform: [{ translateY: item.posterOffset || 0 }]
-                                    }
-                                  ]}
-                                />
-                              </View>
-                            ) : (
-                              <View style={[styles.premiumCardImagePlaceholder, {backgroundColor: Colors.cardElevated}]}>
-                                <Text style={styles.premiumCardPlaceholderIcon}>🎭</Text>
-                              </View>
-                            )}
-                            <View style={styles.premiumCardBody}>
-                              <View style={styles.premiumCardHeaderRow}>
-                                <Text style={[styles.premiumCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
-                                  {item.title}
+                                <Text style={[styles.horizontalCardSub1, {color: Colors.primary}]} numberOfLines={1}>
+                                  💰 {item.budget ? `₹ ${item.budget}/day` : 'Paid'} · {item.category || 'Acting'}
                                 </Text>
-                                <TouchableOpacity
-                                  style={styles.premiumBookmarkBtn}
-                                  onPress={() => toggleSaveAudition(item)}>
-                                  <Text style={{fontSize: 14}}>{isSaved ? '❤️' : '🤍'}</Text>
-                                </TouchableOpacity>
-                              </View>
 
-                              <Text style={[styles.premiumCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
-                                {item.description || item.roles || 'No description provided.'}
-                              </Text>
+                                <Text style={[styles.horizontalCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
+                                  {item.description || item.roles || 'No details provided.'}
+                                </Text>
 
-                              <View style={styles.premiumTagsRow}>
-                                <View style={[styles.premiumBadge, {backgroundColor: Colors.primaryFaint}]}>
-                                  <Text style={[styles.premiumBadgeText, {color: Colors.primary}]}>
-                                    💰 {item.budget ? `₹ ${item.budget}/day` : 'Paid'}
-                                  </Text>
-                                </View>
-                                <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
-                                  <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
-                                    📍 {item.location || 'Remote'}
-                                  </Text>
-                                </View>
-                                <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
-                                  <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
-                                    🎭 {item.category || 'Acting'}
-                                  </Text>
-                                </View>
+                                <Text style={[styles.horizontalCardSub2, {color: Colors.textTertiary}]} numberOfLines={1}>
+                                  📍 {item.location || 'Remote'} · {item.directorName || 'Casting Director'}
+                                </Text>
                               </View>
-                            </View>
-                          </TouchableOpacity>
+                            </TouchableOpacity>
+                            {index > 0 && index % 7 === 0 && renderInfluencersSection('People You May Know')}
+                          </React.Fragment>
                         );
                       })
                     )}
@@ -890,116 +973,74 @@ export default function HomeScreen({navigation}: any) {
                 );
 
               case 'films':
+                const fq = searchText.toLowerCase().trim();
+                const filteredFilms = fq
+                  ? films.filter((item: any) =>
+                      (item.title || '').toLowerCase().includes(fq) ||
+                      (item.description || '').toLowerCase().includes(fq) ||
+                      (item.genre || '').toLowerCase().includes(fq) ||
+                      (item.creatorName || '').toLowerCase().includes(fq) ||
+                      (item.directorName || '').toLowerCase().includes(fq)
+                    )
+                  : films;
                 return (
                   <View style={styles.listContainer}>
                     {filmsLoading ? (
                       <ActivityIndicator color={Colors.primary} style={styles.loader} />
-                    ) : films.length === 0 ? (
-                      <EmptyState
-                        icon="🎬"
-                        title="No short films found"
-                        subtitle="Be the first to upload a short film!"
-                      />
+                    ) : filteredFilms.length === 0 ? (
+                      <>
+                        <EmptyState
+                          icon="🎬"
+                          title={fq ? 'No matching films' : 'No short films found'}
+                          subtitle={fq ? 'Try a different search' : 'Be the first to upload a short film!'}
+                        />
+                        {!fq && renderInfluencersSection('People You May Know')}
+                      </>
                     ) : (
-                      films.map(item => {
+                      filteredFilms.map((item, index) => {
                         const imgUri = typeof item.posterUrl === 'string' && item.posterUrl.trim().startsWith('http')
                           ? item.posterUrl.trim()
                           : (typeof item.imageUrl === 'string' && item.imageUrl.trim().startsWith('http')
                               ? item.imageUrl.trim()
                               : null);
                         return (
-                          <TouchableOpacity
-                            key={item.id}
-                            style={[
-                              styles.premiumCard,
-                              {backgroundColor: Colors.card, borderColor: Colors.border},
-                            ]}
-                            onPress={() => navigation.navigate('FilmDetail', {film: item})}
-                            activeOpacity={0.95}>
-                            {/* Creator Info Header Row */}
-                            {(item.userId || item.directorId) ? (
-                              <View style={styles.creatorHeader}>
-                                <TouchableOpacity
-                                  activeOpacity={0.7}
-                                  onPress={() => {
-                                    const creatorId = item.userId || item.directorId;
-                                    if (creatorId) {
-                                      navigation.navigate('PublicProfile', {userId: creatorId});
-                                    }
-                                  }}
-                                  style={styles.creatorHeaderLeft}
-                                >
-                                  <Avatar
-                                    name={item.creatorName || item.directorName || 'D'}
-                                    uri={item.creatorPhotoUrl || item.directorPhotoUrl}
-                                    size="sm"
-                                    ring
-                                  />
-                                  <View style={styles.creatorInfo}>
-                                    <Text style={styles.creatorName} numberOfLines={1}>
-                                      {item.creatorName || item.directorName || 'Director'}
-                                    </Text>
-                                    <Text style={styles.creatorRole}>
-                                      {item.creatorRole || 'Director'}
-                                    </Text>
-                                  </View>
-                                </TouchableOpacity>
-
-                                {(item.userId || item.directorId) !== currentUser?.uid && (
-                                  <TouchableOpacity
-                                    style={[styles.followBtn, followingIds.has(item.userId || item.directorId) && styles.followingBtn]}
-                                    onPress={() => toggleFollowUser(item.userId || item.directorId)}
-                                    activeOpacity={0.7}>
-                                    <Text style={[styles.followBtnText, followingIds.has(item.userId || item.directorId) && styles.followingBtnText]}>
-                                      {followingIds.has(item.userId || item.directorId) ? '✓ Following' : '+ Follow'}
-                                    </Text>
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                            ) : null}
-
-                            {imgUri ? (
-                              <View style={styles.premiumCardImageContainer}>
-                                <Image
-                                  source={{uri: imgUri}}
-                                  style={[
-                                    styles.premiumCardImage,
-                                    {
-                                      transform: [{ translateY: item.posterOffset || 0 }]
-                                    }
-                                  ]}
-                                />
-                              </View>
-                            ) : (
-                              <View style={[styles.premiumCardImagePlaceholder, {backgroundColor: Colors.cardElevated}]}>
-                                <Text style={styles.premiumCardPlaceholderIcon}>🎬</Text>
-                              </View>
-                            )}
-                            <View style={styles.premiumCardBody}>
-                              <Text style={[styles.premiumCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
-                                {item.title || 'Untitled Film'}
-                              </Text>
-
-                              <Text style={[styles.premiumCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
-                                {item.description || 'Watch this amazing short film on CineLink.'}
-                              </Text>
-
-                              <View style={styles.premiumTagsRow}>
-                                <View style={[styles.premiumBadge, {backgroundColor: Colors.primaryFaint}]}>
-                                  <Text style={[styles.premiumBadgeText, {color: Colors.primary}]}>
-                                    🎬 {item.genre || 'Drama'}
+                          <React.Fragment key={item.id}>
+                            <TouchableOpacity
+                              style={[
+                                styles.horizontalCard,
+                                {backgroundColor: Colors.card},
+                              ]}
+                              onPress={() => navigation.navigate('FilmDetail', {film: item})}
+                              activeOpacity={0.95}>
+                              {imgUri ? (
+                                <Image source={{uri: imgUri}} style={styles.horizontalCardImage} />
+                              ) : (
+                                <View style={[styles.horizontalCardPlaceholder, {backgroundColor: Colors.cardElevated}]}>
+                                  <Text style={{fontSize: 36}}>🎬</Text>
+                                </View>
+                              )}
+                              <View style={styles.horizontalCardBody}>
+                                <View style={styles.horizontalCardHeaderRow}>
+                                  <Text style={[styles.horizontalCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
+                                    {item.title || 'Untitled Film'}
                                   </Text>
                                 </View>
-                                {item.duration ? (
-                                  <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
-                                    <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
-                                      ⏱️ {item.duration} mins
-                                    </Text>
-                                  </View>
-                                ) : null}
+
+                                <Text style={[styles.horizontalCardSub1, {color: Colors.primary}]} numberOfLines={1}>
+                                  🎭 {item.genre || 'Drama'} {item.duration ? `· ⏱️ ${item.duration} mins` : ''}
+                                </Text>
+
+                                <Text style={[styles.horizontalCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
+                                  {item.description || 'Watch this amazing short film on CineLink.'}
+                                </Text>
+
+                                <Text style={[styles.horizontalCardSub2, {color: Colors.textTertiary}]} numberOfLines={1}>
+                                  By {item.creatorName || item.directorName || 'Director'}
+                                </Text>
                               </View>
-                            </View>
-                          </TouchableOpacity>
+                            </TouchableOpacity>
+                            {index > 0 && index % 7 === 0 && renderInfluencersSection('People You May Know')}
+                          </React.Fragment>
                         );
                       })
                     )}
@@ -1007,68 +1048,67 @@ export default function HomeScreen({navigation}: any) {
                 );
 
               case 'contests':
+                const cq = searchText.toLowerCase().trim();
+                const filteredContests = cq
+                  ? contests.filter((item: any) =>
+                      (item.title || '').toLowerCase().includes(cq) ||
+                      (item.description || '').toLowerCase().includes(cq)
+                    )
+                  : contests;
                 return (
                   <View style={styles.listContainer}>
                     {contestsLoading ? (
                       <ActivityIndicator color={Colors.primary} style={styles.loader} />
-                    ) : contests.length === 0 ? (
-                      <EmptyState
-                        icon="🏆"
-                        title="No contests found"
-                        subtitle="Active contests will show up here"
-                      />
+                    ) : filteredContests.length === 0 ? (
+                      <>
+                        <EmptyState
+                          icon="🏆"
+                          title={cq ? 'No matching contests' : 'No contests found'}
+                          subtitle={cq ? 'Try a different search' : 'Active contests will show up here'}
+                        />
+                        {!cq && renderInfluencersSection('People You May Know')}
+                      </>
                     ) : (
-                      contests.map(item => {
-                        const imgUri = item.imageUrl || item.bannerUrl;
+                      filteredContests.map((item, index) => {
+                        const imgUri = item.imageUrl || item.posterUrl || item.bannerUrl;
                         return (
-                          <TouchableOpacity
-                            key={item.id}
-                            style={[
-                              styles.premiumCard,
-                              {backgroundColor: Colors.card, borderColor: Colors.border},
-                            ]}
-                            onPress={() => navigation.navigate('Contests')}
-                            activeOpacity={0.95}>
-                            {imgUri ? (
-                              <View style={styles.premiumCardImageContainer}>
-                                <Image
-                                  source={{uri: imgUri}}
-                                  style={[
-                                    styles.premiumCardImage,
-                                    {
-                                      transform: [{ translateY: item.posterOffset || item.bannerOffset || 0 }]
-                                    }
-                                  ]}
-                                />
-                              </View>
-                            ) : (
-                              <View style={[styles.premiumCardImagePlaceholder, {backgroundColor: Colors.cardElevated}]}>
-                                <Text style={styles.premiumCardPlaceholderIcon}>🏆</Text>
-                              </View>
-                            )}
-                            <View style={styles.premiumCardBody}>
-                              <Text style={[styles.premiumCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
-                                {item.title}
-                              </Text>
-
-                              <Text style={[styles.premiumCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
-                                {item.description || 'Join this contest and showcase your creative skills.'}
-                              </Text>
-
-                              <View style={styles.premiumTagsRow}>
-                                <View style={[styles.premiumBadge, {backgroundColor: Colors.errorFaint}]}>
-                                  <Text style={[styles.premiumBadgeText, {color: Colors.error}]}>
-                                    ⏳ {getDaysLeft(item.deadline || item.endDate)}
+                          <React.Fragment key={item.id}>
+                            <TouchableOpacity
+                              style={[
+                                styles.horizontalCard,
+                                {backgroundColor: Colors.card},
+                              ]}
+                              onPress={() => navigation.navigate('ContestDetail', { contestId: item.id })}
+                              activeOpacity={0.95}>
+                              {imgUri ? (
+                                <Image source={{uri: imgUri}} style={styles.horizontalCardImage} />
+                              ) : (
+                                <View style={[styles.horizontalCardPlaceholder, {backgroundColor: Colors.cardElevated}]}>
+                                  <Text style={{fontSize: 36}}>🏆</Text>
+                                </View>
+                              )}
+                              <View style={styles.horizontalCardBody}>
+                                <View style={styles.horizontalCardHeaderRow}>
+                                  <Text style={[styles.horizontalCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
+                                    {item.title}
                                   </Text>
                                 </View>
-                                <View style={[styles.premiumBadge, {backgroundColor: Colors.primaryFaint}]}>
-                                  <Text style={[styles.premiumBadgeText, {color: Colors.primary}]}>
-                                    🏆 Prize: ₹ {item.prizePool || 'TBD'}
-                                  </Text>
-                                </View>
+
+                                <Text style={[styles.horizontalCardSub1, {color: Colors.primary}]} numberOfLines={1}>
+                                  🏆 Prize: ₹ {item.prizePool || 'TBD'}
+                                </Text>
+
+                                <Text style={[styles.horizontalCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
+                                  {item.description || 'Join this contest and showcase your creative skills.'}
+                                </Text>
+
+                                <Text style={[styles.horizontalCardSub2, {color: Colors.error}]} numberOfLines={1}>
+                                  ⏳ {getDaysLeft(item.deadline || item.endDate)}
+                                </Text>
                               </View>
-                            </View>
-                          </TouchableOpacity>
+                            </TouchableOpacity>
+                            {index > 0 && index % 7 === 0 && renderInfluencersSection('People You May Know')}
+                          </React.Fragment>
                         );
                       })
                     )}
@@ -1077,250 +1117,131 @@ export default function HomeScreen({navigation}: any) {
 
               case 'quick_posts':
                 const quickPosts = feedPosts.filter((p: any) => p.postType === 'general');
+                const gq = searchText.toLowerCase().trim();
+                const filteredQP = gq
+                  ? quickPosts.filter((item: any) =>
+                      (item.text || '').toLowerCase().includes(gq) ||
+                      (item.creatorName || '').toLowerCase().includes(gq)
+                    )
+                  : quickPosts;
                 return (
                   <View style={styles.listContainer}>
                     {feedPostsLoading ? (
                       <ActivityIndicator color={Colors.primary} style={styles.loader} />
-                    ) : quickPosts.length === 0 ? (
-                      <EmptyState
-                        icon="⚡"
-                        title="No quick posts yet"
-                        subtitle="Publish updates to the community feed!"
-                      />
+                    ) : filteredQP.length === 0 ? (
+                      <>
+                        <EmptyState
+                          icon="⚡"
+                          title={gq ? 'No matching posts' : 'No quick posts yet'}
+                          subtitle={gq ? 'Try a different search' : 'Publish updates to the community feed!'}
+                        />
+                        {!gq && renderInfluencersSection('People You May Know')}
+                      </>
                     ) : (
-                      quickPosts.map(item => {
-                        const imgUri = item.imageUrl || item.mediaUrl;
-                        return (
-                          <View
-                            key={item.id}
-                            style={[
-                              styles.premiumCard,
-                              {backgroundColor: Colors.card, borderColor: Colors.border},
-                            ]}>
-                            {/* Creator Info Header Row */}
-                            {(item.userId) ? (
-                              <View style={styles.creatorHeader}>
-                                <TouchableOpacity
-                                  activeOpacity={0.7}
-                                  onPress={() => {
-                                    navigation.navigate('PublicProfile', {userId: item.userId});
-                                  }}
-                                  style={styles.creatorHeaderLeft}
-                                >
-                                  <Avatar
-                                    name={item.creatorName || 'D'}
-                                    uri={item.creatorPhotoUrl}
-                                    size="sm"
-                                    ring
-                                  />
-                                  <View style={styles.creatorInfo}>
-                                    <Text style={styles.creatorName} numberOfLines={1}>
-                                      {item.creatorName || 'Community Member'}
-                                    </Text>
-                                    <Text style={styles.creatorRole}>
-                                      {item.creatorRole || 'Creator'} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
-                                    </Text>
-                                  </View>
-                                </TouchableOpacity>
+                       filteredQP.map((item, index) => {
+                         const imgUri = item.imageUrl || item.mediaUrl;
+                         return (
+                           <React.Fragment key={item.id}>
+                             <TouchableOpacity
+                               style={[styles.postCard, {backgroundColor: Colors.card}]}
+                               activeOpacity={0.8}
+                               onPress={() => navigation.navigate('PostDetail', {post: item})}>
+                               <View style={styles.postHeader}>
+                                 <TouchableOpacity
+                                   activeOpacity={0.7}
+                                   onPress={() => navigation.navigate('PublicProfile', {userId: item.userId})}>
+                                   <Avatar name={item.creatorName || 'D'} uri={item.creatorPhotoUrl} size="md" ring />
+                                 </TouchableOpacity>
+                                 <View style={{flex: 1, marginLeft: Spacing.sm}}>
+                                   <Text style={[styles.postName, {color: Colors.textPrimary}]} numberOfLines={1}>{item.creatorName || 'Community Member'}</Text>
+                                   <Text style={styles.postMeta}>{item.creatorRole || 'Creator'} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
+                                 </View>
+                                 {item.userId !== currentUser?.uid && (
+                                   <TouchableOpacity style={[styles.followBtn, followingIds.has(item.userId) && styles.followingBtn]} onPress={() => toggleFollowUser(item.userId)}>
+                                     <Text style={[styles.followBtnText, followingIds.has(item.userId) && styles.followingBtnText]}>{followingIds.has(item.userId) ? '✓ Following' : '+ Follow'}</Text>
+                                   </TouchableOpacity>
+                                 )}
+                               </View>
 
-                                {item.userId !== currentUser?.uid && (
-                                  <TouchableOpacity
-                                    style={[styles.followBtn, followingIds.has(item.userId) && styles.followingBtn]}
-                                    onPress={() => toggleFollowUser(item.userId)}
-                                    activeOpacity={0.7}>
-                                    <Text style={[styles.followBtnText, followingIds.has(item.userId) && styles.followingBtnText]}>
-                                      {followingIds.has(item.userId) ? '✓ Following' : '+ Follow'}
-                                    </Text>
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                            ) : null}
+                               {imgUri ? (
+                                 <Image source={{uri: imgUri}} style={styles.postImage} />
+                               ) : null}
 
-                            {imgUri ? (
-                              <View style={styles.premiumCardImageContainer}>
-                                <Image
-                                  source={{uri: imgUri}}
-                                  style={[
-                                    styles.premiumCardImage,
-                                    {
-                                      transform: [{ translateY: item.imageOffset || 0 }]
-                                    }
-                                  ]}
-                                />
-                              </View>
-                            ) : null}
-                            <View style={styles.premiumCardBody}>
-
-                              <Text style={[styles.premiumCardDesc, {color: Colors.textPrimary, marginVertical: Spacing.sm}]}>
-                                {item.text}
-                              </Text>
-
-                              {item.location ? (
-                                <View style={styles.premiumTagsRow}>
-                                  <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
-                                    <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
-                                      📍 {item.location}
-                                    </Text>
-                                  </View>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-                        );
-                      })
+                               {item.text ? (
+                                 <Text style={styles.postText} numberOfLines={3}>{item.text}</Text>
+                               ) : null}
+                             </TouchableOpacity>
+                             {index > 0 && index % 7 === 0 && renderInfluencersSection('People You May Know')}
+                           </React.Fragment>
+                         );
+                       })
                     )}
                   </View>
                 );
 
               case 'announcements':
                 const announcements = feedPosts.filter((p: any) => p.postType === 'announcement');
+                const aq = searchText.toLowerCase().trim();
+                const filteredAnn = aq
+                  ? announcements.filter((item: any) =>
+                      (item.text || '').toLowerCase().includes(aq)
+                    )
+                  : announcements;
                 return (
                   <View style={styles.listContainer}>
                     {feedPostsLoading ? (
                       <ActivityIndicator color={Colors.primary} style={styles.loader} />
-                    ) : announcements.length === 0 ? (
-                      <EmptyState
-                        icon="📢"
-                        title="No announcements yet"
-                        subtitle="Stay tuned for official updates!"
-                      />
+                    ) : filteredAnn.length === 0 ? (
+                      <>
+                        <EmptyState
+                          icon="📢"
+                          title={aq ? 'No matching announcements' : 'No announcements yet'}
+                          subtitle={aq ? 'Try a different search' : 'Stay tuned for official updates!'}
+                        />
+                        {!aq && renderInfluencersSection('People You May Know')}
+                      </>
                     ) : (
-                      announcements.map(item => {
-                        const imgUri = item.imageUrl || item.mediaUrl;
-                        return (
-                          <View
-                            key={item.id}
-                            style={[
-                              styles.premiumCard,
-                              {backgroundColor: Colors.card, borderColor: Colors.border},
-                            ]}>
-                            {imgUri ? (
-                              <View style={styles.premiumCardImageContainer}>
-                                <Image
-                                  source={{uri: imgUri}}
-                                  style={[
-                                    styles.premiumCardImage,
-                                    {
-                                      transform: [{ translateY: item.imageOffset || 0 }]
-                                    }
-                                  ]}
-                                />
-                              </View>
-                            ) : null}
-                            <View style={styles.premiumCardBody}>
-                              <View style={styles.premiumCardHeaderRow}>
-                                <View style={[styles.premiumBadge, {backgroundColor: Colors.errorFaint}]}>
-                                  <Text style={[styles.premiumBadgeText, {color: Colors.error, fontSize: 9}]}>
-                                    📢 Announcement
-                                  </Text>
-                                </View>
-                                <Text style={{fontSize: 10, color: Colors.textSecondary}}>
-                                  {new Date(item.createdAt).toLocaleDateString()}
-                                </Text>
-                              </View>
+                       filteredAnn.map((item, index) => {
+                         const imgUri = item.imageUrl || item.mediaUrl;
+                         return (
+                           <React.Fragment key={item.id}>
+                             <TouchableOpacity
+                               style={[styles.postCard, {backgroundColor: Colors.card}]}
+                               activeOpacity={0.8}
+                               onPress={() => navigation.navigate('PostDetail', {post: item})}>
+                               <View style={styles.postHeader}>
+                                 <View style={[styles.announceIcon, {width: 40, height: 40, borderRadius: Radius.sm, backgroundColor: Colors.errorFaint, alignItems: 'center', justifyContent: 'center'}]}>
+                                   <Text style={{fontSize: 18}}>📢</Text>
+                                 </View>
+                                 <View style={{flex: 1, marginLeft: Spacing.sm}}>
+                                   <Text style={[styles.postName, {color: Colors.textPrimary}]} numberOfLines={1}>
+                                     Announcement
+                                   </Text>
+                                   <Text style={styles.postMeta}>
+                                     {new Date(item.createdAt).toLocaleDateString()}
+                                   </Text>
+                                 </View>
+                               </View>
 
-                              <Text style={[styles.premiumCardDesc, {color: Colors.textPrimary, marginVertical: Spacing.sm}]}>
-                                {item.text}
-                              </Text>
+                               {imgUri ? (
+                                 <Image source={{uri: imgUri}} style={styles.postImage} />
+                               ) : null}
 
-                              {item.location ? (
-                                <View style={styles.premiumTagsRow}>
-                                  <View style={[styles.premiumBadge, {backgroundColor: Colors.cardElevated}]}>
-                                    <Text style={[styles.premiumBadgeText, {color: Colors.textSecondary}]}>
-                                      📍 {item.location}
-                                    </Text>
-                                  </View>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-                        );
-                      })
+                               {item.text ? (
+                                 <Text style={styles.postText} numberOfLines={3}>{item.text}</Text>
+                               ) : null}
+                             </TouchableOpacity>
+                             {index > 0 && index % 7 === 0 && renderInfluencersSection('People You May Know')}
+                           </React.Fragment>
+                         );
+                       })
                     )}
                   </View>
                 );
             }
           })()}
 
-          {/* ── TOP INFLUENCERS TO FOLLOW ── */}
-          {renderSectionHeader('Top Influencers to Follow', () =>
-            navigation.navigate('Discover'),
-          )}
-          {suggestedLoading ? (
-            <ActivityIndicator
-              color={Colors.primary}
-              style={{marginVertical: Spacing.lg}}
-            />
-          ) : suggestedUsers.length === 0 ? (
-            <EmptyState
-              icon="👥"
-              title="No suggestions yet"
-              subtitle="Explore Discover to find creators"
-            />
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.influencersScroll}>
-              {suggestedUsers.map(item => {
-                const uid = item._id || item.id;
-                const isFollowed = followingIds.has(uid);
-                return (
-                  <TouchableOpacity
-                    key={uid}
-                    style={[
-                      styles.influencerCardCompact,
-                      isDark ? styles.borderDark : styles.borderLight,
-                    ]}
-                    onPress={() =>
-                      navigation.navigate('PublicProfile', {userId: uid})
-                    }
-                    activeOpacity={0.9}>
-                    <View style={styles.influencerAvatarWrapper}>
-                      <Avatar
-                        name={
-                          item.fullName ||
-                          item.displayName ||
-                          item.name ||
-                          'User'
-                        }
-                        size={44}
-                        uri={item.photoUrl}
-                        ring={true}
-                        ringColor="rgba(245, 196, 81, 0.4)"
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.influencerNameText,
-                        {color: Colors.textPrimary},
-                      ]}
-                      numberOfLines={1}>
-                      {item.fullName || item.displayName || item.name || 'User'}
-                    </Text>
-                    <Text style={styles.influencerRoleText} numberOfLines={1}>
-                      {item.role || 'Actor'}
-                    </Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.influencerFollowBtnCompact,
-                        styles.influencerFollowBtnBorder,
-                        isFollowed && styles.influencerFollowingBtnBg,
-                      ]}
-                      onPress={() => toggleFollowUser(uid)}>
-                      <Text
-                        style={[
-                          styles.influencerFollowTextCompact,
-                          {color: Colors.primary},
-                        ]}>
-                        {isFollowed ? 'Following' : 'Follow'}
-                      </Text>
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
+
 
           {/* ── CINELINK FOR YOU (CAROUSEL) ── */}
           <View style={styles.forYouSection}>
@@ -1448,22 +1369,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabItem: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: Radius.pill,
+    justifyContent: 'center',
+    width: 66,
+    height: 66,
+    borderRadius: Radius.lg,
     borderWidth: 1.5,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+  },
+  tabIcon: {
+    fontSize: 20,
+    marginBottom: 3,
   },
   tabItemText: {
-    fontSize: 13,
+    fontSize: 11,
     letterSpacing: 0.1,
-    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 
   listContainer: {
@@ -2121,40 +2043,42 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   influencerCardCompact: {
-    width: 110,
-    borderRadius: 12,
+    width: 135,
+    height: 195,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 10,
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   influencerAvatarWrapper: {
     position: 'relative',
     marginBottom: 6,
   },
   influencerNameText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
     width: '100%',
   },
   influencerRoleText: {
-    fontSize: 9,
+    fontSize: 9.5,
     color: Colors.textSecondary,
-    marginTop: 1,
+    marginTop: 2,
     textAlign: 'center',
     width: '100%',
-    marginBottom: 6,
+    marginBottom: 2,
   },
   influencerFollowBtnCompact: {
     width: '100%',
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: Radius.pill,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   influencerFollowTextCompact: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '700',
   },
 
@@ -2429,5 +2353,105 @@ const styles = StyleSheet.create({
   },
   followingBtnText: {
     color: Colors.primary,
+  },
+  horizontalCard: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    padding: 12,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  horizontalCardImage: {
+    width: 130,
+    height: 140,
+    borderRadius: Radius.md,
+    resizeMode: 'cover',
+  },
+  horizontalCardPlaceholder: {
+    width: 130,
+    height: 140,
+    borderRadius: Radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  horizontalCardBody: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  horizontalCardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  horizontalCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    flex: 1,
+  },
+  horizontalCardHeart: {
+    paddingLeft: Spacing.xs,
+  },
+  horizontalCardSub1: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  horizontalCardSub2: {
+    fontSize: 12,
+  },
+  horizontalCardDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  horizontalPostImage: {
+    width: '100%',
+    height: 140,
+    borderRadius: Radius.md,
+    marginTop: Spacing.sm,
+    resizeMode: 'cover',
+  },
+
+  postCard: {
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  postName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  postMeta: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 1,
+  },
+  postText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: Spacing.sm,
+  },
+  postImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: Radius.md,
+    marginTop: Spacing.sm,
+    resizeMode: 'cover',
   },
 });

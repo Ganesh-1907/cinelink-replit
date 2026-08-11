@@ -14,6 +14,23 @@ export default function SuggestedFollowsScreen({navigation}: any) {
 
   const fetchUsers = useCallback(async () => {
     try {
+      // Fetch followed users to initialize state
+      try {
+        const followRes = await api.get<any>('/users/following-ids');
+        if (followRes && followRes.followingIds) {
+          setFollowing(new Set(followRes.followingIds));
+        } else {
+          const uid = user?.uid || user?._id;
+          if (uid) {
+            const followRes2 = await api.get<any>(`/users/${uid}/following`);
+            const followingList = followRes2.following || [];
+            setFollowing(new Set(followingList.map((u: any) => u._id || u.id)));
+          }
+        }
+      } catch (err) {
+        console.log('Error fetching following-ids:', err);
+      }
+
       const res = await api.get<any>('/users/search?limit=20');
       setUsers((res.users || []).filter((u: any) => (u._id || u.id) !== user?.uid));
     } catch (e) { console.log(e); }
@@ -35,7 +52,11 @@ export default function SuggestedFollowsScreen({navigation}: any) {
   };
 
   const handleSkip = () => {
-    navigation.replace?.();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace?.('MainTabs');
+    }
   };
 
   return (
