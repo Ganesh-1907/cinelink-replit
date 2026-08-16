@@ -30,6 +30,7 @@ import {uploadImage} from '../src/services/uploadService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Avatar, Header, Button, Input, Chip, Card} from '../components/ui';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 const SCREEN_W = Dimensions.get('window').width;
 const GRID_GAP = 2;
@@ -63,6 +64,7 @@ const availVariant = (status: string): 'success' | 'warning' | 'default' => {
 };
 
 export default function ProfileScreen({navigation, route}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>('');
   const [role, setRole] = useState<string>('Actor');
@@ -127,7 +129,7 @@ export default function ProfileScreen({navigation, route}: any) {
         backgroundColor={Colors.background}
       />
 
-      <Header title="Profile" />
+      <Header title="Profile" navigation={navigation} />
 
       <ScrollView
         ref={scrollRef}
@@ -277,6 +279,14 @@ export default function ProfileScreen({navigation, route}: any) {
                       ? 'Manage all auditions'
                       : 'Manage your posted auditions',
                     screen: 'MyAuditions',
+                  },
+                  {
+                    icon: '🚪',
+                    label: isAdmin ? 'Project Rooms' : 'My Project Rooms',
+                    desc: isAdmin
+                      ? 'Manage all project rooms'
+                      : 'Manage your created project rooms',
+                    screen: 'MyRooms',
                   },
                 ]
               : []),

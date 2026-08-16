@@ -22,6 +22,7 @@ import {useApp} from '../src/context/AppContext';
 import {uploadImage} from '../src/services/uploadService';
 import {Avatar, Input, Chip} from '../components/ui';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function ProfileFillScreen({onComplete}: {onComplete: () => void}) {
   const insets = useSafeAreaInsets();
@@ -236,7 +237,7 @@ export default function ProfileFillScreen({onComplete}: {onComplete: () => void}
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#09090B" />
+            <ActivityIndicator size="small" color={Colors.textInverse} />
           ) : (
             <Text style={styles.saveBtnText}>Save & Continue</Text>
           )}
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     ...Typography.label,
-    color: '#09090B',
+    color: Colors.textInverse,
     fontWeight: 'bold',
   },
 });

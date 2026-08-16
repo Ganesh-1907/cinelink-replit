@@ -42,7 +42,7 @@ export const lightColors: ColorPalette = {
   overlay: 'rgba(0,0,0,0.4)', border: '#E6E6E6', borderLight: '#F2F2EF', borderFocus: '#D4A017',
   primary: '#D4A017', primaryLight: '#F5D878', primaryDark: '#B8890E',
   primaryFaint: 'rgba(212,160,23,0.12)', primaryGlow: 'rgba(212,160,23,0.15)', primaryMid: 'rgba(212,160,23,0.25)',
-  textPrimary: '#1F1F23', textSecondary: '#6B7280', textTertiary: '#9CA3AF', textInverse: '#FFFFFF',
+  textPrimary: '#1F1F23', textSecondary: '#6B7280', textTertiary: '#7C828D', textInverse: '#FFFFFF',
   success: '#22C55E', successFaint: 'rgba(34,197,94,0.08)', successBorder: 'rgba(34,197,94,0.25)',
   error: '#E63946', errorFaint: 'rgba(230,57,70,0.08)', errorBorder: 'rgba(230,57,70,0.25)',
   warning: '#F59E0B', warningFaint: 'rgba(245,158,11,0.08)', warningBorder: 'rgba(245,158,11,0.25)',

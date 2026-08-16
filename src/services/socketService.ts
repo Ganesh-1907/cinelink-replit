@@ -73,3 +73,17 @@ export function onUserOnline(callback: (data: {userId: string; online: boolean})
   socket?.on('user:online', callback);
   return () => socket?.off('user:online', callback);
 }
+
+export function sendChatRead(chatId: string, userId: string): void {
+  socket?.emit('chat:read', {chatId, userId});
+}
+
+export function onChatRead(callback: (data: {chatId: string; userId: string}) => void): () => void {
+  socket?.on('chat:read', callback);
+  return () => socket?.off('chat:read', callback);
+}
+
+export function onChatDelivered(callback: (data: {chatId: string; userId: string}) => void): () => void {
+  socket?.on('chat:delivered', callback);
+  return () => socket?.off('chat:delivered', callback);
+}

@@ -15,10 +15,12 @@ import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Input, Chip, EmptyState, SkeletonCard, Avatar} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const ROLES = ['All', 'Hero', 'Heroine', 'Villain', 'Supporting', 'Child Artist', 'Comedian', 'Any Role'];
 
 export default function BrowseAuditionsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {isAdmin, user: currentUser} = useApp();
   const [auditions, setAuditions] = useState<any[]>([]);
@@ -264,7 +266,7 @@ export default function BrowseAuditionsScreen({navigation}: any) {
 
   return (
     <View style={styles.root}>
-      <Header title="Browse Auditions" />
+      <Header title="Browse Auditions" navigation={navigation} />
       <View style={styles.searchContainer}>
         <Input value={searchText} onChangeText={setSearchText} placeholder="Search by title, location, director..." />
       </View>

@@ -22,6 +22,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useApp} from '../src/context/AppContext';
 import PremiumBadge from '../src/components/Premium/PremiumBadge';
 import {Header} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const ADMIN_EMAIL = 'anilkumardevarakonda03@gmail.com';
 
@@ -194,7 +195,7 @@ function DiscoverCommentSheet({userId, visible, onClose, userName}: any) {
             <TextInput
               style={styles.sheetInput}
               placeholder="Write a comment..."
-              placeholderTextColor="#5C5048"
+              placeholderTextColor={Colors.textTertiary}
               value={text}
               onChangeText={setText}
               multiline
@@ -329,6 +330,7 @@ function DiscoverEngagementBar({
 
 // ── DiscoverScreen ───────────────────────────────────────────────
 export default function DiscoverScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {user} = useApp();
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
@@ -560,7 +562,7 @@ export default function DiscoverScreen({navigation}: any) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header title="Discover Creators" />
+        <Header title="Discover Creators" navigation={navigation} />
         <View style={styles.loaderBox}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loaderText}>Finding creators…</Text>
@@ -571,7 +573,7 @@ export default function DiscoverScreen({navigation}: any) {
 
   return (
     <View style={styles.container}>
-      <Header title="Discover Creators" />
+      <Header title="Discover Creators" navigation={navigation} />
       <FlatList
         data={users}
         keyExtractor={item => item._id || item.id}
@@ -955,5 +957,5 @@ const styles = StyleSheet.create({
     ...Typography.body,
   },
   deleteCommentBtn: {padding: 4, flexShrink: 0},
-  deleteCommentText: {color: '#EF4444', fontSize: 12, fontWeight: 'bold'},
+  deleteCommentText: {color: Colors.error, fontSize: 12, fontWeight: 'bold'},
 });

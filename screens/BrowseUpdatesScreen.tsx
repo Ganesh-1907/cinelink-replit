@@ -15,8 +15,10 @@ import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, EmptyState} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function BrowseUpdatesScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {isAdmin, user: currentUser} = useApp();
   const [updates, setUpdates] = useState<any[]>([]);

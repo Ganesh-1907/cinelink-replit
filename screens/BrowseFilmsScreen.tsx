@@ -15,8 +15,10 @@ import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Input, EmptyState, SkeletonCard, Avatar} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function BrowseFilmsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {user: currentUser} = useApp();
   const [films, setFilms] = useState<any[]>([]);

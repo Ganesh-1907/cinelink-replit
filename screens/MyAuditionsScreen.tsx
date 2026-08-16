@@ -5,8 +5,10 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Button, EmptyState, Badge} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function MyAuditionsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {user, isAdmin, isApprovedDirector} = useApp();
   const [auditions, setAuditions] = useState<any[]>([]);

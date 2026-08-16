@@ -23,7 +23,11 @@ import {
   getSocket,
   onChatMessage,
   sendChatMessage,
+  sendChatRead,
+  onChatRead,
+  onChatDelivered,
 } from '../src/services/socketService';
+import {useTheme} from '../src/context/ThemeContext';
 
 const cleanName = (raw: string | null | undefined): string => {
   if (!raw) {
@@ -50,6 +54,7 @@ const QUICK_EMOJIS = [
 ];
 
 export default function ChatScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const chat = route?.params?.chat;
   const {user: currentUser} = useApp();
@@ -85,6 +90,46 @@ export default function ChatScreen({route, navigation}: any) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [headerName, setHeaderName] = useState(getHeaderName());
   const [sending, setSending] = useState(false);
+
+  const renderTicks = (item: any, isImage?: boolean) => {
+    if (item._id.startsWith('temp-')) {
+      return <Text style={{fontSize: 9, color: isImage ? '#FFFFFF' : Colors.textInverse, opacity: 0.6}}> 🕒</Text>;
+    }
+    
+    const otherParticipants = (chat?.participants || []).filter(
+      (p: string) => p !== currentUserId,
+    );
+    if (otherParticipants.length === 0) {
+      return null;
+    }
+
+    const isReadByAll = otherParticipants.every((p: string) =>
+      (item.readBy || []).includes(p),
+    );
+    const isDeliveredToAll = otherParticipants.every((p: string) =>
+      (item.deliveredTo || []).includes(p) || (item.readBy || []).includes(p),
+    );
+
+    const defaultColor = isImage ? '#FFFFFF' : Colors.textInverse;
+
+    if (isReadByAll) {
+      return (
+        <Text style={{fontSize: 10, color: '#34B7F1', fontWeight: 'bold'}}>
+          {' '}✓✓
+        </Text>
+      );
+    }
+    if (isDeliveredToAll) {
+      return (
+        <Text style={{fontSize: 10, color: defaultColor, opacity: 0.7, fontWeight: 'bold'}}>
+          {' '}✓✓
+        </Text>
+      );
+    }
+    return (
+      <Text style={{fontSize: 10, color: defaultColor, opacity: 0.7}}> ✓</Text>
+    );
+  };
 
   const loadMessages = useCallback(async () => {
     try {
@@ -131,6 +176,8 @@ export default function ChatScreen({route, navigation}: any) {
     const socket = getSocket();
     if (socket) {
       socket.emit('chat:join', chatId);
+      sendChatRead(chatId, currentUserId);
+
       const unsub = onChatMessage((msg: any) => {
         if (msg.chatId === chatId) {
           setMessages(prev => {
@@ -152,6 +199,8 @@ export default function ChatScreen({route, navigation}: any) {
             if (prev.some(m => m._id === msg._id)) {
               return prev;
             }
+            // Mark as read immediately on receiving since screen is open
+            sendChatRead(chatId, currentUserId);
             return [...prev, msg];
           });
           setTimeout(
@@ -160,8 +209,47 @@ export default function ChatScreen({route, navigation}: any) {
           );
         }
       });
+
+      const unsubRead = onChatRead((data: { chatId: string; userId: string }) => {
+        if (data.chatId === chatId) {
+          setMessages(prev =>
+            prev.map(m => {
+              if (m.senderId === currentUserId && m.senderId !== data.userId) {
+                const readBy = m.readBy || [];
+                const deliveredTo = m.deliveredTo || [];
+                return {
+                  ...m,
+                  readBy: readBy.includes(data.userId) ? readBy : [...readBy, data.userId],
+                  deliveredTo: deliveredTo.includes(data.userId) ? deliveredTo : [...deliveredTo, data.userId],
+                };
+              }
+              return m;
+            })
+          );
+        }
+      });
+
+      const unsubDelivered = onChatDelivered((data: { chatId: string; userId: string }) => {
+        if (data.chatId === chatId) {
+          setMessages(prev =>
+            prev.map(m => {
+              if (m.senderId === currentUserId && m.senderId !== data.userId) {
+                const deliveredTo = m.deliveredTo || [];
+                return {
+                  ...m,
+                  deliveredTo: deliveredTo.includes(data.userId) ? deliveredTo : [...deliveredTo, data.userId],
+                };
+              }
+              return m;
+            })
+          );
+        }
+      });
+
       return () => {
         unsub();
+        unsubRead();
+        unsubDelivered();
         socket.emit('chat:leave', chatId);
       };
     }
@@ -169,6 +257,7 @@ export default function ChatScreen({route, navigation}: any) {
 
   useEffect(() => {
     api.put(`/chat/${chatId}/read`).catch(() => {});
+    sendChatRead(chatId, currentUserId);
     setTimeout(() => flatListRef.current?.scrollToEnd({animated: false}), 300);
   }, [chatId, messages.length]);
 
@@ -357,6 +446,7 @@ export default function ChatScreen({route, navigation}: any) {
               <View style={styles.imageTimeContainer}>
                 <Text style={[styles.msgTime, styles.imageTimeText]}>
                   {formatTime(item.createdAt)}
+                  {isMine && renderTicks(item, true)}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -380,6 +470,7 @@ export default function ChatScreen({route, navigation}: any) {
                     : styles.msgTimeInlineTheirs,
                 ]}>
                 {'   ' + formatTime(item.createdAt)}
+                {isMine && renderTicks(item)}
               </Text>
             </Text>
           )}
@@ -517,7 +608,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   msgText: {fontSize: 15, lineHeight: 20},
-  msgTextMine: {color: '#121212'},
+  msgTextMine: {color: Colors.textInverse},
   msgTextTheirs: {color: Colors.textPrimary},
   msgTime: {
     fontSize: 10,
@@ -526,8 +617,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   msgTimeInline: {fontSize: 9.5},
-  msgTimeInlineMine: {color: '#555555'},
-  msgTimeInlineTheirs: {color: Colors.textTertiary},
+  msgTimeInlineMine: {color: Colors.textInverse, opacity: 0.75},
+  msgTimeInlineTheirs: {color: Colors.textSecondary},
   avatarPlaceholder: {width: 24},
   photoText: {color: Colors.primary},
   deletedRow: {alignItems: 'center', paddingVertical: Spacing.xs},

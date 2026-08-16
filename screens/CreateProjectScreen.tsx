@@ -6,12 +6,14 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import api from '../src/api/client';
 import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Chip, Card} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const PROJECT_TYPES = [
   'Short Film',
@@ -50,7 +52,11 @@ const LANGUAGES = [
   'Other',
 ];
 
-export default function CreateProjectScreen({navigation}: any) {
+export default function CreateProjectScreen({route, navigation}: any) {
+  const projectToEdit = route.params?.project;
+  const isEditMode = !!projectToEdit;
+
+  const {isDark} = useTheme();
   const {isAdmin, isApprovedDirector} = useApp();
 
   useEffect(() => {
@@ -61,13 +67,28 @@ export default function CreateProjectScreen({navigation}: any) {
     }
   }, []);
   const insets = useSafeAreaInsets();
-  const [title, setTitle] = useState('');
-  const [type, setType] = useState('Short Film');
-  const [language, setLanguage] = useState('Telugu');
-  const [location, setLocation] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [title, setTitle] = useState(projectToEdit?.title || '');
+  const [type, setType] = useState(projectToEdit?.type || 'Short Film');
+  const [language, setLanguage] = useState(projectToEdit?.language || 'Telugu');
+  const [location, setLocation] = useState(projectToEdit?.location || '');
+  const [description, setDescription] = useState(projectToEdit?.description || '');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(
+    projectToEdit?.rolesNeeded?.map((r: any) => r.role) || []
+  );
+  const [visibility, setVisibility] = useState<'public' | 'private'>(projectToEdit?.visibility || 'public');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (projectToEdit) {
+      setTitle(projectToEdit.title || '');
+      setType(projectToEdit.type || 'Short Film');
+      setLanguage(projectToEdit.language || 'Telugu');
+      setLocation(projectToEdit.location || '');
+      setDescription(projectToEdit.description || '');
+      setSelectedRoles(projectToEdit.rolesNeeded?.map((r: any) => r.role) || []);
+      setVisibility(projectToEdit.visibility || 'public');
+    }
+  }, [projectToEdit]);
 
   const {user: currentUser} = useApp();
   const directorName =
@@ -79,7 +100,7 @@ export default function CreateProjectScreen({navigation}: any) {
     );
   };
 
-  const createProject = async () => {
+  const saveProject = async () => {
     if (!title.trim()) {
       Alert.alert('Missing Info', 'Please enter a project title.');
       return;
@@ -95,23 +116,42 @@ export default function CreateProjectScreen({navigation}: any) {
 
     setLoading(true);
     try {
-      await api.post('/projects', {
-        title: title.trim(),
-        type,
-        description: description.trim(),
-        rolesNeeded: selectedRoles,
-        location: location.trim(),
-        language,
-      });
+      if (isEditMode) {
+        await api.put(`/projects/${projectToEdit._id}`, {
+          title: title.trim(),
+          type,
+          description: description.trim(),
+          rolesNeeded: selectedRoles,
+          location: location.trim(),
+          language,
+          visibility,
+        });
 
-      Alert.alert(
-        '🎬 Project Created!',
-        'Your project is now live. Crew can now apply!',
-        [{text: 'OK', onPress: () => navigation.goBack()}],
-      );
+        Alert.alert(
+          '🎬 Project Updated!',
+          'Your project details have been successfully updated.',
+          [{text: 'OK', onPress: () => navigation.goBack()}],
+        );
+      } else {
+        await api.post('/projects', {
+          title: title.trim(),
+          type,
+          description: description.trim(),
+          rolesNeeded: selectedRoles,
+          location: location.trim(),
+          language,
+          visibility,
+        });
+
+        Alert.alert(
+          '🎬 Project Created!',
+          'Your project is now live. Crew can now apply!',
+          [{text: 'OK', onPress: () => navigation.goBack()}],
+        );
+      }
     } catch (e: any) {
-      console.log('CREATE PROJECT ERROR:', e);
-      Alert.alert('Error', e.message || 'Could not create project. Try again.');
+      console.log('SAVE PROJECT ERROR:', e);
+      Alert.alert('Error', e.message || 'Could not save project. Try again.');
     } finally {
       setLoading(false);
     }
@@ -119,7 +159,7 @@ export default function CreateProjectScreen({navigation}: any) {
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: Colors.background}]}>
-      <Header title="Create Project" navigation={navigation} />
+      <Header title={isEditMode ? "Edit Project" : "Create Project"} navigation={navigation} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{paddingBottom: insets.bottom + Spacing['3xl']}}>
@@ -180,6 +220,28 @@ export default function CreateProjectScreen({navigation}: any) {
           />
 
           <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Room Visibility</Text>
+            <View style={styles.visibilityRow}>
+              <TouchableOpacity
+                style={[styles.visibilityBtn, visibility === 'public' && styles.visibilityBtnActive]}
+                onPress={() => setVisibility('public')}
+              >
+                <Text style={[styles.visibilityBtnText, visibility === 'public' && styles.visibilityBtnTextActive]}>
+                  🌐 Public (Visible to all)
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.visibilityBtn, visibility === 'private' && styles.visibilityBtnActive]}
+                onPress={() => setVisibility('private')}
+              >
+                <Text style={[styles.visibilityBtnText, visibility === 'private' && styles.visibilityBtnTextActive]}>
+                  🔒 Private (Invite only)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
             <Text style={styles.label}>Roles Needed * (tap to select)</Text>
             <View style={styles.rolesGrid}>
               {ALL_ROLES.map(role => (
@@ -212,8 +274,8 @@ export default function CreateProjectScreen({navigation}: any) {
           )}
 
           <Button
-            label="🎬 Create Project"
-            onPress={createProject}
+            label={isEditMode ? "💾 Update Project Details" : "🎬 Create Project"}
+            onPress={saveProject}
             size="lg"
             loading={loading}
             fullWidth
@@ -244,4 +306,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   selectedInfoText: {...Typography.btn, color: Colors.success},
+  visibilityRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  visibilityBtn: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+  },
+  visibilityBtnActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryFaint,
+  },
+  visibilityBtnText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  visibilityBtnTextActive: {
+    color: Colors.primary,
+    fontWeight: 'bold',
+  },
 });

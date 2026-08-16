@@ -1,9 +1,7 @@
 import {storageService} from '../services/storageService';
-import {DEV_API_URL} from './config';
+import {DEV_API_URL, PROD_API_URL} from './config';
 
-const API_BASE_URL = __DEV__
-  ? DEV_API_URL
-  : 'https://cinelink-backend-kgfz.onrender.com/api';
+const API_BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
 
 interface ApiResponse<T = any> {
   success?: boolean;

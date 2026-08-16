@@ -17,10 +17,12 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Input, Card} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 const STEPS = ['Basic Info', 'ID Proof', 'Phone Verify', 'Submit'];
 
 export default function CastingRequestScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState(0);
 

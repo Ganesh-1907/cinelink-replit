@@ -15,6 +15,8 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Card, Avatar, Button, EmptyState} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
+import ImageViewing from 'react-native-image-viewing';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
@@ -42,11 +44,19 @@ interface MovieData {
 }
 
 export default function MovieDetails({route, navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {movieId, movie: passedMovie} = route.params;
   const [movie, setMovie] = useState<MovieData | null>(passedMovie || null);
   const [loading, setLoading] = useState(!passedMovie);
   const [error, setError] = useState('');
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerImages, setViewerImages] = useState<any[]>([]);
+
+  const openImageViewer = (imageUrl: string) => {
+    setViewerImages([{ uri: imageUrl }]);
+    setViewerVisible(true);
+  };
 
   useEffect(() => {
     if (movieId && !passedMovie) {
@@ -143,18 +153,22 @@ export default function MovieDetails({route, navigation}: any) {
         />
 
         {movie.backdrop_path ? (
-          <Image
-            source={{uri: `${IMAGE_BASE_URL}${movie.backdrop_path}`}}
-            style={styles.backdrop}
-          />
+          <TouchableOpacity activeOpacity={0.9} onPress={() => openImageViewer(`${IMAGE_BASE_URL}${movie.backdrop_path}`)}>
+            <Image
+              source={{uri: `${IMAGE_BASE_URL}${movie.backdrop_path}`}}
+              style={styles.backdrop}
+            />
+          </TouchableOpacity>
         ) : null}
 
         <View style={styles.headerRow}>
           {movie.poster_path ? (
-            <Image
-              source={{uri: `${IMAGE_BASE_URL}${movie.poster_path}`}}
-              style={styles.poster}
-            />
+            <TouchableOpacity activeOpacity={0.9} onPress={() => openImageViewer(`${IMAGE_BASE_URL}${movie.poster_path}`)}>
+              <Image
+                source={{uri: `${IMAGE_BASE_URL}${movie.poster_path}`}}
+                style={styles.poster}
+              />
+            </TouchableOpacity>
           ) : (
             <View style={styles.posterPlaceholder}>
               <Text style={styles.posterPlaceholderText}>🎬</Text>
@@ -274,6 +288,15 @@ export default function MovieDetails({route, navigation}: any) {
           <View style={{height: insets.bottom + Spacing.xl}} />
         </View>
       </ScrollView>
+      <ImageViewing
+        images={viewerImages}
+        imageIndex={0}
+        visible={viewerVisible}
+        onRequestClose={() => setViewerVisible(false)}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+        backgroundColor="black"
+      />
     </SafeAreaView>
   );
 }

@@ -4,8 +4,10 @@ import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Button, Card, Chip, Badge, Avatar, Input, EmptyState, LoadingView} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function ContestDetailScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const {contest: paramContest, contestId: paramContestId} = route.params;
   const contestId = paramContestId || paramContest?._id || paramContest?.id || '';
   const [contest, setContest] = useState<any>(paramContest || {});

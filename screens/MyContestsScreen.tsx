@@ -4,8 +4,10 @@ import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, LoadingView, Badge} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function MyContestsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const [tab, setTab] = useState<'entered' | 'created'>('entered');
   const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

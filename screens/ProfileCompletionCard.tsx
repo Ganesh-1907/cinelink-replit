@@ -2,6 +2,7 @@ import React, {useEffect, useRef} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Animated} from 'react-native';
 import {Card} from '../components/ui';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 interface CompletionItem {
   label: string;
@@ -33,6 +34,7 @@ export default function ProfileCompletionCard({
   portfolio1,
   onItemPress,
 }: Props) {
+  const {isDark} = useTheme();
   const items: CompletionItem[] = [
     {
       label: 'Add your full name',

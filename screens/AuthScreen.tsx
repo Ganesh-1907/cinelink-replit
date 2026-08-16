@@ -684,7 +684,7 @@ export default function AuthScreen({navigation, route}: any) {
                 disabled={loading}
                 activeOpacity={0.85}>
                 {loading ? (
-                  <ActivityIndicator size="small" color="#09090B" />
+                  <ActivityIndicator size="small" color={Colors.textInverse} />
                 ) : (
                   <Text style={styles.submitBtnText}>Sign In</Text>
                 )}
@@ -702,7 +702,7 @@ export default function AuthScreen({navigation, route}: any) {
                 disabled={googleLoading}
                 activeOpacity={0.85}>
                 {googleLoading ? (
-                  <ActivityIndicator size="small" color="#09090B" />
+                  <ActivityIndicator size="small" color={Colors.textInverse} />
                 ) : (
                   <View style={styles.googleBtnContent}>
                     <Svg
@@ -801,7 +801,7 @@ export default function AuthScreen({navigation, route}: any) {
                           height="10"
                           viewBox="0 0 24 24"
                           fill="none"
-                          stroke="#09090B"
+                          stroke={Colors.textInverse}
                           strokeWidth="4"
                           strokeLinecap="round"
                           strokeLinejoin="round">
@@ -831,7 +831,7 @@ export default function AuthScreen({navigation, route}: any) {
                     disabled={otpLoading}
                     activeOpacity={0.85}>
                     {otpLoading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <Text style={styles.submitBtnText}>
                         Send Verification Code
@@ -857,7 +857,7 @@ export default function AuthScreen({navigation, route}: any) {
                     disabled={otpLoading}
                     activeOpacity={0.85}>
                     {otpLoading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <Text style={styles.submitBtnText}>Verify OTP</Text>
                     )}
@@ -892,7 +892,7 @@ export default function AuthScreen({navigation, route}: any) {
                     disabled={loading}
                     activeOpacity={0.85}>
                     {loading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <Text style={styles.submitBtnText}>Sign Up</Text>
                     )}
@@ -916,7 +916,7 @@ export default function AuthScreen({navigation, route}: any) {
                     disabled={googleLoading}
                     activeOpacity={0.85}>
                     {googleLoading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <View style={styles.googleBtnContent}>
                         <Svg
@@ -1000,7 +1000,7 @@ export default function AuthScreen({navigation, route}: any) {
                     disabled={resetLoading}
                     activeOpacity={0.85}>
                     {resetLoading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <Text style={styles.submitBtnText}>
                         Send Verification Code
@@ -1027,7 +1027,7 @@ export default function AuthScreen({navigation, route}: any) {
                     disabled={resetLoading}
                     activeOpacity={0.85}>
                     {resetLoading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <Text style={styles.submitBtnText}>Verify Code</Text>
                     )}
@@ -1078,7 +1078,7 @@ export default function AuthScreen({navigation, route}: any) {
                     disabled={resetLoading}
                     activeOpacity={0.85}>
                     {resetLoading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <Text style={styles.submitBtnText}>
                         Update Password & Sign In
@@ -1283,18 +1283,18 @@ const styles = StyleSheet.create({
   largeOptionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111113',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#2E2E32',
+    borderColor: Colors.border,
     height: 64,
   },
   largeOptionIconWrapper: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#18181B',
+    backgroundColor: Colors.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1305,11 +1305,11 @@ const styles = StyleSheet.create({
   largeOptionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FAFAFA',
+    color: Colors.textPrimary,
   },
   largeOptionSubtitle: {
     fontSize: 11,
-    color: '#717178',
+    color: Colors.textTertiary,
     marginTop: 1,
   },
 
@@ -1323,12 +1323,12 @@ const styles = StyleSheet.create({
   optionsDividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#2E2E32',
+    backgroundColor: Colors.border,
     opacity: 0.5,
   },
   optionsDividerText: {
     fontSize: 12,
-    color: '#717178',
+    color: Colors.textTertiary,
     paddingHorizontal: 12,
   },
 
@@ -1373,19 +1373,19 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#09090B',
+    color: Colors.textInverse,
   },
 
   // ─── GOOGLE WHITE BUTTON (Exactly matches reference)
   googleBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderRadius: 8,
     height: 46,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
     borderWidth: 1,
-    borderColor: '#E6E6E6',
+    borderColor: Colors.border,
   },
   googleBtnContent: {
     flexDirection: 'row',
@@ -1397,7 +1397,7 @@ const styles = StyleSheet.create({
   },
   googleBtnText: {
     fontSize: 15,
-    color: '#09090B',
+    color: Colors.textInverse,
     fontWeight: '600',
   },
 
@@ -1423,7 +1423,7 @@ const styles = StyleSheet.create({
   },
   checkboxText: {
     fontSize: 11,
-    color: '#A1A1AA',
+    color: Colors.textSecondary,
   },
   checkboxHighlight: {
     color: Colors.primary,
@@ -1449,8 +1449,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111113',
-    borderColor: '#2E2E32',
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
     borderWidth: 1,
     borderRadius: 8,
     height: 46,
@@ -1468,7 +1468,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    color: '#FAFAFA',
+    color: Colors.textPrimary,
     fontSize: 14,
     height: '100%',
     padding: 0,

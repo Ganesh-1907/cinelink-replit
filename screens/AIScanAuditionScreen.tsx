@@ -17,6 +17,7 @@ import api from '../src/api/client';
 import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, Input} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 type AuditionForm = {
   title: string;
@@ -70,6 +71,7 @@ const getErrorMessage = (e: unknown): string => {
 };
 
 export default function AIScanAuditionScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const {user, isAdmin, isApprovedDirector} = useApp();
 
   useEffect(() => {

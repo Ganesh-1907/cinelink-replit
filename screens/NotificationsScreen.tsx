@@ -21,6 +21,7 @@ import {
   Button,
   SkeletonListItem,
 } from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const cleanMessage = (msg: string): string => {
   if (!msg) {
@@ -159,9 +160,11 @@ const isVerificationNotif = (type: string) => type === 'verification';
 const getId = (item: any) => item._id || item.id || '';
 
 export default function NotificationsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [senderNames, setSenderNames] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const {user} = useApp();
 
   const loadSenderNames = useCallback((notifList: any[]) => {
@@ -227,90 +230,98 @@ export default function NotificationsScreen({navigation}: any) {
 
   // ── TAP NOTIFICATION → Navigate to relevant screen ─────────
   const handleNotifTap = async (item: any) => {
-    await markAsRead(getId(item));
+    setActionLoading(true);
+    try {
+      await markAsRead(getId(item));
 
-    const senderId =
-      item.senderId || item.viewerId || item.fromUserId || item.followerId;
+      const senderId =
+        item.senderId || item.viewerId || item.fromUserId || item.followerId;
 
-    if (isCastingRequestNotif(item.type)) {
-      navigation.navigate('AdminReports');
-    } else if (isCastingApprovedNotif(item.type)) {
-      navigation.navigate('MyAuditions');
-    } else if (isMessageNotif(item.type)) {
-      if (item.chatId) {
-        navigation.navigate('ChatScreen', {
-          chat: {
-            id: item.chatId,
-            participants: [user?._id || user?.uid, item.senderId].filter(Boolean),
-            participantNames: [],
-            lastMessage: '',
-          },
-        });
-      } else if (senderId) {
-        try {
-          const res = await api.post<any>('/chat/start', { otherUserId: senderId });
-          if (res.chat) {
-            navigation.navigate('ChatScreen', {
-              chat: {
-                id: res.chat._id || res.chat.id,
-                participants: res.chat.participants,
-                participantNames: res.chat.participantNames || [],
-                lastMessage: res.chat.lastMessage || '',
-              }
-            });
-          } else {
+      if (isCastingRequestNotif(item.type)) {
+        navigation.navigate('AdminReports');
+      } else if (isCastingApprovedNotif(item.type)) {
+        navigation.navigate('MyAuditions');
+      } else if (isMessageNotif(item.type)) {
+        if (item.chatId) {
+          navigation.navigate('ChatScreen', {
+            chat: {
+              id: item.chatId,
+              participants: [user?._id || user?.uid, item.senderId].filter(Boolean),
+              participantNames: [],
+              lastMessage: '',
+            },
+          });
+        } else if (senderId) {
+          try {
+            const res = await api.post<any>('/chat/start', { otherUserId: senderId });
+            if (res.chat) {
+              navigation.navigate('ChatScreen', {
+                chat: {
+                  id: res.chat._id || res.chat.id,
+                  participants: res.chat.participants,
+                  participantNames: res.chat.participantNames || [],
+                  lastMessage: res.chat.lastMessage || '',
+                }
+              });
+            } else {
+              navigation.navigate('Chats');
+            }
+          } catch (err) {
             navigation.navigate('Chats');
           }
-        } catch (err) {
+        } else {
           navigation.navigate('Chats');
         }
-      } else {
-        navigation.navigate('Chats');
-      }
-    } else if (isContestNotif(item.type)) {
-      if (item.contestId) {
-        navigation.navigate('ContestDetail', {
-          contestId: item.contestId,
+      } else if (isContestNotif(item.type)) {
+        if (item.contestId) {
+          navigation.navigate('ContestDetail', {
+            contestId: item.contestId,
+          });
+        } else {
+          navigation.navigate('Main', {
+            screen: 'Contests',
+          });
+        }
+      } else if (
+        item.type === 'request_accepted' ||
+        item.type === 'request_rejected'
+      ) {
+        navigation.navigate('MyApplications');
+      } else if (isApplicationNotif(item.type)) {
+        if (item.auditionId) {
+          navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
+        } else {
+          navigation.navigate('MyAuditions');
+        }
+      } else if (isAuditionNotif(item.type)) {
+        if (item.auditionId) {
+          navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
+        } else {
+          navigation.navigate('BrowseAuditions');
+        }
+      } else if (isProfileNotif(item.type) && senderId) {
+        navigation.navigate('PublicProfile', {
+          userId: senderId,
         });
-      } else {
-        navigation.navigate('Main', {
-          screen: 'Contests',
-        });
-      }
-    } else if (
-      item.type === 'request_accepted' ||
-      item.type === 'request_rejected'
-    ) {
-      navigation.navigate('MyApplications');
-    } else if (isApplicationNotif(item.type)) {
-      if (item.auditionId) {
+      } else if (isProjectNotif(item.type) && item.projectId) {
+        navigation.navigate('ProjectDetail', {projectId: item.projectId});
+      } else if (isCommentOrLikeNotif(item.type) && item.auditionId) {
         navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
-      } else {
-        navigation.navigate('MyAuditions');
+      } else if (isReelLikeNotif(item.type)) {
+        navigation.navigate('ReelsScreen');
+      } else if (isVerificationNotif(item.type)) {
+        // Info only — no navigation needed
       }
-    } else if (isAuditionNotif(item.type)) {
-      if (item.auditionId) {
-        navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
-      } else {
-        navigation.navigate('BrowseAuditions');
-      }
-    } else if (isProfileNotif(item.type) && senderId) {
-      navigation.navigate('PublicProfile', {
-        userId: senderId,
-      });
-    } else if (isProjectNotif(item.type) && item.projectId) {
-      navigation.navigate('ProjectDetail', {projectId: item.projectId});
-    } else if (isCommentOrLikeNotif(item.type) && item.auditionId) {
-      navigation.navigate('AuditionDetail', {auditionId: item.auditionId});
-    } else if (isReelLikeNotif(item.type)) {
-      navigation.navigate('ReelsScreen');
-    } else if (isVerificationNotif(item.type)) {
-      // Info only — no navigation needed
+    } catch (e) {
+      console.log('Error in handleNotifTap:', e);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   // ── ACCEPT CONNECT REQUEST ───────────────────────────────────
   const handleAccept = async (notif: any) => {
+    setActionLoading(true);
     try {
       const senderId = notif.senderId;
 
@@ -340,11 +351,14 @@ export default function NotificationsScreen({navigation}: any) {
       );
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Something went wrong.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
   // ── DECLINE CONNECT REQUEST ──────────────────────────────────
   const handleDecline = async (notif: any) => {
+    setActionLoading(true);
     try {
       await api.put('/connections/respond', {
         requesterId: notif.senderId,
@@ -353,11 +367,14 @@ export default function NotificationsScreen({navigation}: any) {
       await deleteNotification(notif._id || notif.id);
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Something went wrong.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
   // ── ACCEPT PROJECT INVITE ────────────────────────────────────
   const handleAcceptInvite = async (notif: any) => {
+    setActionLoading(true);
     try {
       await api.post(`/projects/${notif.projectId}/respond-invite`, {
         status: 'Accepted',
@@ -368,10 +385,13 @@ export default function NotificationsScreen({navigation}: any) {
       Alert.alert('Joined Project! 🎉', 'You have successfully joined the project crew.');
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Something went wrong.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleDeclineInvite = async (notif: any) => {
+    setActionLoading(true);
     try {
       await api.post(`/projects/${notif.projectId}/respond-invite`, {
         status: 'Rejected',
@@ -381,6 +401,8 @@ export default function NotificationsScreen({navigation}: any) {
       setNotifications(prev => prev.filter((n: any) => (n._id || n.id) !== (notif._id || notif.id)));
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Something went wrong.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -563,6 +585,11 @@ export default function NotificationsScreen({navigation}: any) {
           )}
         </View>
       </ScrollView>
+      {actionLoading && (
+        <View style={styles.actionLoaderOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -703,4 +730,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   deleteBtnText: {fontSize: 12, color: Colors.textTertiary, fontWeight: 'bold'},
+
+  actionLoaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
 });

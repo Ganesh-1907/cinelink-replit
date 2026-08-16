@@ -4,10 +4,13 @@ import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius, Shadows, HitSlop} from '../src/theme';
 import {Header, Avatar, Button, Input} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
+import ImageViewing from 'react-native-image-viewing';
 
 const getId = (obj: any) => obj?._id || obj?.id || '';
 
 export default function FilmDetailScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const {film: paramFilm, filmId: paramFilmId} = route.params;
   const filmId = paramFilmId || getId(paramFilm);
   const [film, setFilm] = useState<any>(paramFilm || {});
@@ -21,6 +24,7 @@ export default function FilmDetailScreen({route, navigation}: any) {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [commentsY, setCommentsY] = useState(0);
+  const [posterVisible, setPosterVisible] = useState(false);
 
   const scrollToComments = () => {
     scrollViewRef.current?.scrollTo({ y: commentsY, animated: true });
@@ -107,7 +111,11 @@ export default function FilmDetailScreen({route, navigation}: any) {
       <Header title="Film Details" navigation={navigation} transparent />
       <ScrollView ref={scrollViewRef} style={styles.scroll} showsVerticalScrollIndicator={false}>
         {film.posterUrl && film.posterUrl.trim().startsWith('http') ? (
-          <View style={styles.posterContainer}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setPosterVisible(true)}
+            style={styles.posterContainer}
+          >
             <Image
               source={{uri: film.posterUrl.trim()}}
               style={[
@@ -117,7 +125,7 @@ export default function FilmDetailScreen({route, navigation}: any) {
                 }
               ]}
             />
-          </View>
+          </TouchableOpacity>
         ) : (
           <View style={styles.posterPlaceholder}>
             <Text style={styles.posterEmoji}>🎬</Text>
@@ -280,6 +288,17 @@ export default function FilmDetailScreen({route, navigation}: any) {
           </View>
         </View>
       </ScrollView>
+      {film.posterUrl && film.posterUrl.trim().startsWith('http') && (
+        <ImageViewing
+          images={[{uri: film.posterUrl.trim()}]}
+          imageIndex={0}
+          visible={posterVisible}
+          onRequestClose={() => setPosterVisible(false)}
+          swipeToCloseEnabled
+          doubleTapToZoomEnabled
+          backgroundColor="black"
+        />
+      )}
     </SafeAreaView>
   );
 }

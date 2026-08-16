@@ -18,6 +18,7 @@ import {uploadImage, uploadVideo} from '../src/services/uploadService';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Chip, Card} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 const GENRES = [
   'Drama',
@@ -31,6 +32,7 @@ const GENRES = [
 ];
 
 export default function UploadFilmScreen({navigation, route}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const editingFilm = route?.params?.film;
 

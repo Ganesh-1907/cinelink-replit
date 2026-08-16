@@ -4,8 +4,10 @@ import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Avatar, Header, EmptyState} from '../components/ui';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function FollowersScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const {userId, initialTab = 'followers'} = route.params;
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState(initialTab);

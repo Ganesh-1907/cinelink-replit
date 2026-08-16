@@ -15,8 +15,10 @@ import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, Badge, Chip} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function MyApplicationsScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -3,15 +3,18 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, Image, ScrollView, Alert, Modal, TextInput
 } from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useApp} from '../src/context/AppContext';
-import {Header, Input, Chip, Card, Avatar, Button} from '../components/ui';
+import {Header, Input, Chip, Card, Avatar, Button, PopupModal} from '../components/ui';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 const TIPS = ['Actor', 'Director', 'Mumbai', 'Telugu', 'Editor', 'Writer', 'DOP'];
 
 export default function CrewScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {user: currentUser} = useApp();
   
@@ -29,6 +32,20 @@ export default function CrewScreen({navigation}: any) {
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [selectedInviteRole, setSelectedInviteRole] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Custom Alert Modal state
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertVariant, setAlertVariant] = useState<'success' | 'warning' | 'info' | 'confirm'>('info');
+
+  const showAlert = (title: string, message: string, variant: 'success' | 'warning' | 'info' | 'confirm' = 'info') => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVariant(variant);
+    setAlertVisible(true);
+  };
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -124,7 +141,7 @@ export default function CrewScreen({navigation}: any) {
         return next;
       });
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not perform follow action.');
+      showAlert('Error', e.message || 'Could not perform follow action.', 'warning');
     }
   };
 
@@ -132,27 +149,28 @@ export default function CrewScreen({navigation}: any) {
     try {
       await api.post('/connections/request', {targetUserId: targetUser._id});
       setConnectionStatus(prev => ({...prev, [targetUser._id]: 'pending'}));
-      Alert.alert('Request Sent! 🤝', `Connection request sent to ${targetUser.fullName || targetUser.displayName || 'User'}`);
+      showAlert('Request Sent! 🤝', `Connection request sent to ${targetUser.fullName || targetUser.displayName || 'User'}`, 'success');
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not send request.');
+      showAlert('Error', e.message || 'Could not send request.', 'warning');
     }
   };
 
   const handleInvitePress = (user: any) => {
     setSelectedTargetUser(user);
     if (myProjects.length === 0) {
-      Alert.alert('No Projects', 'You do not have any projects to invite this creator to. Go to CineLink Rooms to create a project!');
+      showAlert('No Projects', 'You do not have any projects to invite this creator to. Go to CineLink Rooms to create a project!', 'info');
       return;
     }
     setSelectedProject(myProjects[0]);
     const openRoles = myProjects[0].rolesNeeded?.filter((r: any) => !r.filled) || [];
     setSelectedInviteRole(openRoles.length > 0 ? openRoles[0].role : '');
+    setDropdownOpen(false);
     setInviteModalVisible(true);
   };
 
   const sendInvitation = async () => {
     if (!selectedTargetUser || !selectedProject || !selectedInviteRole) {
-      Alert.alert('Error', 'Please select a project and a role.');
+      showAlert('Error', 'Please select a project and a role.', 'warning');
       return;
     }
     setInviting(true);
@@ -161,10 +179,10 @@ export default function CrewScreen({navigation}: any) {
         userId: selectedTargetUser._id,
         role: selectedInviteRole,
       });
-      Alert.alert('Invitation Sent! 📩', `Invited ${selectedTargetUser.fullName || 'creator'} to join "${selectedProject.title}" as ${selectedInviteRole}`);
+      showAlert('Invitation Sent! 📩', `Invited ${selectedTargetUser.fullName || 'creator'} to join "${selectedProject.title}" as ${selectedInviteRole}`, 'success');
       setInviteModalVisible(false);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not send invitation.');
+      showAlert('Error', e.message || 'Could not send invitation.', 'warning');
     } finally {
       setInviting(false);
     }
@@ -180,19 +198,20 @@ export default function CrewScreen({navigation}: any) {
         style={styles.userCard}
         onPress={() => navigation.navigate('PublicProfile', {userId: item._id})}>
         
-        <Avatar name={displayName} size="md" uri={item.photoUrl || item.photoURL} />
+        {/* Main top info row */}
+        <View style={styles.cardTopRow}>
+          <Avatar name={displayName} size="md" uri={item.photoUrl || item.photoURL} />
 
-        <View style={styles.userInfo}>
-          <View style={styles.nameRow}>
-            <Text style={styles.userName} numberOfLines={1}>{displayName}</Text>
-            {item.verificationStatus === 'verified' && <Text style={styles.verifiedTag}>✅</Text>}
+          <View style={styles.userInfo}>
+            <View style={styles.nameRow}>
+              <Text style={styles.userName} numberOfLines={1}>{displayName}</Text>
+              {item.verificationStatus === 'verified' && <Text style={styles.verifiedTag}>✅</Text>}
+            </View>
+            <Text style={styles.userRole}>🎭 {item.role || 'Creator'}</Text>
+            {item.bio ? <Text style={styles.userBio} numberOfLines={1}>{item.bio}</Text> : null}
+            {item.location ? <Text style={styles.userLocation}>📍 {item.location}</Text> : null}
           </View>
-          <Text style={styles.userRole}>🎭 {item.role || 'Creator'}</Text>
-          {item.bio ? <Text style={styles.userBio} numberOfLines={1}>{item.bio}</Text> : null}
-          {item.location ? <Text style={styles.userLocation}>📍 {item.location}</Text> : null}
-        </View>
 
-        <View style={styles.actionCol}>
           <TouchableOpacity
             style={[styles.followPill, isFollowing && styles.followingPill]}
             onPress={e => { e.stopPropagation(); toggleFollow(item._id); }}>
@@ -200,32 +219,34 @@ export default function CrewScreen({navigation}: any) {
               {isFollowing ? '✓ Following' : '+ Follow'}
             </Text>
           </TouchableOpacity>
+        </View>
 
-          <View style={styles.iconBtnRow}>
-            {status === 'connected' ? (
-              <View style={[styles.connectBtn, styles.connectedBtn]}>
-                <Text style={styles.connectEmoji}>✅</Text>
-              </View>
-            ) : status === 'pending' ? (
-              <View style={[styles.connectBtn, styles.pendingBtn]}>
-                <Text style={styles.connectEmoji}>⏳</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.connectBtn}
-                onPress={e => { e.stopPropagation(); sendConnectRequest(item); }}>
-                <Text style={styles.connectEmoji}>🤝</Text>
-              </TouchableOpacity>
-            )}
+        {/* Bottom action row with divider (rendered only if actions exist) */}
+        <View style={styles.cardActionDivider} />
+        <View style={styles.cardBottomActionsRow}>
+          {status === 'connected' ? (
+            <View style={[styles.actionButton, styles.actionButtonConnected]}>
+              <Text style={styles.actionBtnTextConnected}>✅ Connected</Text>
+            </View>
+          ) : status === 'pending' ? (
+            <View style={[styles.actionButton, styles.actionButtonPending]}>
+              <Text style={styles.actionBtnTextPending}>⏳ Request Pending</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={e => { e.stopPropagation(); sendConnectRequest(item); }}>
+              <Text style={styles.actionBtnText}>🤝 Connect</Text>
+            </TouchableOpacity>
+          )}
 
-            {myProjects.length > 0 && (
-              <TouchableOpacity
-                style={styles.inviteBtn}
-                onPress={e => { e.stopPropagation(); handleInvitePress(item); }}>
-                <Text style={styles.inviteEmoji}>📩</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {myProjects.length > 0 && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={e => { e.stopPropagation(); handleInvitePress(item); }}>
+              <Text style={styles.actionBtnText}>📩 Invite to Project</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -233,7 +254,7 @@ export default function CrewScreen({navigation}: any) {
 
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
-      <Header title="Find Creators" />
+      <Header title="Find Creators" navigation={navigation} />
 
       <View style={styles.searchOuter}>
         <Input
@@ -320,26 +341,65 @@ export default function CrewScreen({navigation}: any) {
             </Text>
 
             <Text style={styles.label}>Select Project</Text>
-            <ScrollView style={styles.projectList} nestedScrollEnabled>
-              {myProjects.map((p) => {
-                const isSelected = selectedProject?._id === p._id;
-                return (
-                  <TouchableOpacity
-                    key={p._id}
-                    style={[styles.projectItem, isSelected && styles.projectItemActive]}
-                    onPress={() => {
-                      setSelectedProject(p);
-                      const openRoles = p.rolesNeeded?.filter((r: any) => !r.filled) || [];
-                      setSelectedInviteRole(openRoles.length > 0 ? openRoles[0].role : '');
-                    }}
-                  >
-                    <Text style={[styles.projectItemText, isSelected && styles.projectItemTextActive]}>
-                      🎬 {p.title}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity 
+                style={[styles.dropdownTrigger, { marginBottom: 0 }]} 
+                onPress={() => setDropdownOpen(!dropdownOpen)}
+              >
+                <Text style={styles.dropdownTriggerText}>
+                  {selectedProject ? `🎬 ${selectedProject.title}` : 'Select a project...'}
+                </Text>
+                <View style={[styles.dropdownArrow, { transform: [{ rotate: dropdownOpen ? '180deg' : '0deg' }] }]}>
+                  <Svg width={12} height={8} viewBox="0 0 12 8" fill="none">
+                    <Path
+                      d="M1 1.5L6 6.5L11 1.5"
+                      stroke={Colors.textTertiary}
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                </View>
+              </TouchableOpacity>
+
+              {dropdownOpen && (
+                <View style={styles.dropdownListContainer}>
+                  <ScrollView style={styles.dropdownScrollView} nestedScrollEnabled>
+                    {myProjects.map((p) => {
+                      const isSelected = selectedProject?._id === p._id;
+                      return (
+                        <TouchableOpacity
+                          key={p._id}
+                          style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
+                          onPress={() => {
+                            setSelectedProject(p);
+                            const openRoles = p.rolesNeeded?.filter((r: any) => !r.filled) || [];
+                            setSelectedInviteRole(openRoles.length > 0 ? openRoles[0].role : '');
+                            setDropdownOpen(false);
+                          }}
+                        >
+                          <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]}>
+                            🎬 {p.title}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <TouchableOpacity
+                      style={[styles.dropdownItem, styles.dropdownCreateItem]}
+                      onPress={() => {
+                        setInviteModalVisible(false);
+                        setDropdownOpen(false);
+                        navigation.navigate('CreateProject');
+                      }}
+                    >
+                      <Text style={styles.dropdownCreateText}>
+                        ➕ Create New Room
+                      </Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             <Text style={styles.label}>Select Role</Text>
             <View style={styles.rolesContainer}>
@@ -396,6 +456,16 @@ export default function CrewScreen({navigation}: any) {
           </View>
         </View>
       </Modal>
+
+      <PopupModal
+        visible={alertVisible}
+        onClose={() => setAlertVisible(false)}
+        title={alertTitle}
+        message={alertMessage}
+        variant={alertVariant === 'confirm' ? 'confirm' : alertVariant}
+        confirmLabel="OK"
+        onConfirm={() => setAlertVisible(false)}
+      />
     </View>
   );
 }
@@ -449,8 +519,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'stretch',
   },
   userInfo: {flex: 1, marginLeft: Spacing.md, alignItems: 'flex-start'},
   nameRow: {flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.xs},
@@ -459,7 +529,6 @@ const styles = StyleSheet.create({
   userRole: {color: Colors.primary, fontSize: 12, marginBottom: Spacing.xs},
   userBio: {color: Colors.textSecondary, fontSize: 12},
   userLocation: {color: Colors.textTertiary, fontSize: 11, marginTop: Spacing.xs},
-  actionCol: {alignItems: 'center', gap: Spacing.sm, marginLeft: Spacing.sm},
   followPill: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.sm,
@@ -473,39 +542,58 @@ const styles = StyleSheet.create({
     borderColor: Colors.border
   },
   followPillText: {color: Colors.textInverse, fontSize: 11, fontWeight: 'bold'},
-  iconBtnRow: {flexDirection: 'row', gap: Spacing.xs, alignItems: 'center'},
-  connectBtn: {
-    backgroundColor: Colors.primaryFaint,
-    borderRadius: Radius.sm,
-    padding: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.primary,
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  cardActionDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: Spacing.sm,
+    width: '100%',
+    opacity: 0.5,
+  },
+  cardBottomActionsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    width: '100%',
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    width: 40,
-    height: 40
-  },
-  inviteBtn: {
     backgroundColor: Colors.primaryFaint,
     borderRadius: Radius.sm,
-    padding: Spacing.sm,
+    paddingVertical: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 40,
-    height: 40
+    height: 36,
   },
-  inviteEmoji: {fontSize: 18},
-  connectedBtn: {
+  actionButtonConnected: {
     borderColor: Colors.success,
-    backgroundColor: Colors.successFaint
+    backgroundColor: Colors.successFaint,
   },
-  pendingBtn: {
+  actionButtonPending: {
     borderColor: Colors.warning,
-    backgroundColor: Colors.warningFaint
+    backgroundColor: Colors.warningFaint,
   },
-  connectEmoji: {fontSize: 18},
+  actionBtnText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  actionBtnTextConnected: {
+    color: Colors.success,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  actionBtnTextPending: {
+    color: Colors.warning,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   loader: {marginTop: 60},
 
   // Modal styles
@@ -541,32 +629,81 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
     marginTop: Spacing.md
   },
-  projectList: {
-    maxHeight: 120,
+  dropdownContainer: {
+    position: 'relative',
+    zIndex: 999,
+    marginBottom: Spacing.md,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: Radius.sm,
-    padding: Spacing.xs,
-    marginBottom: Spacing.sm
-  },
-  projectItem: {
-    padding: Spacing.sm,
-    borderRadius: Radius.xs,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm + 2,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.background,
     marginBottom: Spacing.xs,
-    backgroundColor: Colors.background
   },
-  projectItemActive: {
+  dropdownTriggerText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+  },
+  dropdownArrow: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownListContainer: {
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    maxHeight: 180,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.card,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  dropdownScrollView: {
+    maxHeight: 180,
+  },
+  dropdownItem: {
+    paddingVertical: Spacing.sm + 2,
+    paddingHorizontal: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.card,
+  },
+  dropdownItemActive: {
     backgroundColor: Colors.primaryFaint,
-    borderColor: Colors.primary,
-    borderWidth: 1
   },
-  projectItemText: {
-    ...Typography.bodySm,
-    color: Colors.textSecondary
+  dropdownItemText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
-  projectItemTextActive: {
+  dropdownItemTextActive: {
     color: Colors.primary,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+  },
+  dropdownCreateItem: {
+    backgroundColor: Colors.background,
+    borderBottomWidth: 0,
+  },
+  dropdownCreateText: {
+    color: Colors.primary,
+    fontWeight: 'bold',
+    fontSize: 14,
+    textAlign: 'center',
   },
   rolesContainer: {
     minHeight: 60,

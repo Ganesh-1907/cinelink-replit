@@ -2,6 +2,7 @@ import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Spacing, Shadows} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 interface LiquidNavProps {
   navigation: any;
@@ -18,6 +19,8 @@ const tabs = [
 
 export function LiquidNav({navigation, activeRouteName}: LiquidNavProps) {
   const insets = useSafeAreaInsets();
+  const {mode} = useTheme(); // Subscribes to theme changes for instant UI update!
+
   return (
     <View
       style={[

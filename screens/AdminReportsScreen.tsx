@@ -7,10 +7,12 @@ import api from '../src/api/client';
 import {useApp} from '../src/context/AppContext';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {Header, Button, Chip, Badge, Avatar, EmptyState, PopupModal} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 type TabKey = 'stats' | 'reports' | 'users' | 'verifications' | 'casting';
 
 export default function AdminReportsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const [tab, setTab] = useState<TabKey>('stats');
   const [reports, setReports] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);

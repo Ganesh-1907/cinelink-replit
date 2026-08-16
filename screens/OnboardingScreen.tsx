@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {LiquidPress} from '../components/LiquidPress';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Button} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const {width, height} = Dimensions.get('window');
 
@@ -66,6 +67,7 @@ interface OnboardingProps {
 }
 
 export default function OnboardingScreen({onDone}: OnboardingProps) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const isScrolling = useRef(false);

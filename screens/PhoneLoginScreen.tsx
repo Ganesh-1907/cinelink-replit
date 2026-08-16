@@ -301,7 +301,7 @@ export default function PhoneLoginScreen({navigation}: any) {
                   activeOpacity={0.85}
                 >
                   {sendingOtp ? (
-                    <ActivityIndicator size="small" color="#09090B" />
+                    <ActivityIndicator size="small" color={Colors.textInverse} />
                   ) : (
                     <Text style={styles.submitBtnText}>Send OTP</Text>
                   )}
@@ -317,13 +317,13 @@ export default function PhoneLoginScreen({navigation}: any) {
                 {/* SOCIAL ROW */}
                 <View style={styles.socialRow}>
                   <TouchableOpacity
-                    style={[styles.socialBtn, { backgroundColor: '#FFFFFF', borderColor: '#E6E6E6' }]}
+                    style={[styles.socialBtn, { backgroundColor: Colors.card, borderColor: Colors.border }]}
                     onPress={handleGoogleSignIn}
                     disabled={googleLoading}
                     activeOpacity={0.85}
                   >
                     {googleLoading ? (
-                      <ActivityIndicator size="small" color="#09090B" />
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
                     ) : (
                       <View style={styles.socialBtnContent}>
                         <Svg width="18" height="18" viewBox="0 0 24 24" style={{ marginRight: 8 }}>
@@ -344,13 +344,13 @@ export default function PhoneLoginScreen({navigation}: any) {
                             fill="#EA4335"
                           />
                         </Svg>
-                        <Text style={[styles.socialBtnText, { color: '#09090B' }]}>Google</Text>
+                        <Text style={[styles.socialBtnText, { color: Colors.textPrimary }]}>Google</Text>
                       </View>
                     )}
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.socialBtn, { backgroundColor: '#111113', borderColor: '#2E2E32' }]}
+                    style={[styles.socialBtn, { backgroundColor: Colors.surface, borderColor: Colors.border }]}
                     onPress={() => navigation.navigate('Auth', { mode: 'login' })}
                     activeOpacity={0.8}
                   >
@@ -358,7 +358,7 @@ export default function PhoneLoginScreen({navigation}: any) {
                       <View style={{ marginRight: 8 }}>
                         <MailIcon color={Colors.textPrimary} />
                       </View>
-                      <Text style={[styles.socialBtnText, { color: '#FAFAFA' }]}>Email</Text>
+                      <Text style={[styles.socialBtnText, { color: Colors.textPrimary }]}>Email</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -387,8 +387,8 @@ export default function PhoneLoginScreen({navigation}: any) {
                     styles.otpInput,
                     {
                       color: Colors.textPrimary,
-                      backgroundColor: '#111113',
-                      borderColor: errorMsg ? Colors.error : '#2E2E32',
+                      backgroundColor: Colors.surface,
+                      borderColor: errorMsg ? Colors.error : Colors.border,
                     },
                   ]}
                   placeholder="• • • • • •"
@@ -414,7 +414,7 @@ export default function PhoneLoginScreen({navigation}: any) {
                   activeOpacity={0.85}
                 >
                   {verifying ? (
-                    <ActivityIndicator size="small" color="#09090B" />
+                    <ActivityIndicator size="small" color={Colors.textInverse} />
                   ) : (
                     <Text style={styles.submitBtnText}>Verify OTP</Text>
                   )}
@@ -554,10 +554,10 @@ const styles = StyleSheet.create({
   countryPicker: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111113',
+    backgroundColor: Colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2E2E32',
+    borderColor: Colors.border,
     paddingHorizontal: 12,
     height: 46,
   },
@@ -579,10 +579,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111113',
+    backgroundColor: Colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2E2E32',
+    borderColor: Colors.border,
     height: 46,
   },
   phoneInput: {
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#09090B',
+    color: Colors.textInverse,
   },
 
   errorText: {
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   optionsDividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#2E2E32',
+    backgroundColor: Colors.border,
     opacity: 0.5,
   },
   optionsDividerText: {

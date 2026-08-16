@@ -16,6 +16,7 @@ import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Button, Chip} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -33,6 +34,7 @@ export default function FeedbackModal({
   onClose,
   screenName,
 }: FeedbackModalProps) {
+  const {isDark} = useTheme();
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);

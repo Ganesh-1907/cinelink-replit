@@ -4,8 +4,10 @@ import api from '../src/api/client';
 import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, Chip, Badge, EmptyState, LoadingView, Avatar} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function DirectorDashboardScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const {isAdmin, isApprovedDirector, user} = useApp();
   const [auditions, setAuditions] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);

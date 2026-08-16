@@ -30,6 +30,7 @@ import {uploadImage} from '../src/services/uploadService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Avatar, Header, Button, Input, Chip, Card} from '../components/ui';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 const SCREEN_W = Dimensions.get('window').width;
 const GRID_GAP = 2;
@@ -63,6 +64,7 @@ const availVariant = (status: string): 'success' | 'warning' | 'default' => {
 };
 
 export default function MyProfileScreen({navigation, route}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
@@ -692,15 +694,15 @@ export default function MyProfileScreen({navigation, route}: any) {
             (originalRole || '').toLowerCase() === 'director' ? (
               <View
                 style={{
-                  backgroundColor: '#1E1E24',
+                  backgroundColor: Colors.card,
                   padding: 12,
                   borderRadius: 8,
                   marginBottom: Spacing.sm,
                   borderWidth: 1,
-                  borderColor: '#2E2E32',
+                  borderColor: Colors.border,
                 }}>
                 <Text
-                  style={{color: '#F5C451', fontWeight: '600', fontSize: 14}}>
+                  style={{color: Colors.primary, fontWeight: '600', fontSize: 14}}>
                   {originalRole} (System Managed Role)
                 </Text>
               </View>
@@ -1478,7 +1480,7 @@ const styles = StyleSheet.create({
   highlightsContainer: {
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
+    borderBottomColor: Colors.border,
   },
   highlightsScroll: {
     paddingHorizontal: 16,
@@ -1493,15 +1495,15 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 1.5,
-    borderColor: '#363636',
+    borderColor: Colors.border,
     padding: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background,
   },
   highlightCircleNew: {
     borderStyle: 'dashed',
-    borderColor: '#555555',
+    borderColor: Colors.border,
   },
   highlightImg: {
     width: 56,
@@ -1523,7 +1525,7 @@ const styles = StyleSheet.create({
   instagramTabBar: {
     flexDirection: 'row',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
+    borderBottomColor: Colors.border,
   },
   instagramTabItem: {
     flex: 1,
@@ -1537,7 +1539,7 @@ const styles = StyleSheet.create({
   },
   instagramTabIcon: {
     fontSize: 18,
-    color: '#8e8e8e',
+    color: Colors.textTertiary,
   },
   instagramTabIconActive: {
     color: Colors.textPrimary,
@@ -1919,7 +1921,7 @@ const styles = StyleSheet.create({
   logoutBtnText: {
     ...Typography.label,
     fontSize: 16,
-    color: '#FAFAFA',
+    color: Colors.textPrimary,
   },
 
   // ── Portfolio Gallery ─────────────────────────────────────
@@ -2032,7 +2034,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   verifiedBadgeOverlapText: {
-    color: '#FAFAFA',
+    color: Colors.textPrimary,
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -2284,7 +2286,7 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 130,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.card,
     backgroundColor: Colors.cardElevated,
     overflow: 'hidden',
     justifyContent: 'center',

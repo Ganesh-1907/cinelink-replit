@@ -3,8 +3,10 @@ import {View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Acti
 import api from '../src/api/client';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {Header, Badge, EmptyState} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function AdminAuditionListScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const [auditions, setAuditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const filter = route?.params?.filter || 'all';

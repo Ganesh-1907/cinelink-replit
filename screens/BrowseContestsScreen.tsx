@@ -4,8 +4,10 @@ import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {Header, Input, EmptyState, SkeletonCard} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function BrowseContestsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

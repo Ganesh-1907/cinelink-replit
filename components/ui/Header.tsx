@@ -41,12 +41,26 @@ export function Header({
 }: HeaderProps) {
   const insets = useSafeAreaInsets();
 
-  const handleBack = onBack ?? (() => navigation?.goBack?.());
+  const handleBack =
+    onBack ??
+    (() => {
+      if (navigation?.canGoBack?.()) {
+        navigation.goBack();
+      } else {
+        navigation?.navigate?.('Home');
+      }
+    });
   const showBack = !!(onBack || navigation);
 
-  const titleColor = transparent ? '#FFFFFF' : Colors.textPrimary;
-  const subtitleColor = transparent ? '#E0DCD8' : Colors.textSecondary;
-  const backIconColor = transparent ? '#FFFFFF' : Colors.textPrimary;
+  const titleColor = transparent
+    ? (Colors.background === '#F8F8F6' ? Colors.textPrimary : '#FFFFFF')
+    : Colors.textPrimary;
+  const subtitleColor = transparent
+    ? (Colors.background === '#F8F8F6' ? Colors.textSecondary : '#E0DCD8')
+    : Colors.textSecondary;
+  const backIconColor = transparent
+    ? (Colors.background === '#F8F8F6' ? Colors.textPrimary : '#FFFFFF')
+    : Colors.textPrimary;
 
   return (
     <View

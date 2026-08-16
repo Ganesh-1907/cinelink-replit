@@ -5,10 +5,12 @@ import {
 } from 'react-native';
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
-import {Header, Button, Card, Chip, Badge, Avatar, Input} from '../components/ui';
+import {Header, Button, Card, Chip, Badge, Avatar, Input, PopupModal} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function ProjectDetailScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const {project: paramProject, projectId: paramProjectId} = route.params;
   const projectId = paramProjectId || paramProject?._id || paramProject?.id || '';
   
@@ -21,6 +23,32 @@ export default function ProjectDetailScreen({route, navigation}: any) {
   const [selectedRole, setSelectedRole] = useState('');
   const [applyNote, setApplyNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Custom Alert Modal state
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertVariant, setAlertVariant] = useState<'success' | 'warning' | 'info' | 'confirm'>('info');
+  const [confirmLabel, setConfirmLabel] = useState('OK');
+  const [cancelLabel, setCancelLabel] = useState('');
+  const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
+
+  const showAlert = (
+    title: string,
+    message: string,
+    variant: 'success' | 'warning' | 'info' | 'confirm' = 'info',
+    confLabel: string = 'OK',
+    canLabel: string = '',
+    onConf: (() => void) | null = null
+  ) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVariant(variant);
+    setConfirmLabel(confLabel);
+    setCancelLabel(canLabel);
+    setOnConfirmAction(() => onConf);
+    setAlertVisible(true);
+  };
 
   const {user} = useApp();
   const currentUserId = user?._id || user?.uid;
@@ -61,7 +89,7 @@ export default function ProjectDetailScreen({route, navigation}: any) {
         navigation.navigate('ChatScreen', { chat: res.chat });
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not access the project chat room.');
+      showAlert('Error', e.message || 'Could not access the project chat room.', 'warning');
     }
   };
 
@@ -79,14 +107,34 @@ export default function ProjectDetailScreen({route, navigation}: any) {
         role: selectedRole,
         note: applyNote.trim()
       });
-      Alert.alert('Applied! 📁', `Your application for ${selectedRole} has been sent to the director.`);
+      showAlert('Applied! 📁', `Your application for ${selectedRole} has been sent to the director.`, 'success');
       setApplyModalVisible(false);
       fetchProjectDetails();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to submit application.');
+      showAlert('Error', e.message || 'Failed to submit application.', 'warning');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDeleteProject = () => {
+    showAlert(
+      'Delete Project',
+      'Are you sure you want to permanently delete this project room? This will notify all members and cannot be undone.',
+      'warning',
+      'Delete',
+      'Cancel',
+      async () => {
+        try {
+          await api.delete(`/projects/${projectId}`);
+          showAlert('Deleted', 'Project deleted successfully.', 'success', 'OK', '', () => {
+            navigation.goBack();
+          });
+        } catch (err: any) {
+          showAlert('Error', err.message || 'Could not delete project.', 'warning');
+        }
+      }
+    );
   };
 
   const isMember = project.members?.includes(currentUserId);
@@ -138,15 +186,33 @@ export default function ProjectDetailScreen({route, navigation}: any) {
           </TouchableOpacity>
         )}
 
-        {/* Director Management Button */}
+        {/* Director Management Buttons */}
         {isOwner && (
-          <Button
-            label="💼 Manage Join Requests"
-            variant="outline"
-            size="lg"
-            fullWidth
-            onPress={() => navigation.navigate('JoinRequestsScreen', {projectId, projectTitle: project.title})}
-          />
+          <View style={{gap: Spacing.sm}}>
+            <Button
+              label="💼 Manage Join Requests"
+              variant="outline"
+              size="lg"
+              fullWidth
+              onPress={() => navigation.navigate('JoinRequests', {projectId, projectTitle: project.title})}
+            />
+            <View style={{flexDirection: 'row', gap: Spacing.sm}}>
+              <Button
+                label="✏️ Edit Room"
+                variant="outline"
+                size="md"
+                style={{flex: 1}}
+                onPress={() => navigation.navigate('CreateProject', {project})}
+              />
+              <Button
+                label="🗑️ Delete Room"
+                variant="danger"
+                size="md"
+                style={{flex: 1}}
+                onPress={handleDeleteProject}
+              />
+            </View>
+          </View>
         )}
 
         {/* Pending Request Status Badge */}
@@ -272,6 +338,22 @@ export default function ProjectDetailScreen({route, navigation}: any) {
         </View>
       </Modal>
 
+      <PopupModal
+        visible={alertVisible}
+        onClose={() => setAlertVisible(false)}
+        title={alertTitle}
+        message={alertMessage}
+        variant={alertVariant === 'confirm' ? 'confirm' : alertVariant}
+        confirmLabel={confirmLabel}
+        cancelLabel={cancelLabel || undefined}
+        onConfirm={() => {
+          setAlertVisible(false);
+          if (onConfirmAction) {
+            onConfirmAction();
+          }
+        }}
+        onCancel={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }

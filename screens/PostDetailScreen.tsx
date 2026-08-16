@@ -4,10 +4,12 @@ import {
 } from 'react-native';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {Header, Avatar} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const SCREEN_W = Dimensions.get('window').width;
 
 export default function PostDetailScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const post = route?.params?.post;
   if (!post) { navigation.goBack(); return null; }
 

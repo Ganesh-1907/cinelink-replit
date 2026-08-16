@@ -17,8 +17,10 @@ import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Input} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function PostAnnouncementScreen({navigation, route}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {isAdmin, isApprovedDirector} = useApp();
   const announcementToEdit = route.params?.announcement;

@@ -7,6 +7,7 @@ import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius, Shadows, HitSlop} from '../src/theme';
 import {Button, Chip, PopupModal} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 const REPORT_REASONS = [
   {id: 'fake', label: 'Fake / Scam Audition', icon: '🚫'},
@@ -28,6 +29,7 @@ type ReportModalProps = {
 export default function ReportModal({
   visible, onClose, contentId, contentType, contentTitle,
 }: ReportModalProps) {
+  const {isDark} = useTheme();
   const [selectedReason, setSelectedReason] = useState('');
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);

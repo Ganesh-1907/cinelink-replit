@@ -16,10 +16,12 @@ import {uploadVideo} from '../src/services/uploadService';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Button, Header, Input} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 const MAX_DURATION = 90;
 
 export default function UploadReelsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const {user: currentUser} = useApp();
   const [videoUri, setVideoUri] = useState('');
   const [videoDuration, setVideoDuration] = useState(0);

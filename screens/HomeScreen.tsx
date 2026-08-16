@@ -64,12 +64,15 @@ export default function HomeScreen({navigation}: any) {
   const [selectedTab, setSelectedTab] = useState<'auditions' | 'films' | 'contests' | 'quick_posts' | 'announcements'>('auditions');
 
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [cardWidth, setCardWidth] = useState(0);
+  const carouselRef = useRef<ScrollView>(null);
+  const timerRef = useRef<any>(null);
 
   const carouselItems = [
     {
       title: 'CineLink for You',
       quote: '“Every great film starts with a connection.”',
-      desc: 'Complete your profile, showcase your portfolio, and find your next breakthrough project.',
+      desc: 'Complete your portfolio, showcase your portfolio, and find your next breakthrough project.',
       buttonText: 'Complete Your Profile →',
       targetScreen: 'MyProfile',
       imageKey: 'directors_chair',
@@ -79,7 +82,7 @@ export default function HomeScreen({navigation}: any) {
       quote: "“Opportunities don't happen, you create them.”",
       desc: 'Apply to vetted roles, upload your headshots and showreels, and land your dream part.',
       buttonText: 'Browse Auditions →',
-      targetScreen: 'Auditions',
+      targetScreen: 'BrowseAuditions',
       imageKey: 'retro_camera',
     },
     {
@@ -100,12 +103,46 @@ export default function HomeScreen({navigation}: any) {
     },
   ];
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCarouselIndex(prev => (prev + 1) % carouselItems.length);
+  const stopAutoScroll = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startAutoScroll = useCallback(() => {
+    stopAutoScroll();
+    timerRef.current = setInterval(() => {
+      if (cardWidth > 0) {
+        setCarouselIndex(prev => {
+          const next = (prev + 1) % carouselItems.length;
+          carouselRef.current?.scrollTo({ x: next * cardWidth, animated: true });
+          return next;
+        });
+      }
     }, 4500);
-    return () => clearInterval(timer);
-  }, [carouselItems.length]);
+  }, [cardWidth, carouselItems.length, stopAutoScroll]);
+
+  const handleDotPress = (dotIdx: number) => {
+    stopAutoScroll();
+    setCarouselIndex(dotIdx);
+    if (cardWidth > 0) {
+      carouselRef.current?.scrollTo({ x: dotIdx * cardWidth, animated: true });
+    }
+    startAutoScroll();
+  };
+
+  const onCardLayout = (event: any) => {
+    const { width } = event.nativeEvent.layout;
+    setCardWidth(width);
+  };
+
+  useEffect(() => {
+    if (cardWidth > 0) {
+      startAutoScroll();
+    }
+    return () => stopAutoScroll();
+  }, [cardWidth, startAutoScroll, stopAutoScroll]);
 
   const getCarouselImage = (key: string) => {
     if (isDark) {
@@ -859,7 +896,7 @@ export default function HomeScreen({navigation}: any) {
                       style={[
                         styles.tabItem,
                         {
-                          backgroundColor: isActive ? '#1E1E2E' : Colors.card,
+                          backgroundColor: isActive ? Colors.cardElevated : Colors.card,
                           borderColor: isActive ? Colors.primary : Colors.border,
                         },
                       ]}
@@ -870,7 +907,7 @@ export default function HomeScreen({navigation}: any) {
                         style={[
                           styles.tabItemText,
                           {
-                            color: isActive ? '#FFFFFF' : Colors.textSecondary,
+                            color: isActive ? Colors.primary : Colors.textSecondary,
                             fontWeight: isActive ? '700' : '600',
                           },
                         ]}
@@ -1210,7 +1247,15 @@ export default function HomeScreen({navigation}: any) {
                                activeOpacity={0.8}
                                onPress={() => navigation.navigate('PostDetail', {post: item})}>
                                <View style={styles.postHeader}>
-                                 <View style={[styles.announceIcon, {width: 40, height: 40, borderRadius: Radius.sm, backgroundColor: Colors.errorFaint, alignItems: 'center', justifyContent: 'center'}]}>
+                                  <View
+                                    style={{
+                                      width: 40,
+                                      height: 40,
+                                      borderRadius: Radius.sm,
+                                      backgroundColor: Colors.errorFaint,
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}>
                                    <Text style={{fontSize: 18}}>📢</Text>
                                  </View>
                                  <View style={{flex: 1, marginLeft: Spacing.sm}}>
@@ -1246,70 +1291,100 @@ export default function HomeScreen({navigation}: any) {
           {/* ── CINELINK FOR YOU (CAROUSEL) ── */}
           <View style={styles.forYouSection}>
             <View
+              onLayout={onCardLayout}
               style={[
                 styles.forYouCard,
                 isDark ? styles.borderDark : styles.borderLight,
               ]}>
-              {/* Background Image with Svg Linear Gradient fade overlay */}
-              <View style={styles.forYouImageContainer}>
-                <Image
-                  source={getCarouselImage(
-                    carouselItems[carouselIndex].imageKey,
-                  )}
-                  style={styles.forYouImage}
-                />
-                <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-                  <Defs>
-                    <SvgLinearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
-                      <Stop
-                        offset="0"
-                        stopColor={Colors.card}
-                        stopOpacity={1}
+              <ScrollView
+                ref={carouselRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScrollBeginDrag={stopAutoScroll}
+                onMomentumScrollEnd={(e) => {
+                  const contentOffset = e.nativeEvent.contentOffset.x;
+                  if (cardWidth > 0) {
+                    const newIndex = Math.round(contentOffset / cardWidth);
+                    setCarouselIndex(newIndex);
+                  }
+                  startAutoScroll();
+                }}
+              >
+                {carouselItems.map((item, index) => (
+                  <View key={index} style={{ width: cardWidth || 300, height: '100%', position: 'relative' }}>
+                    {/* Background Image with Svg Linear Gradient fade overlay */}
+                    <View style={styles.forYouImageContainer}>
+                      <Image
+                        source={getCarouselImage(item.imageKey)}
+                        style={styles.forYouImage}
                       />
-                      <Stop
-                        offset={isDark ? 0.45 : 0.22}
-                        stopColor={Colors.card}
-                        stopOpacity={isDark ? 0.85 : 0.45}
-                      />
-                      <Stop
-                        offset={isDark ? 1 : 0.6}
-                        stopColor={Colors.card}
-                        stopOpacity="0"
-                      />
-                    </SvgLinearGradient>
-                  </Defs>
-                  <Rect width="100%" height="100%" fill="url(#fade)" />
-                </Svg>
-              </View>
+                      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+                        <Defs>
+                          <SvgLinearGradient id={`fade-${index}`} x1="0" y1="0" x2="1" y2="0">
+                            <Stop
+                              offset="0"
+                              stopColor={Colors.card}
+                              stopOpacity={1}
+                            />
+                            <Stop
+                              offset={isDark ? 0.45 : 0.22}
+                              stopColor={Colors.card}
+                              stopOpacity={isDark ? 0.85 : 0.45}
+                            />
+                            <Stop
+                              offset={isDark ? 1 : 0.6}
+                              stopColor={Colors.card}
+                              stopOpacity="0"
+                            />
+                          </SvgLinearGradient>
+                        </Defs>
+                        <Rect width="100%" height="100%" fill={`url(#fade-${index})`} />
+                      </Svg>
+                    </View>
 
-              <View style={styles.forYouLeft}>
-                <Text style={styles.forYouCarouselLabel}>
-                  {carouselItems[carouselIndex].title}
-                </Text>
-                <Text style={[styles.forYouTitle, styles.forYouQuote]}>
-                  {carouselItems[carouselIndex].quote}
-                </Text>
-                <Text style={styles.forYouDesc}>
-                  {carouselItems[carouselIndex].desc}
-                </Text>
+                    <View style={[styles.forYouLeft, { justifyContent: 'flex-start', paddingTop: 20 }]}>
+                      <Text style={styles.forYouCarouselLabel}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.forYouTitle, styles.forYouQuote]}>
+                        {item.quote}
+                      </Text>
+                      <Text style={styles.forYouDesc}>
+                        {item.desc}
+                      </Text>
 
-                <TouchableOpacity
-                  style={styles.forYouLink}
-                  onPress={() =>
-                    navigation.navigate(
-                      carouselItems[carouselIndex].targetScreen as any,
-                    )
-                  }>
-                  <Text style={styles.forYouLinkText}>
-                    {carouselItems[carouselIndex].buttonText}
-                  </Text>
-                </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.forYouLink}
+                        onPress={() =>
+                          navigation.navigate(item.targetScreen as any)
+                        }>
+                        <Text style={styles.forYouLinkText}>
+                          {item.buttonText}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
 
-                {/* Dots indicator */}
-                <View style={styles.carouselDotsRow}>
-                  {carouselItems.map((_, dotIdx) => (
+              {/* Dots indicator overlay */}
+              <View style={{
+                position: 'absolute',
+                bottom: 12,
+                left: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                zIndex: 10,
+              }}>
+                {carouselItems.map((_, dotIdx) => (
+                  <TouchableOpacity
+                    key={dotIdx}
+                    onPress={() => handleDotPress(dotIdx)}
+                    activeOpacity={0.8}
+                    style={{ paddingVertical: 4, paddingHorizontal: 2 }}
+                  >
                     <View
-                      key={dotIdx}
                       style={[
                         styles.carouselDot,
                         dotIdx === carouselIndex
@@ -1317,8 +1392,8 @@ export default function HomeScreen({navigation}: any) {
                           : styles.carouselDotInactive,
                       ]}
                     />
-                  ))}
-                </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
           </View>
@@ -1520,7 +1595,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#E63946',
+    backgroundColor: Colors.error,
     borderRadius: Radius.pill,
     minWidth: 16,
     height: 16,

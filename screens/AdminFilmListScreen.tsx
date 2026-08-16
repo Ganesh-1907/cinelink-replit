@@ -3,8 +3,10 @@ import {View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Acti
 import api from '../src/api/client';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {Header, EmptyState} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function AdminFilmListScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const [films, setFilms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

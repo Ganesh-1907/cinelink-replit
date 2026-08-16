@@ -18,6 +18,7 @@ import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Input, Button, Card, Chip, DatePickerModal} from '../components/ui';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {uploadImage} from '../src/services/uploadService';
+import {useTheme} from '../src/context/ThemeContext';
 
 const CONTEST_TYPES = [
   'Short Film',
@@ -29,6 +30,7 @@ const CONTEST_TYPES = [
 ];
 
 export default function PostContestScreen({navigation, route}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const editingContest = route?.params?.contest;
 

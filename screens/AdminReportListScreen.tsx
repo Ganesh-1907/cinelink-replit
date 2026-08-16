@@ -4,8 +4,10 @@ import api from '../src/api/client';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {Header, Badge, Button, EmptyState} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function AdminReportListScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const filter = route?.params?.filter || 'all';

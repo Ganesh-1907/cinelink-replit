@@ -17,6 +17,7 @@ import api from '../src/api/client';
 import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Chip} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const SYSTEM_CONTEXT = `You are CineLink AI — an expert assistant for Indian cinema creators.
 You help actors, directors, and short film makers with:
@@ -54,6 +55,7 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export default function AIAssistantScreen() {
+  const {isDark} = useTheme();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',

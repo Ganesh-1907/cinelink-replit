@@ -8,10 +8,12 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Chip, EmptyState, Button, Input, Avatar} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const CRAFTS = ['All', 'Actor', 'Director', 'DOP', 'Editor', 'Writer', 'Sound', 'Makeup', 'Art', 'Crew'];
 
 export default function CrewMarketplaceScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {user: currentUser} = useApp();
   

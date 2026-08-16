@@ -4,8 +4,10 @@ import api from '../src/api/client';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {Header, Avatar, Chip, EmptyState, PopupModal} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function AdminUserListScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');

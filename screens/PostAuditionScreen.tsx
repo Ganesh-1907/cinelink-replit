@@ -18,6 +18,7 @@ import {useApp} from '../src/context/AppContext';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Input, Chip, DatePickerModal} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 const ROLES = [
   'Hero',
@@ -37,6 +38,7 @@ const CATEGORIES = [
 ];
 
 export default function PostAuditionScreen({navigation, route}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const editingAudition = route?.params?.audition;
 

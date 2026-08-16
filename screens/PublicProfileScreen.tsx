@@ -18,10 +18,12 @@ import {Colors, Spacing, Radius} from '../src/theme';
 import {Header, Avatar, Chip, EmptyState} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
 import ImageViewing from 'react-native-image-viewing';
+import {useTheme} from '../src/context/ThemeContext';
 
 const SCREEN_W = Dimensions.get('window').width;
 
 export default function PublicProfileScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const {userId: paramUserId} = route.params;
   const userId = paramUserId?._id || paramUserId?.id || paramUserId || '';
   const [profile, setProfile] = useState<any>(null);
@@ -647,7 +649,7 @@ const styles = StyleSheet.create({
   highlightsContainer: {
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
+    borderBottomColor: Colors.border,
   },
   highlightsScroll: {
     paddingHorizontal: 16,
@@ -662,11 +664,11 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 1.5,
-    borderColor: '#363636',
+    borderColor: Colors.border,
     padding: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background,
   },
   highlightImg: {
     width: 56,
@@ -683,7 +685,7 @@ const styles = StyleSheet.create({
   instagramTabBar: {
     flexDirection: 'row',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
+    borderBottomColor: Colors.border,
   },
   instagramTabItem: {
     flex: 1,
@@ -697,7 +699,7 @@ const styles = StyleSheet.create({
   },
   instagramTabIcon: {
     fontSize: 18,
-    color: '#8e8e8e',
+    color: Colors.textTertiary,
   },
   instagramTabIconActive: {
     color: Colors.textPrimary,
@@ -1073,7 +1075,7 @@ const styles = StyleSheet.create({
   profileMessageBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
+    color: Colors.textPrimary,
   },
   centeredStatsRow: {
     flexDirection: 'row',

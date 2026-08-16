@@ -3,8 +3,10 @@ import {View, Text, StyleSheet, ScrollView, SafeAreaView} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function PrivacyPolicyScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
 
   return (

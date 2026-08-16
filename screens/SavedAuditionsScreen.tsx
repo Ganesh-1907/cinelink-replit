@@ -15,8 +15,10 @@ import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Button, EmptyState, Badge} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function SavedAuditionsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const [savedAuditions, setSavedAuditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

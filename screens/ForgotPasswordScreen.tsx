@@ -15,10 +15,12 @@ import api from '../src/api/client';
 import AppContext from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, PopupModal} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 type Step = 'send' | 'otp' | 'newPassword';
 
 export default function ForgotPasswordScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const {user} = useContext(AppContext);
   const userEmail = user?.email || '';
   const [step, setStep] = useState<Step>('send');

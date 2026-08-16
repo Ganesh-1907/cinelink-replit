@@ -6,8 +6,10 @@ import {
 import api from '../src/api/client';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Card, Avatar, EmptyState} from '../components/ui';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function JoinRequestsScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const {projectId, projectTitle} = route.params;
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

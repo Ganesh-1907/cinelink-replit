@@ -28,6 +28,7 @@ import {
   Badge,
 } from '../components/ui';
 import ReportModal from './ReportModal';
+import {useTheme} from '../src/context/ThemeContext';
 
 const cleanName = (raw: string | null | undefined): string => {
   if (!raw) {
@@ -49,6 +50,7 @@ const extractPhoneNumber = (text: string): string | null => {
 };
 
 export default function AuditionDetailScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const paramAudition = route?.params?.audition;
   const paramAuditionId = route?.params?.auditionId;

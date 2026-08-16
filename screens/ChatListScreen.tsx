@@ -12,6 +12,7 @@ import api from '../src/api/client';
 import {Avatar, Badge, EmptyState, Header} from '../components/ui';
 import {Colors, Spacing, Radius} from '../src/theme';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 const cleanName = (raw: string | null | undefined): string => {
   if (!raw) {
@@ -43,6 +44,7 @@ const formatTime = (ts: string) => {
 };
 
 export default function ChatListScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const {user: currentUser} = useApp();
   const [chats, setChats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -293,7 +295,7 @@ export default function ChatListScreen({navigation}: any) {
   if (loading) {
     return (
       <View style={styles.safe}>
-        <Header title="Messages" />
+        <Header title="Messages" navigation={navigation} />
         <ActivityIndicator
           size="large"
           color={Colors.primary}
@@ -306,7 +308,7 @@ export default function ChatListScreen({navigation}: any) {
   if (chats.length === 0 && discoverUsers.length === 0 && !discoverLoading) {
     return (
       <View style={styles.safe}>
-        <Header title="Messages" />
+        <Header title="Messages" navigation={navigation} />
         <EmptyState
           icon="💬"
           title="No conversations yet"
@@ -318,7 +320,7 @@ export default function ChatListScreen({navigation}: any) {
 
   return (
     <View style={styles.safe}>
-      <Header title="Messages" />
+      <Header title="Messages" navigation={navigation} />
       <SectionList
         sections={sections}
         keyExtractor={(item, i) => item._id || item.id || String(i)}
@@ -379,7 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     flex: 1,
   },
-  chatTime: {color: Colors.textTertiary, fontSize: 11, marginLeft: Spacing.sm},
+  chatTime: {color: Colors.textSecondary, fontSize: 11, marginLeft: Spacing.sm},
   chatFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -396,7 +398,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   followingTag: {color: Colors.primary, fontSize: 11, fontWeight: '600'},
-  userRole: {color: Colors.textTertiary, fontSize: 12, marginTop: 1},
+  userRole: {color: Colors.textSecondary, fontSize: 12, marginTop: 1},
   msgBtn: {
     padding: Spacing.sm,
     backgroundColor: Colors.cardElevated,

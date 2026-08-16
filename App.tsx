@@ -51,6 +51,7 @@ import PublicProfileScreen from './screens/PublicProfileScreen';
 import PaymentScreen from './screens/PaymentScreen';
 import SavedAuditionsScreen from './screens/SavedAuditionsScreen';
 import MyAuditionsScreen from './screens/MyAuditionsScreen';
+import MyRoomsScreen from './screens/MyRoomsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import AIAssistantScreen from './screens/AIAssistantScreen';
 import MyQuickPostsScreen from './screens/MyQuickPostsScreen';
@@ -301,6 +302,11 @@ function MainStack() {
         name="MyAuditions"
         component={MyAuditionsScreen}
         options={{title: 'My Auditions'}}
+      />
+      <Stack.Screen
+        name="MyRooms"
+        component={MyRoomsScreen}
+        options={{title: 'My Rooms'}}
       />
       <Stack.Screen
         name="Settings"

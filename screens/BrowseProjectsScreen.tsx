@@ -3,10 +3,12 @@ import {View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, S
 import api from '../src/api/client';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
-import {Header, Card, Chip, EmptyState, Button, Input, LoadingView} from '../components/ui';
+import {Header, Card, Chip, EmptyState, Button, Input, LoadingView, Badge} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function BrowseProjectsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const insets = useSafeAreaInsets();
   const {isAdmin, isApprovedDirector} = useApp();
 
@@ -21,7 +23,7 @@ export default function BrowseProjectsScreen({navigation}: any) {
   const [search, setSearch] = useState('');
   const [projectTypes, setProjectTypes] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounce search query changes
   useEffect(() => {
@@ -133,7 +135,12 @@ export default function BrowseProjectsScreen({navigation}: any) {
       <Card variant="elevated" padding={Spacing.lg} style={styles.card}>
         <View style={styles.topRow}>
           <Chip label={item.type || 'Project'} static />
-          <Text style={styles.status}>{item.status || 'Open'}</Text>
+          <View style={{flexDirection: 'row', gap: Spacing.sm, alignItems: 'center'}}>
+            {item.visibility === 'private' && (
+              <Badge label="Private" variant="error" />
+            )}
+            <Text style={styles.status}>{item.status || 'Open'}</Text>
+          </View>
         </View>
         <Text style={styles.title}>{item.title}</Text>
         <Text style={styles.meta}>👥 {item.members?.length || 1} member{(item.members?.length || 1) > 1 ? 's' : ''}</Text>

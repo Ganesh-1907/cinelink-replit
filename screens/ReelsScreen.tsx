@@ -15,10 +15,12 @@ import Video from 'react-native-video';
 import {Colors, Typography, Spacing} from '../src/theme';
 import {Header, Avatar} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 const {height: SCREEN_HEIGHT} = Dimensions.get('window');
 
 export default function ReelsScreen({navigation}: any) {
+  const {isDark} = useTheme();
   const [reels, setReels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

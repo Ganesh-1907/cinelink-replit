@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Colors, Spacing, Radius, HitSlop} from '../src/theme';
+import {useTheme} from '../src/context/ThemeContext';
 
 const {width, height} = Dimensions.get('window');
 
 export default function ImageViewerScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const imageUrl = route.params?.imageUrl || '';
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();

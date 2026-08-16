@@ -5,8 +5,10 @@ import RazorpayCheckout from 'react-native-razorpay';
 import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {Header, Button, Card, EmptyState} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
+import {useTheme} from '../src/context/ThemeContext';
 
 export default function PaymentScreen({route, navigation}: any) {
+  const {isDark} = useTheme();
   const {amount, purpose, itemId, itemTitle, contestId} = route.params;
   const [loading, setLoading] = useState(false);
   const {user} = useApp();
