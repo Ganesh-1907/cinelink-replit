@@ -452,7 +452,13 @@ export default function DiscoverScreen({navigation}: any) {
       const uid = vi.item._id || vi.item.id;
       if (vi.isViewable && uid && !viewedIds.current.has(uid)) {
         viewedIds.current.add(uid);
-        api.post(`/users/${uid}/view`).catch(() => {});
+        api.post(`/users/${uid}/view`).then((res: any) => {
+          if (res?.views !== undefined) {
+            setUsers(prev => prev.map(u =>
+              (u._id || u.id) === uid ? {...u, profileViews: res.views} : u,
+            ));
+          }
+        }).catch(() => {});
       }
     });
   }, []);

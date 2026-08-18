@@ -101,7 +101,10 @@ export async function getAndSaveFCMToken(): Promise<string | null> {
 
 export const saveFCMToken = async (token: string) => {
   try {
-    await api.put('/users/profile', { fcmToken: token, platform: Platform.OS });
+    await api.post('/upload/notification-token', {
+      token,
+      platform: Platform.OS,
+    });
     console.log('[FCM] Token saved:', token.slice(0, 12) + '...');
   } catch (e) {
     console.log('[FCM] Token save error:', e);

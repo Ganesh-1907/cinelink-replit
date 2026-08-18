@@ -75,6 +75,7 @@ export default function ProfileScreen({navigation, route}: any) {
   const [followingCount, setFollowingCount] = useState(0);
   const [applicationsCount, setApplicationsCount] = useState(0);
   const [showFullAvatar, setShowFullAvatar] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
 
   const {isAdmin, isApprovedDirector, user, signOut} = useApp();
   const scrollRef = useRef<ScrollView>(null);
@@ -95,6 +96,8 @@ export default function ProfileScreen({navigation, route}: any) {
       }
     } catch (e) {
       console.error('Error loading profile:', e);
+    } finally {
+      setProfileLoaded(true);
     }
   }, []);
 
@@ -119,6 +122,14 @@ export default function ProfileScreen({navigation, route}: any) {
 
   const displayName = name || user?.email?.split('@')[0] || 'Me';
   const avatarUri = photoUrl || null;
+
+  if (!profileLoaded) {
+    return (
+      <View style={[styles.container, {backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center'}]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
@@ -155,10 +166,12 @@ export default function ProfileScreen({navigation, route}: any) {
 
             {/* Stats Row beside avatar */}
             <View style={styles.centeredStatsRow}>
-              <View style={styles.centeredStatItem}>
+              <TouchableOpacity
+                style={styles.centeredStatItem}
+                onPress={() => navigation.navigate('MyApplications')}>
                 <Text style={styles.centeredStatNum}>{applicationsCount}</Text>
                 <Text style={styles.centeredStatLbl}>Applications</Text>
-              </View>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.centeredStatItem}
                 onPress={() =>
@@ -188,7 +201,7 @@ export default function ProfileScreen({navigation, route}: any) {
 
           {/* User Info below avatar/stats */}
           <View style={styles.profileMetaInfo}>
-            <Text style={styles.centeredName}>{name || 'Anonymous User'}</Text>
+            {name ? <Text style={styles.centeredName}>{name}</Text> : null}
             <Text style={styles.centeredRole}>{role || 'Actor'}</Text>
             {location ? (
               <View style={styles.centeredLocationRow}>

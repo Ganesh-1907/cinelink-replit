@@ -373,12 +373,26 @@ export default function PublicProfileScreen({route, navigation}: any) {
                   {profile.phone ? (
                     <View style={styles.detailRowItem}>
                       <Text style={styles.detailRowLabel}>📞 Phone</Text>
-                      <TouchableOpacity 
-                        onPress={() => Linking.openURL(`tel:${profile.phone}`)}
-                        style={styles.detailsPhoneAction}>
-                        <Text style={styles.detailsPhoneText}>{profile.phone}</Text>
-                        <Text style={styles.detailsPhoneIcon}>📞</Text>
-                      </TouchableOpacity>
+                      <View style={{flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.xs}}>
+                        <TouchableOpacity 
+                          onPress={() => Linking.openURL(`tel:${profile.phone}`)}
+                          style={styles.detailsPhoneAction}>
+                          <Text style={styles.detailsPhoneText}>{profile.phone}</Text>
+                          <Text style={styles.detailsPhoneIcon}>📞</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => {
+                            const cleanPhone = profile.phone.replace(/[^0-9]/g, '');
+                            const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                            Linking.openURL(`whatsapp://send?phone=${formattedPhone}`).catch(() => 
+                              Alert.alert('WhatsApp Not Installed', 'Please install WhatsApp to chat.')
+                            );
+                          }}
+                          style={[styles.detailsPhoneAction, {backgroundColor: '#25D36620', borderColor: '#25D366'}]}>
+                          <Text style={[styles.detailsPhoneText, {color: '#25D366'}]}>WhatsApp</Text>
+                          <Text style={styles.detailsPhoneIcon}>💬</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ) : null}
 

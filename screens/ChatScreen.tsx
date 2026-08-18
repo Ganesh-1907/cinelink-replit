@@ -147,9 +147,26 @@ export default function ChatScreen({route, navigation}: any) {
       setHeaderName(chat?.groupName || 'Group Chat');
       return;
     }
-    const otherId = (chat?.participants || []).find(
+    let otherId = (chat?.participants || []).find(
       (id: string) => id !== currentUserId,
     );
+
+    // If participants are missing (e.g. opened from a notification),
+    // look up the chat from the server to resolve the other participant.
+    if (!otherId && chatId) {
+      try {
+        const listRes = await api.get<{chats: any[]}>('/chat/list');
+        const found = (listRes.chats || []).find(
+          c => String(c._id || c.id) === String(chatId),
+        );
+        otherId = (found?.participants || []).find(
+          (id: string) => id !== currentUserId,
+        );
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
     if (!otherId) {
       return;
     }
@@ -166,7 +183,7 @@ export default function ChatScreen({route, navigation}: any) {
     } catch (e) {
       console.log(e);
     }
-  }, [chat?.groupName, chat?.participants, currentUserId, isGroup]);
+  }, [chat?.groupName, chat?.participants, chatId, currentUserId, isGroup]);
 
   useEffect(() => {
     loadMessages();

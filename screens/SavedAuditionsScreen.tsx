@@ -9,11 +9,12 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import api from '../src/api/client';
-import {Colors, Typography, Spacing, Radius} from '../src/theme';
-import {Header, Card, Button, EmptyState, Badge} from '../components/ui';
+import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
+import {Header, EmptyState, Avatar} from '../components/ui';
 import {useApp} from '../src/context/AppContext';
 import {useTheme} from '../src/context/ThemeContext';
 
@@ -23,11 +24,21 @@ export default function SavedAuditionsScreen({navigation}: any) {
   const [savedAuditions, setSavedAuditions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const {user} = useApp();
 
   useEffect(() => {
     loadSavedAuditions();
-  }, []);
+    fetchFollowing();
+  }, [user]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadSavedAuditions();
+      fetchFollowing();
+    });
+    return unsubscribe;
+  }, [navigation, user]);
 
   const loadSavedAuditions = async () => {
     try {
@@ -38,7 +49,12 @@ export default function SavedAuditionsScreen({navigation}: any) {
       for (const item of items) {
         try {
           const auditionRes = await api.get<any>(`/auditions/${item.auditionId}`);
-          if (auditionRes?.audition) auditions.push(auditionRes.audition);
+          if (auditionRes?.audition) {
+            auditions.push({
+              ...auditionRes.audition,
+              id: auditionRes.audition._id || auditionRes.audition.id,
+            });
+          }
         } catch (e) { /* audition may be deleted */ }
       }
       setSavedAuditions(auditions);
@@ -50,9 +66,50 @@ export default function SavedAuditionsScreen({navigation}: any) {
     }
   };
 
+  const fetchFollowing = async () => {
+    if (!user) return;
+    try {
+      const followRes = await api.get<any>(`/users/${user.uid}/following`);
+      const followingList = followRes.following || [];
+      setFollowingIds(new Set(followingList.map((u: any) => u._id || u.id)));
+    } catch (e) {
+      console.log('Error fetching following:', e);
+    }
+  };
+
+  const toggleFollowUser = async (targetId: string) => {
+    const isCurrentlyFollowing = followingIds.has(targetId);
+
+    setFollowingIds(prev => {
+      const next = new Set(prev);
+      if (isCurrentlyFollowing) {
+        next.delete(targetId);
+      } else {
+        next.add(targetId);
+      }
+      return next;
+    });
+
+    try {
+      await api.post('/users/follow', {targetUserId: targetId});
+    } catch (e) {
+      setFollowingIds(prev => {
+        const next = new Set(prev);
+        if (isCurrentlyFollowing) {
+          next.add(targetId);
+        } else {
+          next.delete(targetId);
+        }
+        return next;
+      });
+      Alert.alert('Error', 'Could not update follow status.');
+    }
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     loadSavedAuditions();
+    fetchFollowing();
   };
 
   const unsaveAudition = async (auditionId: string) => {
@@ -62,7 +119,7 @@ export default function SavedAuditionsScreen({navigation}: any) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await api.delete(`/saved-auditions/${auditionId}`);
+            await api.post('/saved-auditions', {auditionId});
             setSavedAuditions(prev => prev.filter((a: any) => (a._id || a.id) !== auditionId));
           } catch (e) {
             console.log(e);
@@ -104,74 +161,129 @@ export default function SavedAuditionsScreen({navigation}: any) {
             />
           ) : savedAuditions.length === 0 ? (
             <EmptyState
-              icon="💾"
+              icon="🔖"
               title="No saved auditions!"
               subtitle="Tap 🔖 Save on any audition to save it here."
               actionLabel="Browse Auditions"
               onAction={() => navigation.navigate('Home')}
             />
           ) : (
-            savedAuditions.map((item: any) => (
-              <Card
-                key={item._id || item.id}
-                variant="default"
-                padding={Spacing.lg}
-                style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <Badge label={item.status || 'Open'} variant="success" />
-                </View>
+            savedAuditions.map((item: any) => {
+              const isSaved = true;
+              const hasPoster = !!item.posterUrl;
 
-                <View style={styles.infoGrid}>
-                  {item.location ? (
-                    <Text style={styles.cardSub}>📍 {item.location}</Text>
-                  ) : null}
-                  {item.gender ? (
-                    <Text style={styles.cardSub}>👤 {item.gender}</Text>
-                  ) : null}
-                  {item.role ? (
-                    <Text style={styles.cardSub}>🎭 {item.role}</Text>
-                  ) : null}
-                  {item.lastDate ? (
-                    <Text style={styles.cardSub}>
-                      📅 Last Date: {item.lastDate}
-                    </Text>
-                  ) : null}
-                  {item.directorName || item.directorEmail ? (
-                    <Text style={styles.cardSub}>
-                      🎬{' '}
-                      {item.directorName || item.directorEmail?.split('@')[0]}
-                    </Text>
-                  ) : null}
-                </View>
+              return (
+                <View key={item._id || item.id} style={styles.card}>
+                  {/* Creator Info Header Row */}
+                  {(item.directorId || item.postedById) ? (
+                    <View style={styles.creatorHeader}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          const creatorId = item.directorId || item.postedById;
+                          if (creatorId) {
+                            navigation.navigate('PublicProfile', {userId: creatorId});
+                          }
+                        }}
+                        style={styles.creatorHeaderLeft}
+                      >
+                        <Avatar
+                          name={item.directorName || 'D'}
+                          uri={item.directorPhotoUrl}
+                          size="sm"
+                          ring
+                        />
+                        <View style={styles.creatorInfo}>
+                          <Text style={styles.creatorName} numberOfLines={1}>
+                            {item.directorName || 'Casting Director'}
+                          </Text>
+                          <Text style={styles.creatorRole}>
+                            {item.directorRole || 'Casting Director'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
 
-                {item.description ? (
-                  <Text style={styles.description} numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                ) : null}
+                      {(item.directorId || item.postedById) !== user?.uid && (
+                        <TouchableOpacity
+                          style={[styles.followBtn, followingIds.has(item.directorId || item.postedById) && styles.followingBtn]}
+                          onPress={() => toggleFollowUser(item.directorId || item.postedById)}
+                          activeOpacity={0.7}>
+                          <Text style={[styles.followBtnText, followingIds.has(item.directorId || item.postedById) && styles.followingBtnText]}>
+                            {followingIds.has(item.directorId || item.postedById) ? '✓ Following' : '+ Follow'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : null}
 
-                <View style={styles.btnRow}>
-                  <Button
-                    label="View & Apply →"
-                    onPress={() =>
-                      navigation.navigate('AuditionDetail', {audition: item})
-                    }
-                    size="md"
-                    fullWidth
-                  />
-                  <Button
-                    label="🗑"
-                    onPress={() => unsaveAudition(item._id || item.id)}
-                    variant="danger"
-                    size="md"
-                    style={styles.removeBtn}
-                  />
+                  <TouchableOpacity 
+                    activeOpacity={0.88} 
+                    onPress={() => navigation.navigate('AuditionDetail', {audition: item, auditionId: item._id || item.id})}
+                    style={styles.cardContent}
+                  >
+                    {/* Left Side: Poster Thumbnail */}
+                    {hasPoster ? (
+                      <Image source={{uri: item.posterUrl}} style={styles.posterThumbnail} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.posterPlaceholder}>
+                        <Text style={styles.placeholderEmoji}>🎭</Text>
+                      </View>
+                    )}
+
+                    {/* Right Side: Information column */}
+                    <View style={styles.infoCol}>
+                      <View style={styles.titleRow}>
+                        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                        {item.status !== 'Closed' ? (
+                          <View style={styles.featuredBadge}>
+                            <Text style={styles.featuredBadgeText}>Featured</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.featuredBadge, {backgroundColor: Colors.errorFaint, borderColor: Colors.errorBorder}]}>
+                            <Text style={[styles.featuredBadgeText, {color: Colors.error}]}>Closed</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <Text style={styles.subtitle} numberOfLines={1}>
+                        {item.category || 'Cinema'} · {item.role || 'Any Role'}
+                      </Text>
+
+                      <View style={styles.metaRow}>
+                        {item.location ? <Text style={styles.metaItem}>📍 {item.location}</Text> : null}
+                        {item.gender ? <Text style={styles.metaItem}>👤 {item.gender}</Text> : null}
+                      </View>
+
+                      <View style={styles.bottomRow}>
+                        <Text style={styles.budgetVal} numberOfLines={1}>
+                          {item.budget ? `💰 ${item.budget}` : 'Unspecified Pay'}
+                        </Text>
+                        <Text style={styles.applicantsVal}>
+                          👥 {item.applicationsCount || 0} applied
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Action Row */}
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity onPress={() => unsaveAudition(item._id || item.id)} style={styles.saveActionBtn} activeOpacity={0.7}>
+                      <Text style={styles.saveActionText}>{isSaved ? '🔖 Saved' : '🔖 Save'}</Text>
+                    </TouchableOpacity>
+                    
+                    <View style={styles.actionDivider} />
+
+                    <TouchableOpacity 
+                      onPress={() => navigation.navigate('AuditionDetail', {audition: item, auditionId: item._id || item.id})} 
+                      style={styles.applyActionBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.applyActionText}>Apply Now →</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </Card>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -188,28 +300,181 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: Spacing.lg,
   },
-  card: {marginBottom: Spacing.lg},
-  cardHeader: {
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.card,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    overflow: 'hidden',
+    ...Shadows.sm,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+  },
+  posterThumbnail: {
+    width: 90,
+    height: 110,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+  },
+  posterPlaceholder: {
+    width: 90,
+    height: 110,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderEmoji: {
+    fontSize: 28,
+  },
+  infoCol: {
+    flex: 1,
+    marginLeft: Spacing.md,
+    justifyContent: 'space-between',
+  },
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.sm,
-    gap: Spacing.md,
+    alignItems: 'center',
   },
   cardTitle: {
     color: Colors.textPrimary,
+    ...Typography.label,
     fontSize: 16,
+    flex: 1,
+    marginRight: Spacing.xs,
+  },
+  featuredBadge: {
+    backgroundColor: Colors.primaryGlow,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+    borderRadius: Radius.xs,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 1,
+  },
+  featuredBadgeText: {
+    fontSize: 10,
     fontWeight: 'bold',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+  },
+  subtitle: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.xs,
+    alignItems: 'center',
+  },
+  metaItem: {
+    ...Typography.caption,
+    color: Colors.textTertiary,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+  },
+  budgetVal: {
+    ...Typography.captionBold,
+    color: Colors.primary,
+    flex: 1,
+    marginRight: Spacing.xs,
+  },
+  applicantsVal: {
+    ...Typography.micro,
+    color: Colors.textTertiary,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    backgroundColor: Colors.cardElevated,
+    height: 44,
+    alignItems: 'center',
+  },
+  saveActionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  saveActionText: {
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
+  },
+  actionDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: Colors.borderLight,
+  },
+  applyActionBtn: {
+    flex: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  applyActionText: {
+    ...Typography.captionBold,
+    color: Colors.primary,
+  },
+  creatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  creatorHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  creatorInfo: {
+    marginLeft: Spacing.sm,
     flex: 1,
   },
-  infoGrid: {gap: Spacing.xs, marginBottom: Spacing.sm},
-  cardSub: {color: Colors.textSecondary, fontSize: 13},
-  description: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: Spacing.md,
+  creatorName: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
   },
-  btnRow: {flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm},
-  removeBtn: {paddingHorizontal: Spacing.md, minWidth: 44},
+  creatorRole: {
+    ...Typography.micro,
+    color: Colors.textSecondary,
+  },
+  followBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.xs,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  followingBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  followBtnText: {
+    color: Colors.textInverse,
+    fontWeight: '700',
+    fontSize: 11,
+    ...Typography.bodyBold,
+  },
+  followingBtnText: {
+    color: Colors.primary,
+  },
 });

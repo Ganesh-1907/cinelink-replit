@@ -701,6 +701,7 @@ function AppContent(): JSX.Element {
               await AsyncStorage.setItem('first_time_flow', 'false');
               setShowSuggestedFollows(false);
             },
+            canGoBack: () => false,
           }}
           route={{params: {}}}
         />

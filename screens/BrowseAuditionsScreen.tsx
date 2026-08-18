@@ -143,11 +143,7 @@ export default function BrowseAuditionsScreen({navigation}: any) {
     const hasPoster = !!item.posterUrl;
 
     return (
-      <TouchableOpacity 
-        style={styles.card} 
-        activeOpacity={0.88} 
-        onPress={() => navigation.navigate('AuditionDetail', {audition: item, auditionId: item._id || item.id})}
-      >
+      <View style={styles.card}>
         {/* Creator Info Header Row */}
         {(item.directorId || item.postedById) ? (
           <View style={styles.creatorHeader}>
@@ -190,7 +186,11 @@ export default function BrowseAuditionsScreen({navigation}: any) {
           </View>
         ) : null}
 
-        <View style={styles.cardContent}>
+        <TouchableOpacity 
+          activeOpacity={0.88} 
+          onPress={() => navigation.navigate('AuditionDetail', {audition: item, auditionId: item._id || item.id})}
+          style={styles.cardContent}
+        >
           {/* Left Side: Poster Thumbnail */}
           {hasPoster ? (
             <Image source={{uri: item.posterUrl}} style={styles.posterThumbnail} resizeMode="cover" />
@@ -233,12 +233,12 @@ export default function BrowseAuditionsScreen({navigation}: any) {
               </Text>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Action Row */}
         <View style={styles.cardActions}>
           <TouchableOpacity onPress={() => toggleSave(item)} style={styles.saveActionBtn} activeOpacity={0.7}>
-            <Text style={styles.saveActionText}>{isSaved ? '❤️ Saved' : '🤍 Save'}</Text>
+            <Text style={styles.saveActionText}>{isSaved ? '🔖 Saved' : '🔖 Save'}</Text>
           </TouchableOpacity>
           
           <View style={styles.actionDivider} />
@@ -260,7 +260,7 @@ export default function BrowseAuditionsScreen({navigation}: any) {
             </>
           )}
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 

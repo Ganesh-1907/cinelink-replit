@@ -62,19 +62,20 @@ export default function ReelsScreen({navigation}: any) {
     const reel = reels[index];
     const reelId = reel._id || reel.id;
     const isLiked = reel.likedByUser;
-    Alert.alert('Not connected', 'Like feature on Reels is under development.');
-    return;
     try {
+      const res = await api.post<any>(`/reels/${reelId}/like`);
       setReels(prev => prev.map((r, i) => {
         if (i === index) {
-          const newLiked = !isLiked;
-          return {...r, likedByUser: newLiked, likes: (r.likes || 0) + (newLiked ? 1 : -1)};
+          return {
+            ...r,
+            likedByUser: res.liked,
+            likes: res.likes ?? (r.likes || 0) + (res.liked ? 1 : -1),
+          };
         }
         return r;
       }));
-      await api.post(`/reels/${reelId}/like`);
     } catch (e) {
-      loadReels();
+      console.log(e);
     }
   };
 
@@ -104,7 +105,7 @@ export default function ReelsScreen({navigation}: any) {
           </View>
           <View style={styles.actions}>
             <TouchableOpacity onPress={() => toggleLike(index)} style={styles.actionBtn}>
-              <Text style={styles.actionIcon}>❤️</Text>
+              <Text style={styles.actionIcon}>{item.likedByUser ? '❤️' : '🤍'}</Text>
               <Text style={styles.actionCount}>{item.likes || 0}</Text>
             </TouchableOpacity>
           </View>

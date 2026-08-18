@@ -99,11 +99,26 @@ export default function BrowseFilmsScreen({navigation}: any) {
 
   const toggleLike = async (film: any) => {
     if (!currentUser) return;
+    const filmId = film.id || film._id;
+    const wasLiked = film.likedBy?.includes(currentUser?.uid);
+    setFilms(prev => prev.map(f => {
+      const id = f.id || f._id;
+      if (id !== filmId) return f;
+      const likes = Math.max(0, (f.likes || 0) + (wasLiked ? -1 : 1));
+      const likedBy = wasLiked
+        ? (f.likedBy || []).filter((u: string) => u !== currentUser?.uid)
+        : [...(f.likedBy || []), currentUser?.uid];
+      return {...f, likes, likedBy};
+    }));
     try {
-      await api.post(`/films/${film.id}/like`);
-      fetchFilms();
+      const res = await api.post<any>(`/films/${filmId}/like`);
+      setFilms(prev => prev.map(f => {
+        const id = f.id || f._id;
+        if (id !== filmId) return f;
+        return {...f, likes: res.likes, likedBy: res.likedBy || f.likedBy};
+      }));
     } catch (e) {
-      console.log(e);
+      fetchFilms();
     }
   };
 
@@ -214,6 +229,9 @@ export default function BrowseFilmsScreen({navigation}: any) {
           <TouchableOpacity style={styles.engagementBtn} onPress={() => toggleLike(item)}>
             <Text style={styles.engagementText}>{isLiked ? '❤️' : '🤍'} {item.likes || 0}</Text>
           </TouchableOpacity>
+          <View style={styles.engagementBtn}>
+            <Text style={styles.engagementText}>💬 {item.commentsCount || 0}</Text>
+          </View>
         </View>
 
         <View style={styles.filmBtnRow}>

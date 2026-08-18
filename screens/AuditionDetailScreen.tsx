@@ -61,7 +61,9 @@ export default function AuditionDetailScreen({route, navigation}: any) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
 
-  const [audition, setAudition] = useState<any>(paramAudition || null);
+  const [audition, setAudition] = useState<any>(
+    paramAudition ? { ...paramAudition, id: paramAudition._id || paramAudition.id } : null
+  );
   const [fetching, setFetching] = useState(!paramAudition && !!paramAuditionId);
   const [loading, setLoading] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -104,14 +106,12 @@ export default function AuditionDetailScreen({route, navigation}: any) {
 
   const handleLike = async () => {
     if (!user || !audition?.id) return;
-    const newLiked = !liked;
-    setLiked(newLiked);
-    setLikesCount(prev => newLiked ? prev + 1 : Math.max(0, prev - 1));
     try {
-      await api.post(`/auditions/${audition.id}/like`);
+      const res = await api.post<any>(`/auditions/${audition.id}/like`);
+      setLiked(res.liked);
+      setLikesCount(res.likes);
     } catch (e) {
-      setLiked(liked);
-      setLikesCount(prev => newLiked ? Math.max(0, prev - 1) : prev + 1);
+      console.log(e);
     }
   };
 
@@ -412,7 +412,7 @@ export default function AuditionDetailScreen({route, navigation}: any) {
                 style={[styles.saveBtn, saved && styles.saveBtnActive]}
                 onPress={toggleSave}>
                 <Text style={styles.saveBtnText}>
-                  {saved ? '❤️ Saved' : '🤍 Save'}
+                  {saved ? '🔖 Saved' : '🔖 Save'}
                 </Text>
               </TouchableOpacity>
 

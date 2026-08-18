@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Animated,
   Modal,
+  Linking,
 } from 'react-native';
 import {useTheme} from '../src/context/ThemeContext';
 import api from '../src/api/client';
@@ -27,6 +28,7 @@ import Svg, {
 } from 'react-native-svg';
 
 import ReportModal from './ReportModal';
+import FeedbackModal from './FeedbackModal';
 import {useApp} from '../src/context/AppContext';
 import {Colors, Typography, Spacing, Radius, Shadows} from '../src/theme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -44,6 +46,7 @@ export default function HomeScreen({navigation}: any) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTarget, setReportTarget] = useState<any>(null);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const {isAdmin, isApprovedDirector, user: currentUser, signOut} = useApp();
   const {isDark, toggleTheme} = useTheme();
@@ -714,6 +717,13 @@ export default function HomeScreen({navigation}: any) {
                         ]
                       : []),
                     {
+                      icon: '🛠️',
+                      label: 'Report Bug / Feedback',
+                      onPress: () => {
+                        setFeedbackModalVisible(true);
+                      },
+                    },
+                    {
                       icon: '⚙️',
                       label: 'Settings',
                       onPress: () => navigation.navigate('Settings'),
@@ -962,45 +972,59 @@ export default function HomeScreen({navigation}: any) {
                         const imgUri = item.imageUrl || item.posterUrl;
                         return (
                           <React.Fragment key={item.id}>
-                            <TouchableOpacity
+                            <View
                               style={[
                                 styles.horizontalCard,
-                                {backgroundColor: Colors.card},
-                              ]}
-                              onPress={() => navigation.navigate('AuditionDetail', {audition: item})}
-                              activeOpacity={0.95}>
-                              {imgUri ? (
-                                <Image source={{uri: imgUri}} style={styles.horizontalCardImage} />
-                              ) : (
-                                <View style={[styles.horizontalCardPlaceholder, {backgroundColor: Colors.cardElevated}]}>
-                                  <Text style={{fontSize: 36}}>🎭</Text>
-                                </View>
-                              )}
-                              <View style={styles.horizontalCardBody}>
-                                <View style={styles.horizontalCardHeaderRow}>
-                                  <Text style={[styles.horizontalCardTitle, {color: Colors.textPrimary}]} numberOfLines={1}>
-                                    {item.title}
+                                {backgroundColor: Colors.card, position: 'relative'},
+                              ]}>
+                              <TouchableOpacity
+                                style={{flexDirection: 'row', flex: 1, alignItems: 'stretch', gap: Spacing.md}}
+                                onPress={() => navigation.navigate('AuditionDetail', {audition: item})}
+                                activeOpacity={0.95}>
+                                {imgUri ? (
+                                  <Image source={{uri: imgUri}} style={styles.horizontalCardImage} />
+                                ) : (
+                                  <View style={[styles.horizontalCardPlaceholder, {backgroundColor: Colors.cardElevated}]}>
+                                    <Text style={{fontSize: 36}}>🎭</Text>
+                                  </View>
+                                )}
+                                <View style={[styles.horizontalCardBody, {marginRight: 12}]}>
+                                  <View style={styles.horizontalCardHeaderRow}>
+                                    <Text style={[styles.horizontalCardTitle, {color: Colors.textPrimary, marginRight: 20}]} numberOfLines={1}>
+                                      {item.title}
+                                    </Text>
+                                  </View>
+
+                                  <Text style={[styles.horizontalCardSub1, {color: Colors.primary}]} numberOfLines={1}>
+                                    💰 {item.budget ? `₹ ${item.budget}/day` : 'Paid'} · {item.category || 'Acting'}
                                   </Text>
-                                  <TouchableOpacity
-                                    style={styles.horizontalCardHeart}
-                                    onPress={() => toggleSaveAudition(item)}>
-                                    <Text style={{fontSize: 14}}>{isSaved ? '❤️' : '🤍'}</Text>
-                                  </TouchableOpacity>
+
+                                  <Text style={[styles.horizontalCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
+                                    {item.description || item.roles || 'No details provided.'}
+                                  </Text>
+
+                                  <Text style={[styles.horizontalCardSub2, {color: Colors.textTertiary}]} numberOfLines={1}>
+                                    📍 {item.location || 'Remote'} · {item.directorName || 'Casting Director'}
+                                  </Text>
                                 </View>
+                              </TouchableOpacity>
 
-                                <Text style={[styles.horizontalCardSub1, {color: Colors.primary}]} numberOfLines={1}>
-                                  💰 {item.budget ? `₹ ${item.budget}/day` : 'Paid'} · {item.category || 'Acting'}
-                                </Text>
-
-                                <Text style={[styles.horizontalCardDesc, {color: Colors.textSecondary}]} numberOfLines={2}>
-                                  {item.description || item.roles || 'No details provided.'}
-                                </Text>
-
-                                <Text style={[styles.horizontalCardSub2, {color: Colors.textTertiary}]} numberOfLines={1}>
-                                  📍 {item.location || 'Remote'} · {item.directorName || 'Casting Director'}
-                                </Text>
-                              </View>
-                            </TouchableOpacity>
+                              <TouchableOpacity
+                                style={{
+                                  position: 'absolute',
+                                  top: 12,
+                                  right: 12,
+                                  padding: 4,
+                                  zIndex: 10,
+                                }}
+                                onPress={() => toggleSaveAudition(item)}>
+                                <BookmarkIcon
+                                  filled={isSaved}
+                                  color={isSaved ? Colors.primary : Colors.textSecondary}
+                                  size={18}
+                                />
+                              </TouchableOpacity>
+                            </View>
                             {index > 0 && index % 7 === 0 && renderInfluencersSection('People You May Know')}
                           </React.Fragment>
                         );
@@ -1207,6 +1231,39 @@ export default function HomeScreen({navigation}: any) {
                                {item.text ? (
                                  <Text style={styles.postText} numberOfLines={3}>{item.text}</Text>
                                ) : null}
+
+                               {item.creatorPhone ? (
+                                 <View style={styles.postContactRow}>
+                                   <Text style={[styles.postContactNumber, {color: Colors.textSecondary}]} numberOfLines={1}>
+                                     📱 {item.creatorPhone}
+                                   </Text>
+                                   <TouchableOpacity
+                                     style={[styles.postContactIconBtn, {backgroundColor: Colors.primary + '15'}]}
+                                     activeOpacity={0.7}
+                                     onPress={() => {
+                                       const cleanPhone = item.creatorPhone.replace(/[^0-9]/g, '');
+                                       Linking.openURL(`tel:${cleanPhone}`).catch(() => 
+                                         Alert.alert('Error', 'Could not open dialer.')
+                                       );
+                                     }}>
+                                     <Text style={{fontSize: 12}}>📞</Text>
+                                     <Text style={[styles.postContactIconText, {color: Colors.primary}]}>Call</Text>
+                                   </TouchableOpacity>
+                                   <TouchableOpacity
+                                     style={[styles.postContactIconBtn, {backgroundColor: '#25D36620'}]}
+                                     activeOpacity={0.7}
+                                     onPress={() => {
+                                       const cleanPhone = item.creatorPhone.replace(/[^0-9]/g, '');
+                                       const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                                       Linking.openURL(`whatsapp://send?phone=${formattedPhone}`).catch(() => 
+                                         Alert.alert('WhatsApp Not Installed', 'Please install WhatsApp to chat.')
+                                       );
+                                     }}>
+                                     <Text style={{fontSize: 12}}>💬</Text>
+                                     <Text style={[styles.postContactIconText, {color: '#25D366'}]}>WhatsApp</Text>
+                                   </TouchableOpacity>
+                                 </View>
+                               ) : null}
                              </TouchableOpacity>
                              {index > 0 && index % 7 === 0 && renderInfluencersSection('People You May Know')}
                            </React.Fragment>
@@ -1410,6 +1467,11 @@ export default function HomeScreen({navigation}: any) {
         contentType={reportTarget?.type || 'audition'}
         contentTitle={reportTarget?.title || ''}
       />
+
+      <FeedbackModal
+        visible={feedbackModalVisible}
+        onClose={() => setFeedbackModalVisible(false)}
+      />
     </>
   );
 }
@@ -1424,6 +1486,26 @@ const SliderIcon = ({
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
       d="M4 21V14M4 10V3M12 21V12M12 8V3M20 21V16M20 12V3M2 14H6M10 8H14M18 16H22"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+const BookmarkIcon = ({
+  size = 20,
+  color = Colors.primary,
+  filled = false,
+}: {
+  size?: number;
+  color?: string;
+  filled?: boolean;
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'}>
+    <Path
+      d="M19 21L12 16L5 21V5C5 3.89543 5.89543 3 7 3H17C18.1046 3 19 3.89543 19 5V21Z"
       stroke={color}
       strokeWidth="2"
       strokeLinecap="round"
@@ -2528,5 +2610,29 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     marginTop: Spacing.sm,
     resizeMode: 'cover',
+  },
+  postContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    gap: Spacing.sm,
+  },
+  postContactNumber: {
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  postContactIconBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: Radius.full,
+    gap: 4,
+  },
+  postContactIconText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

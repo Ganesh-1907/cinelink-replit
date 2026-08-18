@@ -119,9 +119,11 @@ export default function ReportModal({
                 maxLength={300}
                 textAlignVertical="top"
               />
-
-              <Button label="⚠️ Submit Report" onPress={submitReport} variant="danger" size="lg" loading={submitting} fullWidth />
             </ScrollView>
+
+            <View style={[styles.footer, {borderTopColor: Colors.border}]}>
+              <Button label="⚠️ Submit Report" onPress={submitReport} variant="danger" size="lg" loading={submitting} fullWidth />
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -175,13 +177,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {...Typography.h3},
   closeBtn: {color: Colors.textSecondary, fontSize: 22, padding: 4},
-  scrollBody: {flexGrow: 0},
-  scrollInner: {paddingHorizontal: Spacing.lg, paddingBottom: Spacing['4xl']},
+  scrollBody: {flexShrink: 1},
+  scrollInner: {paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md},
   reportingLabel: {...Typography.bodySm, color: Colors.textSecondary, marginBottom: Spacing.sm},
   reportingTitle: {color: Colors.textPrimary, fontWeight: '600'},
   sectionTitle: {...Typography.h4, marginBottom: Spacing.sm},
-  reasons: {gap: Spacing.sm, marginBottom: Spacing.md},
-  reasonChip: {alignSelf: 'flex-start'},
+  reasons: {flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md},
+  reasonChip: {},
   detailsInput: {
     backgroundColor: Colors.inputBg,
     borderRadius: Radius.md,
@@ -193,5 +195,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     textAlignVertical: 'top',
     marginBottom: Spacing.md,
+  },
+  footer: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? Spacing.xl : Spacing.lg,
+    borderTopWidth: 1,
   },
 });

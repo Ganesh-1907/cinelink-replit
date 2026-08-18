@@ -26,7 +26,13 @@ async function uploadToR2(uri: string, type: UploadType): Promise<UploadResult> 
     body: formData,
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+  let data: any;
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch (e) {
+    throw new Error(`Upload server error (${response.status}): The server returned an invalid response structure.`);
+  }
   if (!response.ok) throw new Error(data?.error || 'Upload failed');
   return {secureUrl: data.secureUrl};
 }

@@ -71,4 +71,5 @@ export interface Subscription {
 export interface AuthResponse {
   user: User;
   token: string;
+  isNewUser?: boolean;
 }

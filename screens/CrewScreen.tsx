@@ -25,6 +25,7 @@ export default function CrewScreen({navigation}: any) {
 
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [connectionStatus, setConnectionStatus] = useState<{[key: string]: 'connected' | 'pending' | 'none'}>({});
+  const [actionLoading, setActionLoading] = useState<{[key: string]: 'follow' | 'connect' | null}>({});
   
   const [myProjects, setMyProjects] = useState<any[]>([]);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
@@ -127,9 +128,11 @@ export default function CrewScreen({navigation}: any) {
   };
 
   const toggleFollow = async (targetUserId: string) => {
+    if (actionLoading[targetUserId]) return;
+    setActionLoading(prev => ({...prev, [targetUserId]: 'follow'}));
     try {
       const isFollowing = followingIds.has(targetUserId);
-      const res = await api.post<any>('/users/follow', {targetUserId});
+      await api.post<any>('/users/follow', {targetUserId});
       
       setFollowingIds(prev => {
         const next = new Set(prev);
@@ -142,16 +145,23 @@ export default function CrewScreen({navigation}: any) {
       });
     } catch (e: any) {
       showAlert('Error', e.message || 'Could not perform follow action.', 'warning');
+    } finally {
+      setActionLoading(prev => ({...prev, [targetUserId]: null}));
     }
   };
 
   const sendConnectRequest = async (targetUser: any) => {
+    const targetId = targetUser._id;
+    if (actionLoading[targetId]) return;
+    setActionLoading(prev => ({...prev, [targetId]: 'connect'}));
     try {
-      await api.post('/connections/request', {targetUserId: targetUser._id});
-      setConnectionStatus(prev => ({...prev, [targetUser._id]: 'pending'}));
+      await api.post('/connections/request', {targetUserId: targetId});
+      setConnectionStatus(prev => ({...prev, [targetId]: 'pending'}));
       showAlert('Request Sent! 🤝', `Connection request sent to ${targetUser.fullName || targetUser.displayName || 'User'}`, 'success');
     } catch (e: any) {
       showAlert('Error', e.message || 'Could not send request.', 'warning');
+    } finally {
+      setActionLoading(prev => ({...prev, [targetId]: null}));
     }
   };
 
@@ -214,10 +224,15 @@ export default function CrewScreen({navigation}: any) {
 
           <TouchableOpacity
             style={[styles.followPill, isFollowing && styles.followingPill]}
+            disabled={!!actionLoading[item._id]}
             onPress={e => { e.stopPropagation(); toggleFollow(item._id); }}>
-            <Text style={styles.followPillText}>
-              {isFollowing ? '✓ Following' : '+ Follow'}
-            </Text>
+            {actionLoading[item._id] === 'follow' ? (
+              <ActivityIndicator size="small" color={isFollowing ? Colors.primary : Colors.textInverse} style={{ transform: [{ scale: 0.8 }] }} />
+            ) : (
+              <Text style={[styles.followPillText, isFollowing && styles.followingPillText]}>
+                {isFollowing ? '✓ Following' : '+ Follow'}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -235,8 +250,13 @@ export default function CrewScreen({navigation}: any) {
           ) : (
             <TouchableOpacity
               style={styles.actionButton}
+              disabled={!!actionLoading[item._id]}
               onPress={e => { e.stopPropagation(); sendConnectRequest(item); }}>
-              <Text style={styles.actionBtnText}>🤝 Connect</Text>
+              {actionLoading[item._id] === 'connect' ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Text style={styles.actionBtnText}>🤝 Connect</Text>
+              )}
             </TouchableOpacity>
           )}
 
@@ -538,8 +558,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.primaryLight
   },
   followingPill: {
-    backgroundColor: Colors.border,
-    borderColor: Colors.border
+    backgroundColor: 'transparent',
+    borderColor: Colors.primary
+  },
+  followingPillText: {
+    color: Colors.primary
   },
   followPillText: {color: Colors.textInverse, fontSize: 11, fontWeight: 'bold'},
   cardTopRow: {

@@ -14,6 +14,25 @@ interface RequestOptions {
   skipAuth?: boolean;
 }
 
+export class ApiError extends Error {
+  response?: {
+    status: number;
+    data: {
+      error?: string;
+      [key: string]: any;
+    };
+  };
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.response = {
+      status,
+      data: data || { error: message },
+    };
+  }
+}
+
 async function request<T = ApiResponse>(
   method: string,
   path: string,
@@ -44,15 +63,35 @@ async function request<T = ApiResponse>(
     });
 
     if (response.status === 204) return {} as T;
-    const data = await response.json();
+
+    const responseText = await response.text();
+    let data: any;
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (e) {
+      if (__DEV__) {
+        console.error(
+          `[CineLink API Client] 🚨 Failed to parse JSON response. Status: ${response.status}. Raw response:`,
+          responseText,
+        );
+      }
+      throw new ApiError(
+        `Server error (${response.status}): The server returned an invalid response structure.`,
+        response.status,
+      );
+    }
+
     if (!response.ok) {
       if (response.status === 401 && !options?.skipAuth) {
         await storageService.clearAll();
       }
-      throw new Error(data?.error || `API Error ${response.status}`);
+      throw new ApiError(data?.error || `API Error ${response.status}`, response.status, data);
     }
     return data as T;
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
     if (error.message?.includes('Network request failed')) {
       throw new Error('Network error: Unable to connect to server. Check your internet connection.');
     }

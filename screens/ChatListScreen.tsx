@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, {useEffect, useState, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -47,10 +47,13 @@ export default function ChatListScreen({navigation}: any) {
   const {isDark} = useTheme();
   const {user: currentUser} = useApp();
   const [chats, setChats] = useState<any[]>([]);
+  const chatsRef = useRef<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [discoverUsers, setDiscoverUsers] = useState<any[]>([]);
   const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [discoverPage, setDiscoverPage] = useState(1);
+  const [hasMoreDiscover, setHasMoreDiscover] = useState(true);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () =>
@@ -58,6 +61,44 @@ export default function ChatListScreen({navigation}: any) {
     );
     return unsubscribe;
   }, [navigation]);
+
+  const resolveChatNames = useCallback(
+    async (chatList: any[]) => {
+      const uid = currentUser?.uid || currentUser?._id || '';
+      const enriched = await Promise.all(
+        chatList.map(async chat => {
+          if (chat.isGroupChat || !chat.participants?.length) {
+            return chat;
+          }
+          const participants = chat.participants;
+          const otherId = participants.find(
+            (p: string) => String(p) !== String(uid),
+          );
+          if (!otherId) {
+            return chat;
+          }
+          const idx = participants.indexOf(otherId);
+          const names = [...(chat.participantNames || [])];
+          const currentName = cleanName(names[idx]);
+          if (currentName && currentName !== 'User') {
+            return chat;
+          }
+          try {
+            const res = await api.get<any>(`/users/${otherId}`);
+            const data = res?.user;
+            const name =
+              data?.fullName || data?.displayName || data?.name || data?.email;
+            names[idx] = cleanName(name) || 'User';
+          } catch (e) {
+            // leave fallback name
+          }
+          return {...chat, participantNames: names};
+        }),
+      );
+      return enriched;
+    },
+    [currentUser?.uid, currentUser?._id],
+  );
 
   const loadChatsData = useCallback(async (): Promise<any[]> => {
     try {
@@ -67,23 +108,26 @@ export default function ChatListScreen({navigation}: any) {
         const bT = new Date(b.lastMessageTime || b.updatedAt || 0).getTime();
         return bT - aT;
       });
-      setChats(sorted);
-      return sorted;
+      const enriched = await resolveChatNames(sorted);
+      chatsRef.current = enriched;
+      setChats(enriched);
+      return enriched;
     } catch (e) {
       console.log('Chat list error:', e);
       return [];
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [resolveChatNames]);
 
   const loadDiscoverUsers = useCallback(
-    async (existingChats: any[]) => {
+    async (page: number, isAppend: boolean, existingChats?: any[]) => {
       setDiscoverLoading(true);
       try {
         const uid = currentUser?.uid || '';
+        const targetChats = existingChats || chatsRef.current;
         const chatParticipantIds = new Set<string>();
-        existingChats.forEach(c =>
+        targetChats.forEach(c =>
           (c.participants || []).forEach((p: string) =>
             chatParticipantIds.add(p),
           ),
@@ -91,13 +135,21 @@ export default function ChatListScreen({navigation}: any) {
 
         // Load who I follow
         const followingRes = await api.get<any>(
-          `/users/${uid}/following?limit=50`,
+          `/users/${uid}/following?page=${page}&limit=15`,
         );
         const followingUsers = followingRes?.following || [];
 
         // Load all users from search
-        const searchRes = await api.get<any>('/users/search?limit=50');
+        const searchRes = await api.get<any>(`/users/search?page=${page}&limit=15`);
         const allUsers = searchRes?.users || [];
+
+        if (followingUsers.length === 0 && allUsers.length === 0) {
+          if (!isAppend) {
+            setDiscoverUsers([]);
+          }
+          setHasMoreDiscover(false);
+          return;
+        }
 
         // Deduplicate: merge following first, then others, exclude self and existing chats
         const seen = new Set<string>();
@@ -128,27 +180,53 @@ export default function ChatListScreen({navigation}: any) {
           u => !chatParticipantIds.has(String(u._id || u.id)),
         );
 
-        setDiscoverUsers(filtered);
+        setDiscoverUsers(prev => {
+          if (isAppend) {
+            const existingIds = new Set(prev.map(u => String(u._id || u.id)));
+            const newUsers = filtered.filter(u => !existingIds.has(String(u._id || u.id)));
+            return [...prev, ...newUsers];
+          } else {
+            return filtered;
+          }
+        });
+
+        setDiscoverPage(page);
+        setHasMoreDiscover(followingRes?.hasMore || searchRes?.hasMore || false);
       } catch (e) {
         console.log('Discover error:', e);
       } finally {
         setDiscoverLoading(false);
       }
     },
-    [currentUser?.uid],
+    [currentUser?.uid, chatsRef],
   );
 
+  const loadMoreDiscoverUsers = async () => {
+    if (discoverLoading || !hasMoreDiscover) return;
+    await loadDiscoverUsers(discoverPage + 1, true);
+  };
+
   const init = useCallback(async () => {
+    setLoading(true);
     const fetchedChats = await loadChatsData();
-    await loadDiscoverUsers(fetchedChats);
+    await loadDiscoverUsers(1, false, fetchedChats);
   }, [loadChatsData, loadDiscoverUsers]);
 
   useEffect(() => {
     init();
   }, [refreshKey, init]);
 
-  const getOtherName = (chat: any) =>
-    cleanName((chat.participantNames || [])[0] || 'User');
+  const getOtherName = (chat: any) => {
+    const participants = chat.participants || [];
+    const uid = currentUser?.uid || currentUser?._id || '';
+    const otherId = participants.find((p: string) => String(p) !== String(uid));
+    const idx = otherId ? participants.indexOf(otherId) : 0;
+    return (
+      cleanName((chat.participantNames || [])[idx]) ||
+      cleanName(chat.otherName || chat.fullName || chat.displayName || chat.name || chat.email) ||
+      'User'
+    );
+  };
 
   const startChat = async (otherUser: any) => {
     try {
@@ -236,7 +314,7 @@ export default function ChatListScreen({navigation}: any) {
   };
 
   const renderDiscoverUser = ({item}: any) => {
-    const name = item.fullName || item.displayName || item.name || 'User';
+    const name = cleanName(item.fullName || item.displayName || item.name || item.email) || 'User';
     return (
       <TouchableOpacity
         style={styles.discoverRow}
@@ -327,6 +405,8 @@ export default function ChatListScreen({navigation}: any) {
         renderItem={({section, item}) => section.renderItem({item})}
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled={false}
+        onEndReached={loadMoreDiscoverUsers}
+        onEndReachedThreshold={0.5}
         ListFooterComponent={
           discoverLoading ? (
             <ActivityIndicator

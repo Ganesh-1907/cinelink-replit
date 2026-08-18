@@ -18,6 +18,7 @@ export default function FilmDetailScreen({route, navigation}: any) {
   const [commentText, setCommentText] = useState('');
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(paramFilm?.likes || 0);
+  const [commentsCount, setCommentsCount] = useState(paramFilm?.commentsCount || 0);
   const [creator, setCreator] = useState<any>(null);
   const heartScale = useRef(new Animated.Value(1)).current;
   const {user: currentUser} = useApp();
@@ -41,6 +42,7 @@ export default function FilmDetailScreen({route, navigation}: any) {
       if (res?.film) {
         setFilm(res.film);
         setLikesCount(res.film.likes || 0);
+        setCommentsCount(res.film.commentsCount || 0);
         if (res.film.likedBy?.includes(currentUser?.uid)) setLiked(true);
         if (res.film.userId) {
           fetchCreatorProfile(res.film.userId);
@@ -64,6 +66,7 @@ export default function FilmDetailScreen({route, navigation}: any) {
     try {
       const res = await api.get<any>(`/comments/film/${filmId}`);
       setComments(res?.comments || []);
+      setCommentsCount(res?.comments?.length ?? 0);
     } catch (e) { console.log(e); }
   };
 
@@ -74,21 +77,26 @@ export default function FilmDetailScreen({route, navigation}: any) {
       Animated.spring(heartScale, {toValue: 1.3, useNativeDriver: true, speed: 30, bounciness: 12}),
       Animated.spring(heartScale, {toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6})
     ]).start();
-    setLiked(newLiked);
-    setLikesCount((prev: number) => newLiked ? prev + 1 : prev - 1);
     try {
-      await api.post(`/films/${filmId}/like`);
+      const res = await api.post<any>(`/films/${filmId}/like`);
+      setLiked(res.liked);
+      setLikesCount(res.likes);
     } catch {
       setLiked(liked);
-      setLikesCount((prev: number) => newLiked ? prev - 1 : prev + 1);
+      setLikesCount(prev => newLiked ? prev - 1 : prev + 1);
     }
   };
 
   const addComment = async () => {
     if (!commentText.trim() || !currentUser) return;
     try {
-      await api.post(`/comments/film/${filmId}`, {text: commentText.trim()});
+      const res = await api.post<any>(`/comments/film/${filmId}`, {text: commentText.trim()});
       setCommentText('');
+      if (res.commentCount !== undefined) {
+        setCommentsCount(res.commentCount);
+      } else {
+        setCommentsCount((prev: number) => prev + 1);
+      }
       loadComments();
     } catch (e) { console.log(e); }
   };

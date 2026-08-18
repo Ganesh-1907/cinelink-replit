@@ -14,6 +14,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, {Path, Circle, Rect, Polyline, Line} from 'react-native-svg';
 import {GOOGLE_WEB_CLIENT_ID} from '../src/api/config';
 import {
@@ -135,10 +136,19 @@ export default function PhoneLoginScreen({navigation}: any) {
         otp: otpCleaned,
       });
 
-      const loginRes = await api.post('/auth/phone-login', {phone: phone.replace(/\s/g, '')});
+      const loginRes = await api.post<any>('/auth/phone-login', {phone: phone.replace(/\s/g, '')});
       await storageService.setToken(loginRes.token);
       await storageService.setUserData(loginRes.user);
       await refreshUserData();
+      if (loginRes.isNewUser) {
+        await AsyncStorage.setItem('first_time_flow', 'true');
+        await AsyncStorage.setItem('profile_fill_done', 'false');
+        await AsyncStorage.setItem('suggested_follows_done', 'false');
+      } else {
+        await AsyncStorage.setItem('first_time_flow', 'false');
+        await AsyncStorage.setItem('profile_fill_done', 'true');
+        await AsyncStorage.setItem('suggested_follows_done', 'true');
+      }
     } catch (e: any) {
       setErrorMsg(errorMessage(e.message));
       setVerifying(false);
@@ -184,7 +194,16 @@ export default function PhoneLoginScreen({navigation}: any) {
         setGoogleLoading(false);
         return;
       }
-      await authService.googleSignIn(idToken);
+      const googleRes = await authService.googleSignIn(idToken);
+      if (googleRes.isNewUser) {
+        await AsyncStorage.setItem('first_time_flow', 'true');
+        await AsyncStorage.setItem('profile_fill_done', 'false');
+        await AsyncStorage.setItem('suggested_follows_done', 'false');
+      } else {
+        await AsyncStorage.setItem('first_time_flow', 'false');
+        await AsyncStorage.setItem('profile_fill_done', 'true');
+        await AsyncStorage.setItem('suggested_follows_done', 'true');
+      }
       await refreshUserData();
     } catch (e: any) {
       await GoogleSignin.signOut().catch(() => {});

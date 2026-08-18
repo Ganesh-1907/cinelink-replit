@@ -107,8 +107,8 @@ export default function FeedbackModal({
     {label: string; icon: string; color: string}
   > = {
     feedback: {label: 'Feedback', icon: '💬', color: Colors.primary},
-    bug: {label: 'Bug Report', icon: '🐛', color: Colors.error},
-    feature: {label: 'Feature Request', icon: '💡', color: Colors.success},
+    bug: {label: 'Bug Report', icon: '🐛', color: Colors.primary},
+    feature: {label: 'Feature Request', icon: '💡', color: Colors.primary},
   };
 
   const thanksEmoji =
@@ -164,17 +164,7 @@ export default function FeedbackModal({
                   label={val.label}
                   selected={active}
                   onPress={() => setFeedbackType(key)}
-                  variant={
-                    active
-                      ? key === 'bug'
-                        ? 'error'
-                        : key === 'feature'
-                        ? 'success'
-                        : 'default'
-                      : ('neutral' as any)
-                  }
-                  style={active ? {borderColor: val.color} : undefined}
-                  textStyle={active ? {color: val.color} : undefined}
+                  variant={active ? 'default' : 'neutral'}
                 />
               );
             })}
@@ -257,27 +247,35 @@ export default function FeedbackModal({
           </ScrollView>
 
           <View style={styles.actions}>
-            <Button
-              label="Cancel"
-              onPress={handleClose}
-              variant="secondary"
-              size="lg"
-              fullWidth
-            />
-            <Button
-              label={
-                feedbackType === 'bug'
-                  ? '🐛 Report Bug'
-                  : feedbackType === 'feature'
-                  ? '💡 Suggest'
-                  : 'Send Feedback'
-              }
-              onPress={handleSubmit}
-              variant="primary"
-              size="lg"
-              loading={submitting}
-              fullWidth
-            />
+            <View style={{flex: 1}}>
+              <Button
+                label="Cancel"
+                onPress={handleClose}
+                variant="secondary"
+                size="lg"
+                style={{paddingHorizontal: Spacing.sm}}
+                textStyle={{fontSize: 14}}
+                fullWidth
+              />
+            </View>
+            <View style={{flex: 1.5}}>
+              <Button
+                label={
+                  feedbackType === 'bug'
+                    ? '🐛 Report Bug'
+                    : feedbackType === 'feature'
+                    ? '💡 Suggest'
+                    : 'Send Feedback'
+                }
+                onPress={handleSubmit}
+                variant="primary"
+                size="lg"
+                style={{paddingHorizontal: Spacing.sm}}
+                textStyle={{fontSize: 14}}
+                loading={submitting}
+                fullWidth
+              />
+            </View>
           </View>
         </View>
       </View>

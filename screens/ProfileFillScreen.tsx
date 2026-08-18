@@ -26,7 +26,7 @@ import {useTheme} from '../src/context/ThemeContext';
 
 export default function ProfileFillScreen({onComplete}: {onComplete: () => void}) {
   const insets = useSafeAreaInsets();
-  const {user: contextUser, refreshUserData} = useApp();
+  const {user: contextUser, userData, refreshUserData} = useApp();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -38,11 +38,16 @@ export default function ProfileFillScreen({onComplete}: {onComplete: () => void}
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    if (contextUser) {
-      setName(contextUser.name || '');
-      setPhotoUrl(contextUser.photoUrl || '');
-    }
-  }, [contextUser]);
+    const u = userData || contextUser || {};
+    setName(
+      u.fullName || u.displayName || u.name || contextUser?.displayName || contextUser?.name || '',
+    );
+    setPhone(u.phone || '');
+    setRole(u.role || 'Actor');
+    setLocation(u.location || '');
+    setBio(u.bio || '');
+    setPhotoUrl(u.photoUrl || u.photoURL || contextUser?.photoURL || '');
+  }, [contextUser, userData]);
 
   const handlePickPhoto = () => {
     Alert.alert('Profile Photo', 'Choose photo source', [

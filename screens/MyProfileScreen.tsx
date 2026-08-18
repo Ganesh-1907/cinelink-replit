@@ -13,6 +13,7 @@ import {
   Linking,
   StatusBar,
   Modal,
+  Switch,
 } from 'react-native';
 import ImageViewing from 'react-native-image-viewing';
 import {
@@ -68,6 +69,7 @@ export default function MyProfileScreen({navigation, route}: any) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
+  const [isPhonePublic, setIsPhonePublic] = useState<boolean>(true);
   const [email, setEmail] = useState<string>('');
   const [bio, setBio] = useState<string>('');
   const [role, setRole] = useState<string>('Actor');
@@ -81,6 +83,7 @@ export default function MyProfileScreen({navigation, route}: any) {
   const [portfolioPhotos, setPortfolioPhotos] = useState<string[]>([]);
   const [newPhotos, setNewPhotos] = useState<PhotoAsset[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [profileLoaded, setProfileLoaded] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
   const [saved, setSaved] = useState<boolean>(false);
   const [verificationStatus, setVerificationStatus] = useState<string>('');
@@ -136,6 +139,7 @@ export default function MyProfileScreen({navigation, route}: any) {
         const data = res.user;
         setName(data?.fullName || data?.displayName || data?.name || '');
         setPhone(data?.phone || '');
+        setIsPhonePublic(data?.isPhonePublic !== false);
         setEmail(data?.email || '');
         setBio(data?.bio || '');
         setRole(data?.role || 'Actor');
@@ -164,6 +168,8 @@ export default function MyProfileScreen({navigation, route}: any) {
       }
     } catch (e) {
       console.error('Error loading profile:', e);
+    } finally {
+      setProfileLoaded(true);
     }
   }, []);
 
@@ -317,6 +323,7 @@ export default function MyProfileScreen({navigation, route}: any) {
       const profileData = {
         fullName: trimmedName,
         phone,
+        isPhonePublic,
         bio,
         role: roleToSend,
         location,
@@ -496,6 +503,14 @@ export default function MyProfileScreen({navigation, route}: any) {
   const displayName = name || user?.email?.split('@')[0] || 'Me';
   const avatarUri = photo ? photo.uri : photoUrl || null;
 
+  if (!profileLoaded) {
+    return (
+      <View style={[styles.container, {backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center'}]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, {backgroundColor: Colors.background}]}>
       <StatusBar
@@ -638,7 +653,7 @@ export default function MyProfileScreen({navigation, route}: any) {
 
             {/* Middle block: Name, role subtitle, location, bio */}
             <View style={styles.instagramBioContainer}>
-              <Text style={styles.instagramDisplayName}>{name || 'Anonymous User'}</Text>
+              {name ? <Text style={styles.instagramDisplayName}>{name}</Text> : null}
               <Text style={styles.instagramRoleSubtitle}>{role || 'Actor'}</Text>
               {location ? (
                 <Text style={styles.instagramLocationText}>📍 {location}</Text>
@@ -759,6 +774,19 @@ export default function MyProfileScreen({navigation, route}: any) {
               keyboardType="phone-pad"
               containerStyle={styles.inputSpacing}
             />
+
+            <View style={styles.toggleRow}>
+              <View style={{flex: 1}}>
+                <Text style={styles.toggleLabel}>Public Phone & WhatsApp</Text>
+                <Text style={styles.toggleHint}>Disable to hide phone number & buttons from other users (recommended for privacy/safety)</Text>
+              </View>
+              <Switch
+                value={isPhonePublic}
+                onValueChange={setIsPhonePublic}
+                trackColor={{false: '#CCCCCC', true: Colors.primary}}
+                thumbColor={Colors.textPrimary}
+              />
+            </View>
 
             <Input
               label="Bio"
@@ -1200,13 +1228,27 @@ export default function MyProfileScreen({navigation, route}: any) {
                     
                     {phone ? (
                       <View style={styles.detailRowItem}>
-                        <Text style={styles.detailRowLabel}>📞 Phone</Text>
-                        <TouchableOpacity 
-                          onPress={() => Linking.openURL(`tel:${phone}`)}
-                          style={styles.detailsPhoneAction}>
-                          <Text style={styles.detailsPhoneText}>{phone}</Text>
-                          <Text style={styles.detailsPhoneIcon}>📞</Text>
-                        </TouchableOpacity>
+                        <Text style={styles.detailRowLabel}>📞 Phone {isPhonePublic ? '(Public)' : '(Private)'}</Text>
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.xs}}>
+                          <TouchableOpacity 
+                            onPress={() => Linking.openURL(`tel:${phone}`)}
+                            style={styles.detailsPhoneAction}>
+                            <Text style={styles.detailsPhoneText}>{phone}</Text>
+                            <Text style={styles.detailsPhoneIcon}>📞</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            onPress={() => {
+                              const cleanPhone = phone.replace(/[^0-9]/g, '');
+                              const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                              Linking.openURL(`whatsapp://send?phone=${formattedPhone}`).catch(() => 
+                                Alert.alert('WhatsApp Not Installed', 'Please install WhatsApp to chat.')
+                              );
+                            }}
+                            style={[styles.detailsPhoneAction, {backgroundColor: '#25D36620', borderColor: '#25D366'}]}>
+                            <Text style={[styles.detailsPhoneText, {color: '#25D366'}]}>WhatsApp</Text>
+                            <Text style={styles.detailsPhoneIcon}>💬</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     ) : null}
 
@@ -2306,5 +2348,26 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 72,
     fontWeight: '700',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    marginBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  toggleLabel: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  toggleHint: {
+    color: Colors.textTertiary,
+    fontSize: 11,
+    marginTop: 2,
+    paddingRight: Spacing.md,
   },
 });

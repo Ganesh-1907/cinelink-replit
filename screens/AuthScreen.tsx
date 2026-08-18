@@ -212,22 +212,12 @@ export default function AuthScreen({navigation, route}: any) {
         setGoogleLoading(false);
         return;
       }
-      await authService.googleSignIn(idToken);
-      try {
-        const profileRes = await api.get<{user: any}>('/users/profile');
-        const pUser = profileRes.user;
-        const hasEmptyProfile =
-          !pUser.location && !pUser.bio && !pUser.photoUrl;
-        if (hasEmptyProfile) {
-          await AsyncStorage.setItem('first_time_flow', 'true');
-          await AsyncStorage.setItem('profile_fill_done', 'false');
-          await AsyncStorage.setItem('suggested_follows_done', 'false');
-        } else {
-          await AsyncStorage.setItem('first_time_flow', 'false');
-          await AsyncStorage.setItem('profile_fill_done', 'true');
-          await AsyncStorage.setItem('suggested_follows_done', 'true');
-        }
-      } catch (err) {
+      const googleRes = await authService.googleSignIn(idToken);
+      if (googleRes.isNewUser) {
+        await AsyncStorage.setItem('first_time_flow', 'true');
+        await AsyncStorage.setItem('profile_fill_done', 'false');
+        await AsyncStorage.setItem('suggested_follows_done', 'false');
+      } else {
         await AsyncStorage.setItem('first_time_flow', 'false');
         await AsyncStorage.setItem('profile_fill_done', 'true');
         await AsyncStorage.setItem('suggested_follows_done', 'true');
@@ -259,22 +249,12 @@ export default function AuthScreen({navigation, route}: any) {
     }
     setLoading(true);
     try {
-      await authService.login(email.trim(), password.trim());
-      try {
-        const profileRes = await api.get<{user: any}>('/users/profile');
-        const pUser = profileRes.user;
-        const hasEmptyProfile =
-          !pUser.location && !pUser.bio && !pUser.photoUrl;
-        if (hasEmptyProfile) {
-          await AsyncStorage.setItem('first_time_flow', 'true');
-          await AsyncStorage.setItem('profile_fill_done', 'false');
-          await AsyncStorage.setItem('suggested_follows_done', 'false');
-        } else {
-          await AsyncStorage.setItem('first_time_flow', 'false');
-          await AsyncStorage.setItem('profile_fill_done', 'true');
-          await AsyncStorage.setItem('suggested_follows_done', 'true');
-        }
-      } catch (err) {
+      const loginRes = await authService.login(email.trim(), password.trim());
+      if (loginRes.isNewUser) {
+        await AsyncStorage.setItem('first_time_flow', 'true');
+        await AsyncStorage.setItem('profile_fill_done', 'false');
+        await AsyncStorage.setItem('suggested_follows_done', 'false');
+      } else {
         await AsyncStorage.setItem('first_time_flow', 'false');
         await AsyncStorage.setItem('profile_fill_done', 'true');
         await AsyncStorage.setItem('suggested_follows_done', 'true');

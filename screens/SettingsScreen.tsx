@@ -14,6 +14,7 @@ import {Colors, Typography, Spacing, Radius} from '../src/theme';
 import {useTheme} from '../src/context/ThemeContext';
 import {useApp} from '../src/context/AppContext';
 import {Card, Button, Header, PopupModal} from '../components/ui';
+import FeedbackModal from './FeedbackModal';
 
 export default function SettingsScreen({navigation}: any) {
   const {isDark, toggleTheme} = useTheme();
@@ -23,6 +24,7 @@ export default function SettingsScreen({navigation}: any) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [profileVisible, setProfileVisible] = useState(true);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
   const [confirmModal, setConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{field: string; newVal: boolean; label: string} | null>(null);
@@ -265,6 +267,15 @@ export default function SettingsScreen({navigation}: any) {
             </TouchableOpacity>
           </View>
 
+          <Text style={styles.sectionTitle}>Support & Feedback</Text>
+          <View>
+            <TouchableOpacity style={styles.accountActionRow} onPress={() => setFeedbackModalVisible(true)}>
+              <Text style={styles.settingIcon}>🛠️</Text>
+              <Text style={styles.settingText}>Report Bug / Feedback</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.sectionTitle}>About</Text>
           <View>
             <View style={styles.accountInfoRow}>
@@ -343,6 +354,11 @@ export default function SettingsScreen({navigation}: any) {
           autoCorrect={false}
         />
       </PopupModal>
+
+      <FeedbackModal
+        visible={feedbackModalVisible}
+        onClose={() => setFeedbackModalVisible(false)}
+      />
     </View>
   );
 }

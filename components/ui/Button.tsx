@@ -107,7 +107,11 @@ export function Button({
             size="small"
           />
         ) : (
-          <Text style={labelStyle} numberOfLines={1}>
+          <Text
+            style={labelStyle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}>
             {label}
           </Text>
         )}

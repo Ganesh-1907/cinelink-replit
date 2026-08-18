@@ -43,6 +43,20 @@ export default function CastingRequestScreen({navigation}: any) {
   const [phone, setPhone] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
 
+  const handlePhoneChange = (val: string) => {
+    let clean = val.replace(/[^0-9]/g, '');
+    if (clean.startsWith('0')) {
+      clean = clean.substring(1);
+    }
+    if (clean.startsWith('91') && clean.length > 10) {
+      clean = clean.substring(2);
+    }
+    if (clean.length > 10) {
+      clean = clean.substring(0, 10);
+    }
+    setPhone(clean);
+  };
+
   const [loading, setLoading] = useState(false);
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -489,9 +503,12 @@ export default function CastingRequestScreen({navigation}: any) {
                 <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
               </View>
               <Input
+                containerStyle={{flex: 1}}
                 placeholder="10-digit mobile number"
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={handlePhoneChange}
+                keyboardType="phone-pad"
+                maxLength={10}
               />
             </View>
 
